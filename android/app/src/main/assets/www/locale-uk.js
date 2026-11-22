@@ -272,7 +272,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.theme.warm": "Тепло",
       "s.display.theme.graphite": "Графік",
       "s.display.accent": "Колір акценту",
-      "s.display.artTint": "Забарвлення тла за обкладинкою альбому",
       "s.display.orientation": "Орієнтація",
       "s.display.orientation.landscape": "Алівія",
       "s.display.orientation.portrait": "Книжкова",

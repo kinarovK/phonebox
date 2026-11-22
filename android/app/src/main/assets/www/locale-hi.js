@@ -272,7 +272,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.display.theme.warm": "गर्म",
       "s.display.theme.graphite": "ग्रेफाइट",
       "s.display.accent": "उभार रंग",
-      "s.display.artTint": "एलबम कलाकृति के साथ पृष्ठभूमि को रंग दें",
       "s.display.orientation": "दिशा- निर्धारण",
       "s.display.orientation.landscape": "आड़ा",
       "s.display.orientation.portrait": "पोर्टेट",

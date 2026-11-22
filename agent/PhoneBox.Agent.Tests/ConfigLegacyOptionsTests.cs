@@ -38,6 +38,14 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
     }
 
     [Fact]
+    public void ADisplaySectionWithTheRemovedArtTintStillLoads()
+    {
+        var store = new ConfigStore(Path.Combine(_dir, "config.json"));
+        Assert.Null(store.Save("""{"display":{"artTint":false,"accent":"#ff0000"}}"""));
+        Assert.Equal("#ff0000", store.Get().Display.Accent);
+    }
+
+    [Fact]
     public void ConfigFromBeforeTheShortcutsAndCommandsRemovalStillLoads()
     {
         // shortcuts, the app console and battery care's switching had their own sections, rules could run a shortcut,

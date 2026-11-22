@@ -730,33 +730,11 @@ export function renderStatus(el, o = {}) {
   while (el.scrollWidth > el.clientWidth + 1 && el.querySelector('.qm')) [...el.querySelectorAll('.qm')].pop().remove();
 }
 
-// The background glow: the accent colour (Settings › Display), or the album art's colour while music plays.
+// The background glow: the accent colour (Settings › Display).
 export let DEFAULT_AMBIENT = '45, 212, 191';
-export let artTint = true;
-export let currentArtColor = null;
-export const setArtColor = (c) => { currentArtColor = c; setAmbient(c); };
 export const hexToRgb = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16); return `${n >> 16}, ${(n >> 8) & 255}, ${n & 255}`; };
 
-export function averageColor(img) {
-  try {
-    const c = document.createElement('canvas');
-    c.width = c.height = 16;
-    const g = c.getContext('2d');
-    g.drawImage(img, 0, 0, 16, 16);
-    const d = g.getImageData(0, 0, 16, 16).data;
-    let r = 0, gg = 0, b = 0, n = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]);
-      if (mx < 30 || mx - mn < 20) continue; // skip very dark / grey pixels
-      r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++;
-    }
-    if (!n) return null;
-    const [R, G, B] = [r / n, gg / n, b / n];
-    const k = 220 / (Math.max(R, G, B) || 1); // normalise brightness
-    return [R, G, B].map((v) => Math.round(Math.min(255, v * k))).join(', ');
-  } catch (_) { return null; }
-}
-export const setAmbient = (rgb) => document.documentElement.style.setProperty('--ambient', (artTint && rgb) || DEFAULT_AMBIENT);
+export const setAmbient = () => document.documentElement.style.setProperty('--ambient', DEFAULT_AMBIENT);
 
 export const Q_STYLE = { antigravity: { color: '#38bdf8', logo: '✦' }, claude: { color: '#d97757', logo: '✳' }, codex: { color: '#e5e7eb', logo: '◎' }, cursor: { color: '#67e8f9', logo: '◆' }, grok: { color: '#f8fafc', logo: '✶' } };
 
@@ -2071,8 +2049,7 @@ export function applyDisplay() {
   const before = DEFAULT_AMBIENT;
   DEFAULT_AMBIENT = accent || '45, 212, 191';
   document.documentElement.style.setProperty('--accent', `rgb(${DEFAULT_AMBIENT})`);
-  artTint = d.artTint !== false;
-  if (before !== DEFAULT_AMBIENT || !artTint) setAmbient(artTint ? currentArtColor : null);
+  if (before !== DEFAULT_AMBIENT) setAmbient();
   if (langChanged) { buildLayout(); renderApproval(); }
   renderRulesBtn();
   if (PREVIEW || !bridge) return;
