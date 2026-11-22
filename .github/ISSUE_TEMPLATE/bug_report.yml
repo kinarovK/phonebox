@@ -37,7 +37,7 @@ body:
     id: connection
     attributes:
       label: Connection
-      options: [USB, Wi-Fi, Tailscale, Not connected yet]
+      options: [USB, Not connected yet]
   - type: textarea
     id: log
     attributes:

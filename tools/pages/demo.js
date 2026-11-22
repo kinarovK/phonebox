@@ -45,7 +45,6 @@
         pixelShift: false, idleDimMin: 0,
         autoBrightness: false, nightWhenDark: false, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, pin: false, homeScreen: false, keepAwake: true, openOnConnect: true, followComputerLock: false,
         homePage: null, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15 },
-      lan: { enabled: true, port: 8766, token: 'demo' },
       updates: { auto: true, repo: 'ersinkoc/phonebox' },
       claude: { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false },
       antigravity: { sessions: false, shareSessionTitles: false },
@@ -91,8 +90,6 @@
     if (broadcast) bc.postMessage({ type: 'event', kind, data });
     return e;
   }
-  // the phone reports its battery through /api/phone/battery
-  let phoneBattery = { level: 72, plugged: true, temp: 29, at: now() - 20e3, source: 'usb', usb: 'configured' };
   let approvals = [];
   const SAMPLE_PROMPTS = [
     { tool: 'Run a command', detail: 'git push origin main --force-with-lease', description: 'Push the rebased branch', project: 'api-gateway', cwd: '/Users/me/work/api-gateway' },
@@ -246,7 +243,7 @@
     if (path === '/api/docker') return json({ ...docker(), control: allows(await config(), (t) => t === 'docker') });
     if (path === '/api/phones') return json([
       { id: '3f9a1c0d7b2e', model: 'UMIDIGI BISON', lastSeen: now() - 2000, via: 'USB', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
-      { id: 'c81e728d9d4c', model: 'samsung SM-X200', lastSeen: now() - 140000, via: 'Wi-Fi', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
+      { id: 'c81e728d9d4c', model: 'samsung SM-X200', lastSeen: now() - 140000, via: 'USB', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
     ]);
     if (path === '/api/network/adapters') return json([{ name: 'Ethernet', description: 'Intel(R) Ethernet Controller I225-V', auto: true },
       { name: 'Wi-Fi', description: 'Intel(R) Wi-Fi 6E AX211 160MHz', auto: true }, { name: 'WireGuard', description: 'WireGuard Tunnel', auto: false }]);
@@ -271,17 +268,6 @@
       bc.postMessage({ type: 'decided', id });
       return json({ ok: true });
     }
-    if (path === '/api/phone/battery' && method === 'POST') {
-      phoneBattery = {
-        level: Math.max(0, Math.min(100, +q.get('level') || 0)),
-        plugged: q.get('plugged') === 'true',
-        temp: q.has('temp') ? +q.get('temp') : null,
-        at: now(),
-        source: (q.get('source') || '').trim().toLowerCase() || null,
-        usb: (q.get('usb') || '').trim().toLowerCase() || null,
-      };
-      return json({ ok: true });
-    }
     if (path.startsWith('/api/goto/') && method === 'POST')
       return json(emit('goto', { page: decodeURIComponent(path.slice(10)), countdown: q.has('countdown') ? Math.max(0, Math.min(30, +q.get('countdown') || 0)) : null }));
     // settings page
@@ -300,19 +286,7 @@
       }
       return json(await config(), 200, { 'X-Config-Version': String(cfgVersion()) });
     }
-    if (path === '/api/info') return json({ version: VERSION, os: 'windows', configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], usbProblem: null, webviewProblem: null });
-    // Pairing over Wi-Fi: a placeholder pattern instead of real QR codes (the demo has no agent to pair with)
-    if (path === '/api/pair/start' && method === 'POST') {
-      const box = (label) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect width="29" height="29" fill="#fff"/>${
-        [0, 22].flatMap((x) => [0, 22].filter((y) => !(x === 22 && y === 22)).map((y) => `<rect x="${x}" y="${y}" width="7" height="7" fill="#000"/><rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="#fff"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#000"/>`)).join('')
-      }<text x="14.5" y="16" font-size="3" text-anchor="middle" font-family="sans-serif">${label}</text></svg>`;
-      return json({ enabled: true, pc: 'DEMO-PC', hosts: ['192.168.1.20', '100.101.102.103'], port: 8766, expiresAt: now() + 300e3, claims: 0, attempt: 1, check: 'DE40 0001',
-        link: 'https://ersinkoc.github.io/phonebox/pair/#v=1&pc=DEMO-PC&fp=demo&port=8766&h=192.168.1.20&c=demo',
-        qr: box('demo pairing'), app: 'https://github.com/ersinkoc/phonebox/releases/latest', appQr: box('demo app') });
-    }
-    if (path === '/api/pair/status') return json({ claims: 0 });
-    if (path === '/api/pair/cancel' && method === 'POST') return json({});
-    if (path === '/api/lan') return json({ configured: true, active: true, port: 8766, restartNeeded: false, hosts: ['192.168.1.20', '100.101.102.103'], fingerprint: 'demo' });
+    if (path === '/api/info') return json({ version: VERSION, os: 'windows', configPath: 'browser storage (demo)', logPath: '—', adb: 'demo', connected: true, devices: ['DEMO0001'], appMissing: [], webviewProblem: null });
     if (path === '/api/update') return json({ status: { agentVersion: VERSION, appVersion: VERSION, latest: VERSION, releaseUrl: 'https://github.com/ersinkoc/phonebox/releases/latest', agentUpdate: false, appUpdate: false,
       lastCheck: now() - 3600e3, state: 'idle', error: null }, auto: (await config()).updates?.auto !== false, installed: true });
     if (path === '/api/claude/hook') return json({ installed: false, path: '~/.claude/settings.json' });

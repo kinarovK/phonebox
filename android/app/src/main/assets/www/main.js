@@ -41,7 +41,7 @@ export const ROWS = 6;
 export const $ = (id) => document.getElementById(id);
 // The native bridge (window.Android) is in every frame, sandboxed widgets included, so each call carries a key that only
 // the panel's own frames receive (MainActivity.bridgeKey). This wrapper adds it.
-const BRIDGE = ['battery', 'buzz', 'haptic', 'is24Hour', 'pcs', 'selectPc', 'forgetPc', 'setBrightness', 'setHomeScreen', 'setOrientation',
+const BRIDGE = ['battery', 'buzz', 'haptic', 'is24Hour', 'setBrightness', 'setHomeScreen', 'setOrientation',
   'setPinned', 'setVolumeKeys', 'setLanguage', 'transport', 'sensors', 'version'];
 export const bridge = typeof Android === 'undefined' ? null : Object.fromEntries(BRIDGE.filter((m) => typeof Android[m] === 'function')
   .map((m) => [m, (...args) => Android[m](window.__phoneboxKey || '', ...args)]));
@@ -580,7 +580,7 @@ export function quotaProviders() { return D.quotas?.providers || []; }
 
 export function renderStatus(el, o = {}) {
   const via = transport();
-  const name = online ? (D.state?.host || 'PC') + (via === 'wifi' ? ' · ' + t('status.wiFi') : via === 'usb' ? ' · ' + t('status.usb') : '') : online === false ? t('panel.pcNotConnected') : t('panel.connecting');
+  const name = online ? (D.state?.host || 'PC') + (via === 'usb' ? ' · ' + t('status.usb') : '') : online === false ? t('panel.pcNotConnected') : t('panel.connecting');
   const kids = [h('span', 'dot ' + (online ? 'on' : online === false ? 'off' : '')), h('span', null, name)];
   const bat = phoneBattery();
   if (bat) kids.push(h('span', 'sep', '·'), h('span', null, bat));
@@ -946,7 +946,7 @@ export function handleEvent(e) {
 }
 
 export const WIDGET_ICONS = { chargecare: '🔋', clock: '🕒', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️',
-  sessions: '🤖', github: '🐙', processes: '⚙️', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', pcswitch: '🖥️' };
+  sessions: '🤖', github: '🐙', processes: '⚙️', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊' };
 
 // ================================================================= pages
 export const pager = $('pager');
@@ -1381,28 +1381,11 @@ export function openOverview() {
     return t;
   };
   $('ovGrid').replaceChildren(...pages.map(tile));
-  // several paired computers: switch between them here (a USB cable always wins)
-  const pcs = pairedPcs();
-  $('ovPcs').replaceChildren(...(pcs.length > 1 ? pcs.map((pc) => {
-    const b = h('button', 'ov-pc' + (pc.active ? ' on' : ''), icon('monitor', 'm'), pc.name || t('panel.computer'));
-    b.addEventListener('click', (e) => { e.stopPropagation(); switchPc(pc); });
-    return b;
-  }) : []));
   $('ovGrid').style.setProperty('--n', Math.min(4, Math.ceil(Math.sqrt(pages.length * 1.6))));
   ov.hidden = false;
 }
 window.openOverview = openOverview;
 
-/** The computers this phone is paired with over Wi-Fi: [{ id, name, active }] (empty outside the app). */
-export function pairedPcs() {
-  try { return bridge?.pcs ? JSON.parse(bridge.pcs()) : []; } catch (_) { return []; }
-}
-/** Makes another paired computer the one used over Wi-Fi; the app then reloads the panel from it. */
-export function switchPc(pc) {
-  if (!pc || pc.active || !bridge?.selectPc) return;
-  haptic(); toast(t('panel.switchingPc', { name: pc.name || t('panel.otherComputer') }));
-  setTimeout(() => bridge.selectPc(pc.id), 300);
-}
 export function closeOverview() { $('overview').hidden = true; }
 $('overview').addEventListener('click', closeOverview);
 
@@ -1913,18 +1896,6 @@ if (PREVIEW) {
   window.parent.postMessage({ type: 'phonebox-preview-ready' }, location.origin);
 }
 
-// ---------------------------------------------------------------- battery report (the agent's charge guard)
-function reportBattery() {
-  if (PREVIEW || !bridge?.battery || !online) return;
-  try {
-    const b = JSON.parse(bridge.battery());
-    // the phone's view of its USB link lets the agent explain a cable that only charges (see UsbDoctor.cs)
-    const usb = b.usb ? ['connected', 'configured', 'adb'].filter((k) => b.usb[k]).join(',') || 'none' : '';
-    if (b.level >= 0) api(`/phone/battery?level=${b.level}&plugged=${!!b.plugged}&temp=${b.temp || 0}&source=${b.source || ''}&usb=${usb}`, 'POST', 4000).catch(() => {});
-  } catch (_) {}
-}
-setInterval(reportBattery, 30_000);
-setTimeout(reportBattery, 5000);
 
 // index.html's boot watchdog waits for this: reaching the end of the module means the panel got through its first
 // render, so a throw anywhere above shows up as a message there instead of a black screen.

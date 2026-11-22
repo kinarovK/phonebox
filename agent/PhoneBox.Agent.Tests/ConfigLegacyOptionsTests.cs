@@ -61,7 +61,6 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
         var config = new ConfigStore(path).Get();
         Assert.Equal("01:15", config.Night.Start);
         Assert.Equal(120, config.Display.IdleReturnSec);
-        Assert.Equal("phone-key", config.Lan.Token);
         Assert.Equal(["clock"], config.Pages.Single().Widgets!.Select(w => w.Type));
         Assert.DoesNotContain("secret", JsonSerializer.Serialize(config.ToPublic()));
         Assert.DoesNotContain("Berlin", JsonSerializer.Serialize(config.ToPublic()));
@@ -132,5 +131,24 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
         Assert.Equal("01:15", config.Night.Start);
         Assert.Equal(45, config.Claude.TimeoutSec);
         Assert.DoesNotContain("opencode", JsonSerializer.Serialize(config.ToPublic()), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ConfigFromBeforeTheWifiRemovalStillLoads()
+    {
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, """
+            {"lan":{"enabled":true,"port":8766,"token":"wifi-secret"},
+             "night":{"start":"01:15"},
+             "pages":[{"id":"p","enabled":true,"widgets":[{"type":"pcswitch","x":0,"y":0,"w":6,"h":3},
+                      {"type":"clock","x":6,"y":0,"w":6,"h":3}]}]}
+            """);
+        var store = new ConfigStore(path);
+        Assert.Equal("01:15", store.Get().Night.Start);
+        Assert.Equal(["clock"], store.Get().Pages.Single().Widgets!.Select(w => w.Type));
+        Assert.DoesNotContain("wifi-secret", JsonSerializer.Serialize(store.Get().ToPublic()));
+        // saving drops the old section from the file
+        Assert.Null(store.Save(JsonSerializer.Serialize(store.Get())));
+        Assert.DoesNotContain("wifi-secret", File.ReadAllText(path));
     }
 }

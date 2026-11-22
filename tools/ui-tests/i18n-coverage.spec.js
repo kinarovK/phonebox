@@ -13,7 +13,7 @@ const DEMO_NAMES = [
   // adapter and device names reported by the machine
   'Intel(R) Ethernet Controller I225-V', 'Intel(R) Wi-Fi 6E AX211 160MHz', 'WireGuard Tunnel',
   'UMIDIGI BISON · connected now over USB · WebView 134',
-  'samsung SM-X200 · seen 2 min ago over Wi-Fi · WebView 134',
+  'samsung SM-X200 · seen 2 min ago over USB · WebView 134',
   '0.9.16 (up to date)',
   // template names the demo config carries
   'AI quotas', 'Workflow GitHub',
@@ -91,10 +91,8 @@ test('the settings page shows no English left in Vietnamese, with every section 
   // Product names and platform names that are not translated on purpose, and demo/sample data the config carries.
   const leftoversKept = englishLeftovers(texts, [
     'PhoneBox', 'Claude', 'Codex', 'GitHub',
-    'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView', 'PowerShell',
+    'Antigravity', 'Windows', 'macOS', 'Linux', 'Android', 'WebView', 'PowerShell',
     'JSON', 'HTTPS', 'USB', 'Wi-Fi', 'SPA', 'CodexBar',
-    // Wi-Fi and Tailscale are product names, so the section title stays the same in every language
-    'Wi-Fi & Tailscale',
     // names the machine reports, so they are data and not interface text
     'UMIDIGI BISON', 'samsung SM-X200',
   ].concat(

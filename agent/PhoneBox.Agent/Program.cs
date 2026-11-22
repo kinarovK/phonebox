@@ -31,12 +31,10 @@ var configPath = Path.GetFullPath(args.SkipWhile(a => a != "--config").Skip(1).F
 var configDir = Path.GetDirectoryName(configPath) ?? AppPaths.ConfigDir;
 AppPaths.RestrictConfig(configPath);
 var configStore = new ConfigStore(configPath);
-configStore.PersistGenerated(); // keep the Wi-Fi token stable across restarts
-var lanCfg = configStore.Get().Lan;
-var lanCert = lanCfg.Enabled && lanCfg.Port != Port ? Lan.Certificate(configDir) : null;
-// USB uses the same certificate as Wi-Fi; the agent hands its fingerprint to the app over adb (see UsbLink.cs)
-var usbCert = lanCert ?? Lan.Certificate(configDir);
-var usb = new UsbLink(UsbLink.FreeLoopbackPort(), Lan.Fingerprint(usbCert));
+configStore.PersistGenerated(); // a first config file on disk, and damaged page icons repaired
+// the agent hands the USB certificate's fingerprint to the app over adb (see UsbLink.cs)
+var usbCert = AgentCert.Load(configDir);
+var usb = new UsbLink(UsbLink.FreeLoopbackPort(), AgentCert.Fingerprint(usbCert));
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -51,8 +49,6 @@ builder.WebHost.ConfigureKestrel(k =>
     k.Listen(IPAddress.Loopback, Port);
     // USB: the end of the phone's adb reverse tunnel, on a port of its own, over TLS the app pins, with the app's key
     k.Listen(IPAddress.Loopback, usb.Port, l => l.UseHttps(usbCert));
-    // Wi-Fi / Tailscale: HTTPS with a pinned self-signed certificate, token required (see Lan.cs).
-    if (lanCert is not null) k.Listen(IPAddress.Any, lanCfg.Port, l => l.UseHttps(lanCert));
 });
 builder.Logging.ClearProviders();
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
@@ -64,7 +60,6 @@ builder.Services.AddSingleton(configStore);
 builder.Services.AddSingleton(endpoint);
 builder.Services.AddSingleton(usb);
 builder.Services.AddSingleton<AudioControl>();
-builder.Services.AddSingleton<PairingCodes>();
 builder.Services.AddSingleton<PushStore>();
 builder.Services.AddSingleton<ApprovalStore>();
 AddMonitor<SystemMonitor>(builder.Services);
@@ -116,8 +111,7 @@ app.MapGet("/api/latency", () => Results.Json(timings.Summary()));
 //    page itself (same origin) is accepted (no CSRF).
 //  - The phone's USB tunnel ends on a port of its own (UsbLink): every app on the phone can reach the tunnel, so it
 //    is TLS with the certificate the app pins (handed over adb), needs the key the PhoneBox app made (read over adb),
-//    and serves only the phone API.
-//  - The optional Wi-Fi port only serves the phone API, only over TLS, and only with the paired token.
+//    and serves only the phone API (UsbLink.Allowed). Nothing listens beyond this computer's loopback.
 app.UseWebSockets();
 app.UseRouting();
 app.Use(async (ctx, next) =>
@@ -130,25 +124,6 @@ app.Use(async (ctx, next) =>
         if (access != UsbLink.Access.Allowed)
         {
             ctx.Response.StatusCode = access == UsbLink.Access.Unauthorized ? StatusCodes.Status401Unauthorized : StatusCodes.Status403Forbidden;
-            return;
-        }
-    }
-    else if (lanCert is not null && ctx.Connection.LocalPort == lanCfg.Port && ctx.Request.IsHttps)
-    {
-        // The phone's key opens the panel API.
-        var lan = configStore.Get().Lan;
-        var access = Lan.AuthorizeRequest(lan, ctx.Request.Method, ctx.Request.Path, origin, ctx.Request.Headers.Authorization);
-        if (access == Lan.LanAccess.Denied)
-        {
-            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return;
-        }
-        if (access is Lan.LanAccess.PairingClaim)
-        {
-            // pairing claims must not touch phone registry, app version or "phone connected" updates
-            ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 1024;
-            ctx.Response.Headers.CacheControl = "no-store";
-            await next();
             return;
         }
     }
@@ -167,7 +142,7 @@ app.Use(async (ctx, next) =>
     if (ctx.Request.Headers.TryGetValue("X-PhoneBox-Device", out var device))
     {
         var problem = PhoneRegistry.Touch(device.ToString(), ctx.Request.Headers["X-PhoneBox-Model"].ToString(),
-            ctx.Connection.LocalPort == usb.Port ? "USB" : ctx.Connection.LocalPort == Port ? "local" : "Wi-Fi", ctx.Request.Headers["X-PhoneBox-WebView"].ToString());
+            ctx.Connection.LocalPort == usb.Port ? "USB" : "local", ctx.Request.Headers["X-PhoneBox-WebView"].ToString());
         if (problem is not null) app.Logger.LogWarning("WebView: {Problem}", problem);
     }
     if (ctx.Request.Headers.TryGetValue("X-PhoneBox-App", out var appVersion) && appVersion.ToString().Length is > 0 and < 32)
@@ -178,77 +153,12 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-// ---------------------------------------------------------------- Wi-Fi pairing (local / USB only)
-// The phone calls this through the USB tunnel and stores everything it needs to connect over Wi-Fi.
-app.MapGet("/api/pair", (ConfigStore cfg) =>
-{
-    var lan = cfg.Get().Lan;
-    if (!lan.Enabled || lanCert is null) return Results.Json(new { enabled = false, pc = Environment.MachineName });
-    return Results.Json(new
-    {
-        enabled = true,
-        pc = Environment.MachineName,
-        port = lanCfg.Port,
-        token = lan.Token,
-        fingerprint = Lan.Fingerprint(lanCert),
-        hosts = Lan.Addresses(),
-    });
-});
-
-// Pairing without USB (see PairingCodes). Start and cancel are local only (settings page); the phone claims over Wi-Fi.
-app.MapPost("/api/pair/start", (ConfigStore cfg, PairingCodes codes) =>
-{
-    if (!cfg.Get().Lan.Enabled || lanCert is null)
-        return Results.Json(new { enabled = false, configured = cfg.Get().Lan.Enabled });
-    var (code, expiresAt, attempt) = codes.Start(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-    var hosts = Lan.Addresses();
-    var fingerprint = Lan.Fingerprint(lanCert);
-    var link = PairingCodes.Link(Environment.MachineName, fingerprint, lanCfg.Port, hosts, code);
-    var apk = $"https://github.com/{cfg.Get().Updates.Repo}/releases/download/v{AppPaths.Version}/PhoneBox-{AppPaths.Version}.apk";
-    return Results.Json(new
-    {
-        enabled = true,
-        pc = Environment.MachineName,
-        hosts,
-        port = lanCfg.Port,
-        expiresAt,
-        claims = codes.Claims,
-        attempt,
-        check = PairingCodes.Check(fingerprint),
-        link,
-        qr = PairingCodes.Svg(link),
-        app = apk,
-        appQr = PairingCodes.Svg(apk),
-    });
-});
-app.MapPost("/api/pair/cancel", (long attempt, PairingCodes codes) => { codes.Cancel(attempt); return Results.Ok(); });
-app.MapGet("/api/pair/status", (PairingCodes codes) => Results.Json(new { claims = codes.Claims }));
-app.MapPost("/api/pair/claim", (HttpRequest req, ConfigStore cfg, PairingCodes codes) =>
-    ClaimPairingAsync(req, cfg, codes, lanCert, lanCfg.Port, app.Logger));
-
-app.MapGet("/api/lan", (ConfigStore cfg) => Results.Json(new
-{
-    configured = cfg.Get().Lan.Enabled,
-    active = lanCert is not null,
-    port = lanCfg.Port,
-    restartNeeded = cfg.Get().Lan.Enabled != (lanCert is not null) || (lanCert is not null && cfg.Get().Lan.Port != lanCfg.Port),
-    hosts = Lan.Addresses(),
-    fingerprint = lanCert is null ? null : Lan.Fingerprint(lanCert),
-}));
-
 app.MapGet("/api/update", (UpdateService upd, ConfigStore cfg) => Results.Json(new { status = upd.Status(), auto = cfg.Get().Updates.Auto, installed = UpdateService.RunningInstalled }));
 // Settings › General: install the phone app on a phone that does not have it yet (local only).
 app.MapPost("/api/phone/install", async (UpdateService upd) =>
     await upd.InstallAppAsync() is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
 app.MapPost("/api/update/check", async (UpdateService upd) => { await upd.CheckAsync(); return Results.Json(upd.Status()); });
 app.MapPost("/api/update/apply", (UpdateService upd) => { _ = Task.Run(() => upd.ApplyAsync()); return Results.Accepted(); });
-
-app.MapPost("/api/restart", (IHostApplicationLifetime life) =>
-{
-    AppRestart.Requested = true;
-    life.StopApplication();
-    return Results.Ok();
-});
 
 // ---------------------------------------------------------------- settings UI (browser)
 app.MapGet("/", () =>
@@ -289,8 +199,6 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ILogger<Pro
     using var r = new StreamReader(req.Body);
     long? expected = long.TryParse(req.Headers["X-Config-Version"], out var v) ? v : null; // scripts may leave it out
     var body = await r.ReadToEndAsync();
-    if (LanPortCollidesWithLocal(body, Port))
-        return Results.BadRequest(new { error = $"Wi-Fi port cannot be the same as the local port ({Port})" });
     string? err;
     long savedVersion;
     err = cfg.Save(body, expected, out savedVersion);
@@ -307,12 +215,11 @@ app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
     configPath = cfg.Path,
     logPath = AppPaths.LogPath,
     adb = AdbReverse.FindAdb(cfg.Get().AdbPath),
-    // USB (adb) or a live stream from the phone in the last few seconds, which covers Wi-Fi / Tailscale too
+    // USB (adb) or a live stream from the phone in the last few seconds
     connected = adb.Connected || ApprovalStore.PhoneConnected,
-    via = adb.Connected ? "USB" : ApprovalStore.PhoneConnected ? "Wi-Fi" : null,
+    via = adb.Connected || ApprovalStore.PhoneConnected ? "USB" : null,
     devices = adb.AllDevices,
     appMissing = adb.MissingApp,
-    usbProblem = adb.UsbProblem,
     webviewProblem = WebViewDoctor.DiagnoseRecent(PhoneRegistry.All(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
 }));
 
@@ -351,8 +258,6 @@ app.MapPost("/api/docker/{id}/{action}", async (string id, string action, Docker
 // Settings › General › Ping & network: the connected adapters to pick from (local only, not on the Wi-Fi list)
 app.MapGet("/api/network/adapters", (ConfigStore cfg) => Results.Json(SystemMonitor.Adapters(cfg.Get().Ping.Adapters)));
 
-// The phone reports its battery; USB setup reads its view of the USB link (UsbDoctor).
-app.MapPost("/api/phone/battery", (int level, bool plugged, double? temp, string? source, string? usb) => { ChargeGuard.Report(level, plugged, temp, source, usb); return Results.Ok(); });
 app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.RequestServices, ev)));
 
 // Live stream (server-sent events) for the phone: "state" every second, "event" as soon as one happens, "work" when it
@@ -364,7 +269,7 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
 {
     var ct = ctx.RequestAborted;
     var isPhone = ctx.Request.Headers.ContainsKey("X-PhoneBox-App");
-    var via = ctx.Connection.LocalPort == usb.Port ? "USB" : ctx.Connection.LocalPort == Port ? "local" : "Wi-Fi";
+    var via = ctx.Connection.LocalPort == usb.Port ? "USB" : "local";
     log.LogInformation("live stream opened ({Who}, {Via})", isPhone ? "phone" : "other client", via);
     ctx.Response.ContentType = "text/event-stream";
     ctx.Response.Headers["X-Accel-Buffering"] = "no";
@@ -533,7 +438,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
 
 app.Run();
 
-// Restart requested from the settings page (e.g. Wi-Fi turned on): hand over to a fresh instance.
+// Restart requested by an update: hand over to a fresh instance.
 single.ReleaseMutex();
 single.Dispose();
 if (AppRestart.Requested && Environment.ProcessPath is { } exe)
@@ -546,66 +451,5 @@ static void AddMonitor<T>(IServiceCollection s) where T : class, IHostedService
 {
     s.AddSingleton<T>();
     s.AddHostedService(sp => sp.GetRequiredService<T>());
-}
-
-/// <summary>Body of POST /api/pair/claim.</summary>
-internal sealed record PairClaim(string? Code);
-
-public partial class Program
-{
-    internal static bool LanPortCollidesWithLocal(string json, int localPort)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-            if (doc.RootElement.ValueKind != JsonValueKind.Object) return false;
-            // ConfigStore.Save deserializes a repeated member (in any letter case) last-wins, so the last "lan" is the
-            // one that gets saved; a last one that is not an object leaves Wi-Fi off
-            var collides = false;
-            foreach (var prop in doc.RootElement.EnumerateObject())
-            {
-                if (!prop.Name.Equals("lan", StringComparison.OrdinalIgnoreCase)) continue;
-                collides = false;
-                if (prop.Value.ValueKind != JsonValueKind.Object) continue;
-                var enabled = false;
-                var port = 8766;
-                foreach (var lp in prop.Value.EnumerateObject())
-                {
-                    if (lp.Name.Equals("enabled", StringComparison.OrdinalIgnoreCase) && lp.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                        enabled = lp.Value.GetBoolean();
-                    else if (lp.Name.Equals("port", StringComparison.OrdinalIgnoreCase) && lp.Value.ValueKind == JsonValueKind.Number && lp.Value.TryGetInt32(out var p))
-                        port = Math.Clamp(p, 1024, 65535);
-                }
-                collides = enabled && port == localPort;
-            }
-            return collides;
-        }
-        catch (JsonException) { }
-        return false;
-    }
-
-    /// <summary>
-    /// POST /api/pair/claim. Wi-Fi is checked again once the body has arrived, with the settings that answer the claim:
-    /// a claim still waiting for its body when Wi-Fi is turned off is refused and does not use up the code.
-    /// </summary>
-    internal static async Task<IResult> ClaimPairingAsync(HttpRequest req, ConfigStore cfg, PairingCodes codes,
-        System.Security.Cryptography.X509Certificates.X509Certificate2? lanCert, int lanPort, ILogger log)
-    {
-        if (!cfg.Get().Lan.Enabled || lanCert is null || req.ContentLength is > 1024) return Results.StatusCode(StatusCodes.Status403Forbidden);
-        var code = await PairingCodes.ReadClaimCodeAsync(req);
-        var lan = cfg.Get().Lan;
-        if (!lan.Enabled || code is null || !codes.Claim(code, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
-            return Results.StatusCode(StatusCodes.Status403Forbidden);
-        log.LogInformation("phone paired over Wi-Fi ({Model})", req.Headers["X-PhoneBox-Model"].ToString());
-        return Results.Json(new
-        {
-            enabled = true,
-            pc = Environment.MachineName,
-            port = lanPort,
-            token = lan.Token,
-            fingerprint = Lan.Fingerprint(lanCert),
-            hosts = Lan.Addresses(),
-        });
-    }
 }
 

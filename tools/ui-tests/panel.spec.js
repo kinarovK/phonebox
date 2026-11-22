@@ -274,30 +274,6 @@ test('the settings page loads and its sections open', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('pairing over Wi-Fi shows both QR codes and cancels the code when closed', async ({ page }) => {
-  const errors = watchErrors(page);
-  await page.setViewportSize({ width: 1280, height: 860 });
-  await page.goto('/settings/#general');
-  // the demo answers the API inside the page, so watch the page's own fetch calls
-  await page.evaluate(() => {
-    window.__calls = [];
-    const real = window.fetch;
-    window.fetch = (url, opts) => { window.__calls.push(`${opts?.method || 'GET'} ${url}`); return real(url, opts); };
-  });
-  await page.locator('#lanPair').click();
-  await expect(page.locator('#modal')).toBeVisible();
-  await expect(page.locator('#modalBody h3')).toHaveText('Pair a phone with DEMO-PC');
-  await expect(page.locator('#modalBody .pair-qr img')).toHaveCount(2);
-  await expect(page.locator('#modalBody .pair-qr').nth(1)).toContainText(/Expires in [45]:\d\d/);
-  await expect(page.locator('#modalBody')).toContainText('192.168.1.20, 100.101.102.103');
-  await expect(page.locator('#modalBody .pair-qr').nth(1)).toContainText('confirm the code DE40 0001');
-  await page.screenshot({ path: 'test-results/pair-dialog.png' });
-  await page.locator('#modalClose').click();
-  await expect.poll(() => page.evaluate(() => window.__calls)).toContain('POST /api/pair/cancel?attempt=1');
-  await expect(page.locator('#modal')).toBeHidden();
-  expect(errors).toEqual([]);
-});
-
 test('an edit in the settings page shows up on the panel right away', async ({ context }) => {
   const panel = await context.newPage();
   await panel.goto('/panel/');

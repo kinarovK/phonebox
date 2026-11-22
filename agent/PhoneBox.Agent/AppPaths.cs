@@ -61,7 +61,7 @@ public static class AppPaths
 
     /// <summary>
     /// Tightens the settings file in use and its backup to owner only on macOS/Linux: older versions wrote them with the
-    /// umask (often 0644), and they hold the Wi-Fi, webhook and Home Assistant keys. Also for a <c>--config</c> path.
+    /// umask (often 0644), and they may hold personal settings. Also for a <c>--config</c> path.
     /// </summary>
     public static void RestrictConfig(string configPath)
     {

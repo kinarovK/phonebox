@@ -12,7 +12,7 @@
     <RootNamespace>PhoneBox.Agent</RootNamespace>
     <Product>PhoneBox</Product>
     <Company>PhoneBox</Company>
-    <Description>PhoneBox desktop agent: feeds the PhoneBox Android desk panel over USB or Wi-Fi.</Description>
+    <Description>PhoneBox desktop agent: feeds the PhoneBox Android desk panel over USB.</Description>
     <Version>0.9.27</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
@@ -45,8 +45,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- QR codes for pairing a phone over Wi-Fi (settings page) -->
-    <PackageReference Include="QRCoder" Version="1.8.1" />
   </ItemGroup>
 
   <ItemGroup>

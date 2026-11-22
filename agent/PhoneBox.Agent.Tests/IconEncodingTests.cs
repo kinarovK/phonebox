@@ -35,10 +35,6 @@ public sealed class IconEncodingTests
     public void ExistingBrokenIconsArePersistedOnceWithAnOriginalBackup()
     {
         using var f = new Fixture(new AgentConfig { Pages = [new() { Id = "p", Icon = "\u00e2\u0152\u00a8\u00ef\u00b8\u008f", Widgets = [new() { Type = "stat" }] }] });
-        // Seed stable tokens first, so migration is required for the icon rather than token generation.
-        var raw = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(f.Path))!;
-        raw.Lan.Token = "stable-phone";
-        File.WriteAllText(f.Path, JsonSerializer.Serialize(raw));
         var before = File.ReadAllBytes(f.Path);
         f.Store.PersistGenerated();
         Assert.Equal("\u2328\ufe0f", new ConfigStore(f.Path).Get().Pages.Single().Icon);

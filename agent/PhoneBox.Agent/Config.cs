@@ -14,7 +14,6 @@ public sealed class AgentConfig
     public PingConfig Ping { get; set; } = new();
     public NightConfig Night { get; set; } = new();
     public DisplayConfig Display { get; set; } = new();
-    public LanConfig Lan { get; set; } = new();
     public UpdateConfig Updates { get; set; } = new();
     public ClaudeConfig Claude { get; set; } = new();
     /// <summary>Cursor agent-transcript sessions on the AI sessions widget (off by default).</summary>
@@ -156,15 +155,6 @@ public sealed class DisplayConfig
     public int TouchGraceSec { get; set; } = 20;
     /// <summary>At least this many seconds between two automatic page switches, so rules firing one after another do not bounce the screen.</summary>
     public int MinDwellSec { get; set; } = 15;
-}
-
-public sealed class LanConfig
-{
-    /// <summary>Also accept the phone over Wi-Fi (HTTPS + token, paired over USB). Requires an agent restart.</summary>
-    public bool Enabled { get; set; }
-    public int Port { get; set; } = 8766;
-    /// <summary>Shared secret handed to the phone over USB. Empty = generate a new one (forces re-pairing).</summary>
-    public string? Token { get; set; }
 }
 
 public sealed class UpdateConfig
@@ -353,7 +343,7 @@ public sealed partial class ConfigStore(string path)
             var directory = System.IO.Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
             var tmp = path + ".tmp";
-            // owner-only on macOS/Linux: the file holds the Wi-Fi, webhook and Home Assistant keys
+            // owner-only on macOS/Linux: the file may hold personal settings
             AppPaths.WriteAllTextPrivate(tmp, JsonSerializer.Serialize(cfg, WriteOpts));
             if (File.Exists(path)) AppPaths.CopyPrivate(path, path + ".bak");
             File.Move(tmp, path, overwrite: true);
@@ -385,7 +375,6 @@ public sealed partial class ConfigStore(string path)
         c.Display.SwitchCountdownSec = Math.Clamp(c.Display.SwitchCountdownSec, 0, 30);
         c.Display.TouchGraceSec = Math.Clamp(c.Display.TouchGraceSec, 0, 600);
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
-        c.Lan ??= new();
         c.Updates ??= new();
         c.Ping ??= new();
         c.Ping.Host = c.Ping.Host?.Trim() ?? "";
@@ -395,8 +384,6 @@ public sealed partial class ConfigStore(string path)
         c.Cursor ??= new();
         c.Antigravity ??= new();
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = UpdateConfig.DefaultRepo;
-        c.Lan.Port = Math.Clamp(c.Lan.Port, 1024, 65535);
-        if (string.IsNullOrWhiteSpace(c.Lan.Token)) c.Lan.Token = NewToken();
         c.Night.Brightness = Math.Clamp(c.Night.Brightness, 0.01, 1);
 
         c.Pages = NormalizePages(c.Pages, out var originalPageIds);
@@ -539,10 +526,7 @@ public sealed partial class ConfigStore(string path)
         }
     }
 
-    private static string NewToken() =>
-        Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
-    /// <summary>Makes sure the generated Wi-Fi token is written to disk so it stays stable across restarts.</summary>
+    /// <summary>Writes the config to disk when there is no file yet, and once when page icons need repairing.</summary>
     public void PersistGenerated()
     {
         AgentConfig c;
@@ -557,7 +541,7 @@ public sealed partial class ConfigStore(string path)
         {
             var onDisk = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(path), ReadOpts);
             var damagedIcons = (onDisk?.Pages ?? []).Any(p => p is not null && IconText.Repair(p.Icon) != p.Icon);
-            if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token) return;
+            if (!damagedIcons && onDisk is not null) return;
         }
         catch { }
         Save(JsonSerializer.Serialize(c, WriteOpts), version);

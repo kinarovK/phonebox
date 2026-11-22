@@ -28,12 +28,11 @@ public class ConfigTests
     }
 
     [Fact]
-    public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
+    public void EmptyConfigGetsTheDefaultPages()
     {
         var c = Load("{}");
         Assert.NotEmpty(c.Pages);
         Assert.All(c.Pages, p => Assert.NotEmpty(p.Widgets!));
-        Assert.False(string.IsNullOrEmpty(c.Lan.Token));
     }
 
     // The panel converts the forecast itself, so the only values the agent hands it are the two it knows how to show.
@@ -205,48 +204,6 @@ public class ConfigTests
     }
 }
 
-public class LanTests
-{
-    [Theory]
-    [InlineData("/api/state", true)]
-    [InlineData("/api/stream", true)]
-    [InlineData("/api/settings", false)]
-    [InlineData("/api/pair", false)]
-    [InlineData("/api/pair/claim", true)]
-    [InlineData("/api/pair/start", false)]
-    [InlineData("/api/pair/cancel", false)]
-    [InlineData("/api/pair/status", false)]
-    [InlineData("/api/pair/claim/x", false)]
-    [InlineData("/api/claude/hook", false)]
-    [InlineData("/api/codex/hook", false)]
-    [InlineData("/api/phones", false)]
-    [InlineData("/api/goto/home", false)] // the settings page's "Open on the phone" only
-    [InlineData("/panel/main.js", false)]
-    [InlineData("/", false)]
-    public void OnlyThePhoneApiIsReachableOverWifi(string path, bool allowed) => Assert.Equal(allowed, Lan.AllowedOverLan(new PathString(path)));
-
-    [Fact]
-    public void TokensAreComparedExactly()
-    {
-        Assert.True(Lan.Matches("Bearer abc123", "abc123"));
-        Assert.False(Lan.Matches("Bearer abc12", "abc123"));
-        Assert.False(Lan.Matches("abc123", "abc123"));
-        Assert.False(Lan.Matches(null, "abc123"));
-    }
-
-    [Theory]
-    // A Hyper-V external switch owns the physical NIC's address and gateway: skipping it emptied
-    // the pairing QR's host list (#175). Host-only and NAT virtual adapters have no gateway.
-    [InlineData("Hyper-V Virtual Ethernet Adapter vEthernet (WAN)", true, false)]
-    [InlineData("Hyper-V Virtual Ethernet Adapter vEthernet (Default Switch)", false, true)]
-    [InlineData("WSL adapter vEthernet (WSL)", false, true)]
-    [InlineData("VMware Virtual Ethernet Adapter VMnet8", false, true)]
-    [InlineData("Bluetooth Device (Personal Area Network)", false, true)]
-    [InlineData("Intel(R) Ethernet Controller I219-LM Ethernet", false, false)]
-    [InlineData("Intel(R) Ethernet Controller I219-LM Ethernet", true, false)]
-    public void VirtualAdaptersAreSkippedUnlessTheyCarryTheDefaultRoute(string desc, bool hasGateway, bool skip) =>
-        Assert.Equal(skip, Lan.ShouldSkipAdapter(desc, hasGateway));
-}
 
 
 /// <summary>Audit F10: a settings tab loaded earlier must not silently undo a change saved since (a stale tab once turned the night screen back on).</summary>
@@ -301,18 +258,16 @@ public class ConfigConcurrencyTests
     }
 
     [Fact]
-    public void GeneratedKeysPersistForANewConfigWithoutReplacingUnreadableFiles()
+    public void ANewConfigIsWrittenWithoutReplacingUnreadableFiles()
     {
         var dir = Directory.CreateTempSubdirectory("phonebox-config-");
         try
         {
             var path = Path.Combine(dir.FullName, "config.json");
             var store = new ConfigStore(path);
-            var generated = store.Get().Lan;
             store.PersistGenerated();
             Assert.True(File.Exists(path));
-            var restarted = new ConfigStore(path).Get().Lan;
-            Assert.Equal(generated.Token, restarted.Token);
+            Assert.Equal(store.Get().Pages.Count, new ConfigStore(path).Get().Pages.Count);
 
             const string invalid = "{ incomplete";
             File.WriteAllText(path, invalid);

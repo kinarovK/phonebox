@@ -4,7 +4,7 @@ using Xunit;
 
 /// <summary>
 /// The phone's USB port: every app on the phone can reach the adb reverse tunnel, so only the key the PhoneBox app
-/// made opens it, and only for the phone API (never settings, shortcut tests or pairing control).
+/// made opens it, and only for the paths the kept widgets use (never settings, hooks or updates).
 /// </summary>
 public class UsbLinkTests
 {
@@ -39,12 +39,22 @@ public class UsbLinkTests
     }
 
     [Theory]
+    [InlineData("GET", "/api/config")]
     [InlineData("GET", "/api/state")]
     [InlineData("GET", "/api/stream")]
+    [InlineData("GET", "/api/quotas")]
+    [InlineData("GET", "/api/work")]
+    [InlineData("GET", "/api/work/conversation")]
+    [InlineData("GET", "/api/procs")]
+    [InlineData("GET", "/api/procs/icon")]
+    [InlineData("GET", "/api/procs/detail")]
+    [InlineData("GET", "/api/docker")]
+    [InlineData("GET", "/api/approvals")]
+    [InlineData("POST", "/api/volume")]
+    [InlineData("POST", "/api/procs/kill")]
     [InlineData("POST", "/api/approvals/a1")]
-    [InlineData("POST", "/api/phone/battery")]
-    [InlineData("GET", "/api/pair")]   // the phone keeps its Wi-Fi pairing data current over USB
-    public void TheAppsKeyOpensThePhoneApi(string method, string path)
+    [InlineData("POST", "/api/docker/c0ffee/restart")]
+    public void TheAppsKeyOpensThePathsTheKeptWidgetsUse(string method, string path)
     {
         Assert.Equal(UsbLink.Access.Allowed, Linked().Authorize(method, path, "", "Bearer " + Key));
     }
@@ -52,16 +62,70 @@ public class UsbLinkTests
     [Theory]
     [InlineData("GET", "/api/settings")]
     [InlineData("PUT", "/api/settings")]
-    [InlineData("POST", "/api/pair/start")]
-    [InlineData("GET", "/api/pair/status")]
-    [InlineData("POST", "/api/pair")]
     [InlineData("GET", "/api/info")]
+    [InlineData("GET", "/api/phones")]
+    [InlineData("POST", "/api/goto/home")]   // the settings page's "Open on phone" only
+    [InlineData("GET", "/api/claude/hook")]
+    [InlineData("POST", "/api/codex/hook")]
     [InlineData("POST", "/api/update/apply")]
     [InlineData("GET", "/api/latency")]
     [InlineData("GET", "/settings.html")]
     public void EvenWithTheKeyTheSettingsAndLocalToolsStayLocal(string method, string path)
     {
         Assert.Equal(UsbLink.Access.Forbidden, Linked().Authorize(method, path, "", "Bearer " + Key));
+    }
+
+    [Theory]
+    // what Wi-Fi and the battery report used: gone with them
+    [InlineData("GET", "/api/pair")]
+    [InlineData("POST", "/api/pair/claim")]
+    [InlineData("GET", "/api/lan")]
+    [InlineData("POST", "/api/phone/battery")]
+    // an allowed path with the wrong method, or with something more or less after it
+    [InlineData("POST", "/api/state")]
+    [InlineData("GET", "/api/volume")]
+    [InlineData("GET", "/api/procs/kill")]
+    [InlineData("DELETE", "/api/approvals/a1")]
+    [InlineData("POST", "/api/approvals")]
+    [InlineData("POST", "/api/approvals/a1/x")]
+    [InlineData("POST", "/api/approvals//")]
+    [InlineData("POST", "/api/docker/c0ffee")]
+    [InlineData("POST", "/api/docker/c0ffee/restart/x")]
+    [InlineData("POST", "/api/docker//restart")]
+    [InlineData("GET", "/api/state/x")]
+    [InlineData("GET", "/api/statex")]
+    [InlineData("GET", "/API/settings")]
+    public void NothingBeyondTheListOpens(string method, string path)
+    {
+        Assert.Equal(UsbLink.Access.Forbidden, Linked().Authorize(method, path, "", "Bearer " + Key));
+    }
+
+    [Fact]
+    public void KeysAreComparedExactly()
+    {
+        Assert.True(UsbLink.Matches("Bearer abc123", "abc123"));
+        Assert.False(UsbLink.Matches("Bearer abc12", "abc123"));
+        Assert.False(UsbLink.Matches("abc123", "abc123"));
+        Assert.False(UsbLink.Matches(null, "abc123"));
+    }
+
+    [Fact]
+    public void TheCertificateStaysInTheConfigFolderAndIsRecreatedWhenCorrupt()
+    {
+        var dir = Directory.CreateTempSubdirectory("phonebox-cert-").FullName;
+        try
+        {
+            var certPath = Path.Combine(dir, "lan-cert.pfx");
+            File.WriteAllText(certPath, "corrupt");
+            using var first = AgentCert.Load(dir);
+            Assert.True(File.Exists(certPath));
+            var fp = AgentCert.Fingerprint(first);
+            using var second = AgentCert.Load(dir);
+            Assert.Equal(fp, AgentCert.Fingerprint(second));
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(certPath));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     [Fact]

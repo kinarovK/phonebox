@@ -128,10 +128,6 @@ input[type=search] { background: var(--panel-2); border: 1px solid var(--line); 
 textarea { width: 100%; resize: vertical; }
 [hidden] { display: none !important; }
 .modal { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 24px; }
-.pair-qrs { display: flex; flex-wrap: wrap; gap: 18px; margin: 12px 0; }
-.pair-qr { flex: 1 1 260px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
-.pair-qr img { width: min(260px, 100%); aspect-ratio: 1; background: #fff; border-radius: 12px; padding: 6px; }
-.pair-qr.expired img { opacity: .15; }
 .modal-box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; width: min(1000px, 100%); max-height: 90vh; overflow-y: auto; }
 .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
 .tpl { display: flex; flex-direction: column; gap: 4px; text-align: start; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
@@ -315,7 +311,6 @@ nav a.on::before { color: var(--accent); }
   <div class="spacer"></div>
   <select id="langSel" data-i18n-title="lang.label" title="Language" aria-label="Language" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:12.5px;max-width:160px"></select>
   <span class="dirty" role="status" data-i18n-title="s.unsavedChanges" title="Unsaved changes"><i class="dirty-dot"></i><span data-i18n="s.unsavedChanges">Unsaved changes</span></span>
-  <button class="btn primary" id="restartBtn" hidden title="Wi-Fi settings change after a restart" data-i18n="s.restartApply" data-i18n-title="s.restartApplyTitle">Restart to apply</button>
   <button class="btn" id="openPhone" data-i18n="s.openOnPhone">Open on phone</button>
   <button class="btn" id="revert" disabled data-i18n="s.revert">Revert</button>
   <button class="btn primary" id="save" disabled data-i18n="s.save">Save</button>
@@ -490,27 +485,12 @@ nav a.on::before { color: var(--accent); }
             <div class="row" id="appMissing" hidden style="margin-top:8px"><button class="btn primary sm" id="installApp" data-i18n="s.conn.installApp">Install the phone app</button><span class="hint" id="appMissingText"></span></div></div>
           <div class="field"><label data-i18n="s.conn.adbPath">Path to adb.exe (empty = auto-detect)</label><input type="text" data-bind="adbPath" placeholder="auto-detected"><span class="hint" id="adbFound"></span></div>
         </div>
-        <p id="usbProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
         <p id="webviewProblem" hidden style="margin:10px 0 0;font-size:13px;color:var(--warn)"></p>
       </div>
       <div class="card">
         <h3 data-i18n="s.phones.title">Phones</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.phones.lead">Several phones (or a phone and a tablet) can use this computer at once, over USB or Wi-Fi. Give each one a name and choose the pages it shows; a phone shows all pages until you choose.</p>
+        <p class="hint" style="margin:0 0 12px" data-i18n="s.phones.lead">Several phones (or a phone and a tablet) can use this computer at once, over USB. Give each one a name and choose the pages it shows; a phone shows all pages until you choose.</p>
         <div id="phoneList"><p class="hint" data-i18n="s.phones.empty">No phone has connected yet.</p></div>
-      </div>
-      <div class="card">
-        <h3 data-i18n="s.wifi.title">Wi-Fi &amp; Tailscale</h3>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="lan.enabled"><span></span></label> <span data-i18n="s.wifi.enable">Let the phone connect without the USB cable</span></div>
-        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.wifi.lead">Pair a phone by plugging it in once over USB after turning this on (and restarting), or without a cable:
-          <b>Pair a phone over Wi-Fi</b> shows a QR code to scan with the phone's camera.
-          The phone then talks HTTPS to this PC, trusts only this PC's certificate and has to present a secret key.
-          The phone and this PC must be on the same network &mdash; or both on <a href="https://tailscale.com" target="_blank" rel="noopener">Tailscale</a>, which also works from another place or across separate Wi-Fi networks.
-          Windows Firewall asks once &mdash; allow it (tick the network type Tailscale uses, too).</p>
-        <div class="grid2">
-          <div class="field"><label data-i18n="s.wifi.port">Port</label><input type="number" min="1024" max="65535" data-bind="lan.port" data-type="int"></div>
-          <div class="field"><label data-i18n="s.wifi.addresses">Addresses offered to the phone</label><div id="lanHosts" class="hint">—</div></div>
-        </div>
-        <div class="row"><button class="btn primary" id="lanPair" data-i18n="s.wifi.pair">Pair a phone over Wi-Fi</button><button class="btn" id="lanRegen" data-i18n="s.wifi.newKey">New key (unpair phones)</button><span class="hint" id="lanStatus"></span></div>
       </div>
       <div class="card">
         <h3 data-i18n="s.updates.title">Updates</h3>
@@ -1211,60 +1191,8 @@ function openTemplates(index) {
       ...catalog.templates.map((t) => h('button', { class: 'tpl', onclick: () => pick(t) }, miniMap(t.widgets), h('b', {}, rich(`${t.icon} ${t.title}`)), h('small', {}, t.desc)))));
   $('modal').hidden = false;
 }
-let onModalClose = null; // a dialog that has to clean up (the pairing code) sets this
 function closeModal() {
   $('modal').hidden = true;
-  const done = onModalClose; onModalClose = null;
-  done?.();
-}
-
-// ---------------------------------------------------------------- pairing over Wi-Fi (no USB)
-let pairAttempt = 0; // the dialog's current attempt: late answers from an older one are ignored
-async function pairOverWifi() {
-  const mine = ++pairAttempt;
-  let r;
-  try { r = await (await fetch('/api/pair/start', { method: 'POST' })).json(); } catch (_) { toast(t('s.js.pairFailed'), true); return; }
-  const cancel = () => fetch('/api/pair/cancel?attempt=' + encodeURIComponent(r.attempt), { method: 'POST' }).catch(() => {});
-  if (mine !== pairAttempt) { if (r.enabled) cancel(); return; } // started again meanwhile
-  if (!r.enabled) {
-    toast(t(r.configured ? 's.wifi.restartFirst' : 's.wifi.turnOnFirst'), true);
-    return;
-  }
-  const svg = (markup) => 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markup)));
-  const left = h('b', {}, '');
-  const pairBox = h('div', { class: 'pair-qr' },
-    h('b', {}, t('s.wifi.step2')),
-    h('img', { src: svg(r.qr), alt: t('s.pair.qr') }),
-    h('small', { class: 'hint' }, t('s.wifi.step2Hint'), h('b', {}, r.check), '. ', left));
-  $('modalBody').replaceChildren(
-    h('h3', {}, t('s.pair.title', { pc: r.pc })),
-    h('p', { class: 'hint', style: 'margin:0' }, t('s.wifi.noCableHint')),
-    h('div', { class: 'pair-qrs' },
-      h('div', { class: 'pair-qr' },
-        h('b', {}, t('s.wifi.step1')),
-        h('img', { src: svg(r.appQr), alt: t('s.pair.downloadQr') }),
-        h('small', { class: 'hint' }, t('s.wifi.step1Hint'))),
-      pairBox),
-    h('p', { class: 'hint', style: 'margin:0' }, r.hosts.length
-      ? t('s.pair.hosts', { hosts: r.hosts.join(', '), port: r.port })
-      : t('s.pair.noHosts')),
-    h('div', { class: 'row', style: 'margin-top:8px' },
-      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(r.link); toast(t('s.js.pairLinkCopied')); } }, t('s.pair.copy'))));
-  const tick = async () => {
-    try {
-      const s = await (await fetch('/api/pair/status')).json();
-      if (mine !== pairAttempt) return; // this dialog was closed (and maybe a new one opened) while waiting
-      if (s.claims > r.claims) { onModalClose = () => { pairAttempt++; clearInterval(timer); }; closeModal(); toast(t('s.js.pairedWifi')); return; }
-    } catch (_) { }
-    if (mine !== pairAttempt) return;
-    const ms = r.expiresAt - Date.now();
-    if (ms <= 0) { left.textContent = t('s.pair.expired'); pairBox.classList.add('expired'); clearInterval(timer); return; }
-    left.textContent = t('s.pair.expires', { time: `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}` });
-  };
-  const timer = setInterval(tick, 1000);
-  tick();
-  onModalClose = () => { pairAttempt++; clearInterval(timer); cancel(); };
-  $('modal').hidden = false;
 }
 
 // ---------------------------------------------------------------- phones
@@ -1572,7 +1500,6 @@ function bindForm() {
       if (p === 'adbPath' && val === '') val = null;
       setPath(cfg, p, val);
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
-      if (p === 'lan.enabled') renderLanStatus();
       changed();
     };
   });
@@ -1598,19 +1525,6 @@ function bindCodexBar() {
   });
 }
 
-// The Wi-Fi line follows the switch at once: the saved state alone said "Off" right after the switch was turned on,
-// as if it had not worked, when it only needed Save and a restart (#239).
-let lanInfo = null; // the agent's last /api/lan answer
-function renderLanStatus() {
-  if (!lanInfo) return;
-  const want = !!cfg.lan?.enabled;
-  $('lanStatus').textContent = want && !lanInfo.configured ? t('s.wifi.saveThenRestart')
-    : !want && lanInfo.configured ? t('s.wifi.saveToTurnOff')
-    // saved as off: the agent refuses Wi-Fi requests at once, even though the port is only released by a restart
-    : !lanInfo.configured ? t('s.wifi.off')
-    : lanInfo.active ? t('s.wifi.listening', { port: lanInfo.port }) : t('s.wifi.restartToListen');
-}
-
 async function loadInfo() {
   try {
     const i = await (await fetch('/api/info')).json();
@@ -1622,8 +1536,6 @@ async function loadInfo() {
     $('followComputerLockOption').style.display = osName === 'macos' ? '' : 'none';
     $('adbFound').textContent = i.adb ? t('s.conn.adbFound', { path: i.adb }) : t('s.conn.adbNotFound') + ' — ' + ({ linux: 'sudo apt install adb', macos: 'brew install android-platform-tools' }[osName] || 'winget install Google.PlatformTools');
     $('appMissing').hidden = !(i.appMissing && i.appMissing.length);
-    $('usbProblem').hidden = !i.usbProblem;
-    $('usbProblem').replaceChildren(...(i.usbProblem ? [icon('warn', 'm'), i.usbProblem] : []));
     $('webviewProblem').hidden = !i.webviewProblem;
     $('webviewProblem').replaceChildren(...(i.webviewProblem ? [icon('warn', 'm'), i.webviewProblem] : []));
     if (i.appMissing?.length) $('appMissingText').textContent = `${i.appMissing.join(', ')} has no PhoneBox app yet`;
@@ -1633,13 +1545,6 @@ async function loadInfo() {
     if (cur && !i.devices.includes(cur)) opts.push([cur, cur + ' (not connected)']);
     sel.replaceChildren(...opts.map(([v, l]) => h('option', { value: v, selected: v === cur }, l)));
     sel.onchange = () => { cfg.deviceSerial = sel.value || null; changed(); };
-    const lan = await (await fetch('/api/lan')).json();
-    $('lanHosts').textContent = lan.hosts.length
-      ? lan.hosts.map((a) => a.startsWith('100.') ? a + ' (Tailscale)' : a).join(', ')
-      : 'No LAN or Tailscale address found';
-    lanInfo = lan;
-    renderLanStatus();
-    $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
     const [claudeHook, codexHook] = await Promise.all([
       fetch('/api/claude/hook').then((r) => r.json()),
@@ -1665,7 +1570,7 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
+  cfg.pages = fitPages(cfg.pages); cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
@@ -1721,13 +1626,13 @@ async function doSave() {
 
 $('save').onclick = save;
 $('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderNetAdapters(); renderPhones(); bindForm(); changed(); };
-// Over USB this also wakes the phone and brings the panel to the front (adb); over Wi-Fi the phone switches to the
-// page selected in the editor through the live stream.
+// This also wakes the phone and brings the panel to the front (adb); the phone then switches to the page selected in
+// the editor through the live stream.
 $('openPhone').onclick = async () => {
   let info = null;
   try { info = await (await fetch('/api/info')).json(); } catch (_) { }
   if (!info?.connected) { toast(t('s.noPhoneConnected'), true); return; }
-  if (info.via === 'USB') await fetch('/api/phone/open', { method: 'POST' });
+  await fetch('/api/phone/open', { method: 'POST' });
   const p = cfg?.pages?.[selPage];
   // the phone only has the saved pages: a page that is new or hidden in unsaved edits is not there yet
   let onPhone = null;
@@ -1777,22 +1682,6 @@ $('updApply').onclick = async () => {
   toast(t('s.js.updating'));
   setTimeout(loadInfo, 3000);
 };
-$('lanRegen').onclick = () => {
-  cfg.lan = { ...(cfg.lan || {}), token: '' };
-  changed();
-  toast(t('s.js.newPairKey'));
-};
-$('restartBtn').onclick = async () => {
-  if (!$('save').disabled) { toast(t('s.js.saveFirst'), true); return; }
-  toast(t('s.js.restarting'));
-  try { await fetch('/api/restart', { method: 'POST' }); } catch (_) {}
-  const started = Date.now();
-  const wait = async () => {
-    try { await fetch('/api/info', { cache: 'no-store' }); location.reload(); }
-    catch (_) { if (Date.now() - started < 30000) setTimeout(wait, 1000); else toast(t('s.js.agentGone'), true); }
-  };
-  setTimeout(wait, 1500);
-};
 for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () => {
   const btn = $(`${name}HookBtn`), remove = !!btn.dataset.installed;
   const r = await fetch(`/api/${name}/hook`, { method: remove ? 'DELETE' : 'POST' });
@@ -1803,7 +1692,6 @@ for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () =
   loadInfo();
 };
 $('modalClose').onclick = closeModal;
-$('lanPair').onclick = pairOverWifi;
 $('modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
 $('applyJson').onclick = () => {
   try {

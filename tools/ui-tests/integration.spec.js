@@ -244,42 +244,6 @@ test('Apply JSON gives pasted widgets a valid grid position', async ({ page }) =
   expect(await page.evaluate(() => JSON.stringify(cfg))).not.toContain('"x":null');
 });
 
-// #58: switch between the computers paired over Wi-Fi with one tap; a USB cable always wins.
-test('the Computers widget lists paired computers and switches between them', async ({ browser, baseURL }) => {
-  const ctx = await browser.newContext({ baseURL, viewport: { width: 780, height: 360 } });
-  await ctx.addInitScript(() => {
-    window.__phoneboxKey = 'pb-key-test';
-    window.__route = 'wifi';
-    window.__selected = [];
-    window.Android = {
-      battery: () => '{}', version: () => 'test', haptic() {}, buzz() {}, setBrightness() {}, setVolumeKeys() {}, is24Hour: () => true,
-      transport: () => window.__route,
-      pcs: (key) => (key === 'pb-key-test' ? JSON.stringify([{ id: 'a', name: 'Desk PC', active: true }, { id: 'b', name: 'MacBook', active: false }]) : '[]'),
-      selectPc: (key, id) => { if (key === 'pb-key-test') window.__selected.push(id); },
-    };
-  });
-  const page = await ctx.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await layout(page, [widget('pcswitch')]);
-
-  const pcs = page.locator('.w-pcswitch .ov-pc');
-  await expect(pcs).toHaveText(['Desk PC', 'MacBook']);
-  await expect(pcs.locator('svg.ico')).toHaveCount(2); // a stroke icon, not the emoji an old WebView draws however it likes
-  await expect(pcs.nth(0)).toHaveClass(/\bon\b/);
-  await pcs.nth(0).click();
-  await pcs.nth(1).click();
-  await expect.poll(() => page.evaluate(() => window.__selected)).toEqual(['b']);
-  await page.screenshot({ path: 'test-results/pcswitch-wifi.png' });
-
-  await page.evaluate(() => { window.__route = 'usb'; });
-  await expect(pcs.nth(1)).toBeDisabled({ timeout: 10_000 });
-  await expect(page.locator('.w-pcswitch .pcs-sub')).toContainText('USB');
-  await page.screenshot({ path: 'test-results/pcswitch-usb.png' });
-  expect(errors).toEqual([]);
-  await ctx.close();
-});
-
 test('docker widget clears loading state when filtered or stopped containers yield an empty list', async ({ page }) => {
   await layout(page, [widget('docker', { title: 'Podman', filter: 'redis', stopped: false })]);
   await expect(page.locator('.w-docker .w-title')).toContainText('Podman 0/1');

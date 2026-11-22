@@ -19,7 +19,7 @@ test('settings general tab stays quiet for modern WebView and warns when outdate
       }
       if (url.endsWith('/api/phones')) {
         return new Response(JSON.stringify([
-          { id: '3f9a1c0d7b2e', model: 'SM-G960F', lastSeen: Date.now() - 1000, via: 'Wi-Fi', webView: 'com.android.chrome/74.0.3729.185', webviewProblem: problem, name: null, pages: null },
+          { id: '3f9a1c0d7b2e', model: 'SM-G960F', lastSeen: Date.now() - 1000, via: 'USB', webView: 'com.android.chrome/74.0.3729.185', webviewProblem: problem, name: null, pages: null },
         ]), { headers: { 'Content-Type': 'application/json' } });
       }
       return r;

@@ -166,15 +166,6 @@ body.night #pagePauseOverlay { display: none; }
   display: flex; flex-direction: column; gap: 5px; padding: 7px; border-radius: 14px; min-height: 0;
   background: #10141a; border: 1px solid var(--line); text-align: start;
 }
-#ovPcs { margin-inline-start: auto; display: flex; gap: 6px; }
-.ov-pc { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; }
-.ov-pc.on { border-color: rgba(var(--ambient), .8); background: rgba(var(--ambient), .16); font-weight: 600; }
-.w-pcswitch { padding: 9px 12px; display: flex; flex-direction: column; gap: 6px; }
-.pcs-row { flex: 1; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 8px; min-height: 0; overflow: hidden; }
-.pcs-row .ov-pc { font-size: 15px; padding: 8px 16px; }
-.pcs-row .ov-pc:disabled { opacity: .5; }
-.pcs-sub { color: var(--muted); font-size: 12px; }
-.pcs-sub:empty { display: none; }
 .ov-tile.on { border-color: rgba(var(--ambient), .8); box-shadow: 0 0 0 2px rgba(var(--ambient), .25); }
 .ov-tile:active { transform: scale(.97); }
 .ov-map { flex: 1; min-height: 28px; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(6, 1fr); gap: 2px; }

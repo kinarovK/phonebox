@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace PhoneBox.Agent;
@@ -14,8 +15,7 @@ namespace PhoneBox.Agent;
 /// The app talks TLS to the tunnel and pins that certificate, so an app that took the phone's port 8765 before the
 /// tunnel never sees the key. Before both, the agent checks that the provider belongs to the PhoneBox app: an app
 /// that claimed the same provider name first must not be able to choose the key.
-/// With the key, the phone reaches the same paths as over Wi-Fi, plus the two only USB has: the Wi-Fi pairing data and
-/// the feed proxy.
+/// With the key, the phone reaches only the paths in <see cref="Allowed"/>.
 /// </summary>
 public sealed partial class UsbLink(int port, string pin)
 {
@@ -65,7 +65,7 @@ public sealed partial class UsbLink(int port, string pin)
         if (origin != "") return Access.Forbidden;
         var known = false;
         foreach (var key in _keys.Values)
-            known |= Lan.Matches(authorization, key); // every key is compared, so the time taken says nothing
+            known |= Matches(authorization, key); // every key is compared, so the time taken says nothing
         if (!known)
         {
             Interlocked.Exchange(ref _unknownKey, 1);
@@ -74,9 +74,53 @@ public sealed partial class UsbLink(int port, string pin)
         return Allowed(method, path) ? Access.Allowed : Access.Forbidden;
     }
 
-    /// <summary>What the phone may reach over USB: the Wi-Fi paths and its Wi-Fi pairing data.</summary>
-    internal static bool Allowed(string method, PathString path) =>
-        Lan.AllowedOverLan(path) || (HttpMethods.IsGet(method) && path == "/api/pair");
+    internal static bool Matches(string? header, string key)
+    {
+        if (header is null || !header.StartsWith("Bearer ", StringComparison.Ordinal)) return false;
+        var given = System.Text.Encoding.UTF8.GetBytes(header[7..]);
+        var expected = System.Text.Encoding.UTF8.GetBytes(key);
+        return CryptographicOperations.FixedTimeEquals(given, expected);
+    }
+
+    /// <summary>
+    /// Everything the phone may reach, by method and exact path, and what on the phone needs it. Anything else (the
+    /// settings, the hooks, updates, page switching) stays local. A path the panel stops using comes off this list.
+    /// </summary>
+    private static readonly HashSet<string> Gets =
+    [
+        "/api/config",           // the pages and widgets to show (every widget)
+        "/api/state",            // PC readings: clock status line, stat, gauge, chart, meters, gpu, volume, processes, topprocs
+        "/api/stream",           // the same state live, and the approval events (the app keeps one stream open)
+        "/api/quotas",           // quotas, quotaring, the clock status line
+        "/api/work",             // sessions, github, the clock status line
+        "/api/work/conversation",// sessions: a Claude Code chat's recent steps
+        "/api/procs",            // processes, topprocs
+        "/api/procs/icon",       // processes, topprocs: the program icons
+        "/api/procs/detail",     // processes: the details sheet
+        "/api/docker",           // docker
+        "/api/approvals",        // the permission prompt card
+    ];
+
+    private static readonly HashSet<string> Posts =
+    [
+        "/api/volume",           // volume: set, mute, up, down
+        "/api/procs/kill",       // processes: end a program (refused unless the settings allow it)
+    ];
+
+    internal static bool Allowed(string method, PathString path)
+    {
+        var p = path.Value ?? "";
+        if (HttpMethods.IsGet(method)) return Gets.Contains(p);
+        if (!HttpMethods.IsPost(method)) return false;
+        return Posts.Contains(p)
+            || Under(p, "/api/approvals/", 1)  // the permission prompt card: answer it
+            || Under(p, "/api/docker/", 2);    // docker: start, stop or restart a container
+    }
+
+    /// <summary>A path that is the prefix plus exactly the given number of non-empty segments.</summary>
+    private static bool Under(string path, string prefix, int segments) =>
+        path.StartsWith(prefix, StringComparison.Ordinal)
+        && path[prefix.Length..].Split('/') is var parts && parts.Length == segments && parts.All(s => s.Length > 0);
 
     /// <summary>The key in "adb shell content query" output ("Row: 0 key=…"), or null.</summary>
     internal static string? ParseKey(string output) =>

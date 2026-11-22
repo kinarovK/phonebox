@@ -26,9 +26,9 @@ test('every translated key is really translated, and the rest fall back to Engli
       lang === 'en' ? [] : Object.keys(en)
         .filter((k) => typeof S[lang]?.[k] !== 'string' || !S[lang][k].trim())
         .map((k) => `${lang}:${k}`));
-    // a key whose text is identical to English is either a name that is not translated (Wi-Fi, USB, Client secret) or
+    // a key whose text is identical to English is either a name that is not translated (USB, Client secret) or
     // padding; the Vietnamese dictionary is complete, so check it exactly, and spot-check the rest for copied sentences.
-    const SAME_IS_FINE = new Set(['status.wiFi', 'status.usb']);
+    const SAME_IS_FINE = new Set(['status.usb']);
     const copied = Object.keys(S).filter((lang) => lang !== 'en').flatMap((lang) =>
       Object.keys(S[lang])
         .filter((k) => S[lang][k] === en[k] && !SAME_IS_FINE.has(k) && en[k].length > 12 && /[a-z]{4,} [a-z]{3,}/.test(en[k]))
