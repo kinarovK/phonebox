@@ -56,11 +56,8 @@ public sealed class ShortcutRuleFollowUpTests : IDisposable
 
     private RuleEngine Engine(ConfigStore cfg, ILogger<RuleEngine>? log = null) => new(cfg, _push,
         new SessionMonitor(NullLogger<SessionMonitor>.Instance),
-        new MediaMonitor(NullLogger<MediaMonitor>.Instance),
         new SystemMonitor(NullLogger<SystemMonitor>.Instance),
-        new PrivacyMonitor(NullLogger<PrivacyMonitor>.Instance),
         new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance),
-        new ObsMonitor(cfg, NullLogger<ObsMonitor>.Instance),
         new QuotaMonitor(NullLogger<QuotaMonitor>.Instance),
         new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
         new BatteryMonitor(NullLogger<BatteryMonitor>.Instance),

@@ -17,8 +17,7 @@ function parseWidgets(raw) {
   if (!list || (list.length === 0 && !Array.isArray(raw))) {
     return [
       { type: 'clock', options: {}, enabled: true },
-      { type: 'weather', options: {}, enabled: true },
-      { type: 'media', options: {}, enabled: true }
+      { type: 'weather', options: {}, enabled: true }
     ];
   }
 

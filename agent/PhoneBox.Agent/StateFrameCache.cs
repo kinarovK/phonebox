@@ -8,9 +8,8 @@ namespace PhoneBox.Agent;
 /// while it is younger than <paramref name="maxAgeMs"/> AND no panel event was emitted and nothing poked
 /// <see cref="StateSignal"/> since it was built: the frame carries the event counter, and a frame older than an event the
 /// phone already got would look like an agent restart; a poke means something just changed and the frame is out of date.
-/// The lifetime is short on purpose: the media position's age (<see cref="MediaSnapshot.AgeMs"/>) is fixed when the frame is
-/// serialized, so a reused frame understates it by how long it has waited. Streams woken together are served within a few
-/// milliseconds; 100 ms keeps the error well under the 0.3 s the phone ignores.
+/// The lifetime is short on purpose: streams woken together are served within a few milliseconds, and a frame older than
+/// that would show the numbers late.
 /// </summary>
 internal sealed class StateFrameCache(Func<object> build, JsonSerializerOptions options, long maxAgeMs = 100, Func<long>? clock = null)
 {

@@ -8,11 +8,6 @@
   const realFetch = window.fetch.bind(window);
   const bc = new BroadcastChannel('phonebox-demo');
   const START = Date.now();
-  // made-up Steam games for the Steam library widget: [app id, name, played hours ago (null = never), state, progress, hue]
-  const DEMO_GAMES = [['900010', 'Harbor Lights', 0, 'ready', null, 12], ['900020', 'Starfall Tactics', 26, 'ready', null, 42],
-    ['900030', 'Moss Garden', 74, 'updating', 0.42, 120], ['900040', 'Deep Circuit', 300, 'ready', null, 210], ['900050', 'Paper Comet', 900, 'update', null, 190],
-    ['900060', 'Lantern Keep', 1200, 'ready', null, 280], ['900070', 'Glass Orchard', 1500, 'paused', 0.7, 330], ['900080', 'Tidal Forge', 2000, 'ready', null, 160],
-    ['900090', 'Quiet Summit', 2600, 'ready', null, 60], ['900100', 'Iron Meadow', null, 'ready', null, 95]];
   const now = () => Date.now();
   const rnd = (a, b) => a + Math.random() * (b - a);
   const wave = (period, lo, hi, phase = 0, noise = 0) =>
@@ -24,7 +19,7 @@
     ['snip', 'Snip', '✂️', '#14b8a6'], ['taskmgr', 'Task Manager', '📊', '#22c55e'], ['mute', 'Mute', '🔇', '#f59e0b'],
     ['screenoff', 'Screen Off', '🌙', '#8b5cf6'], ['lock', 'Lock', '🔒', '#ef4444'], ['settings', 'Settings', '⚙️', '#94a3b8'],
   ].map(([id, label, icon, color]) => ({ id, label, icon, color, cmd: id === 'mute' ? 'builtin:mute' : 'demo', args: null, toggle: false }));
-  const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'deck', 'music', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
+  const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'deck', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
     'codexbar', 'devops'];
 
   let catalog = null;
@@ -68,22 +63,19 @@
         const t = byId[id], seen = {};
         return { appearance: null, id, title: t.title, icon: t.icon, enabled: true, idleSec: null, widgets: t.widgets.map((w) => {
           const n = (seen[w.type] = (seen[w.type] || 0) + 1);
-          const control = w.type === 'docker' || /^obs(-|$)/.test(w.type) ? { control: true } : {};
+          const control = w.type === 'docker' ? { control: true } : {};
           return { ...w, id: n === 1 ? w.type : `${w.type}-${n}`, options: { ...(w.options || {}), ...control } };
         }) };
       }),
       shortcuts: SHORTCUTS,
       rules: [
         rule({ id: 'claude-needs-me', name: 'Claude needs me', when: 'session-waiting', then: 'goto', page: 'ai', priority: 8 }),
-        rule({ id: 'music', name: 'Music', when: 'media-playing', match: 'Spotify', then: 'goto', page: 'music', priority: 2 }),
-        rule({ id: 'in-a-meeting', name: 'In a meeting', when: 'calendar-event', then: 'push', key: 'onair', pushValue: '{detail}' }),
         rule({ id: 'review-requested', name: 'Review requested', when: 'review-requested', then: 'notify', text: '{detail}', whileActive: false, days: 'mon,tue,wed,thu,fri', during: '09:00-18:00' }),
         rule({ id: 'evenings', name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: 'calm', priority: 2 }),
       ],
       charge: { enabled: true, min: 50, max: 80, method: 'ha', entity: 'switch.phone_charger', onShortcut: null, offShortcut: null },
       phones: [], calendars: [],
       homeAssistant: { url: null, token: null },
-      obs: { enabled: true, url: 'ws://127.0.0.1:4455', password: null },
     };
     c = JSON.parse(JSON.stringify(c, (_, v) => v === null ? undefined : v)); // the agent leaves unset (null) settings out
     store.set('pb-demo-config', c);
@@ -99,7 +91,6 @@
   // every widget of the layout, Smart Stack children included (AgentConfig.Widgets)
   const widgets = (c) => (c.pages || []).flatMap((p) => p.widgets || []).flatMap((w) => [w, ...(w.type === 'stack' ? (w.options?.widgets || []).filter((x) => x.enabled !== false) : [])]);
   const allows = (c, test) => widgets(c).some((w) => test(w.type) && w.options?.control === true);
-  const isObs = (type) => type === 'obs' || type.startsWith('obs-');
   // like AgentConfig.Widgets(enabledPagesOnly: true): what may control the computer comes from enabled pages only
   const shownWidgets = (c) => widgets({ ...c, pages: (c.pages || []).filter((p) => p.enabled !== false) });
   const feedsCanOpen = (c) => shownWidgets(c).some((w) => w.type === 'feeds' && w.options?.open === true);
@@ -168,21 +159,9 @@
 
   // ---- made-up computer
   const audio = { volume: 42, muted: false, canControl: true };
-  const TRACKS = [['Midnight Circuit', 'Neon Harbor', 'Low Tide Lights', 214000], ['Paper Lanterns', 'Neon Harbor', 'Low Tide Lights', 187000], ['Slow Orbit', 'Hollow Pines', 'Northern Rooms', 243000]];
-  const player = { track: 0, playing: true, posMs: 61000, at: now() };
-  const position = () => { const dur = TRACKS[player.track][3]; return player.playing ? (player.posMs + now() - player.at) % dur : Math.min(player.posMs, dur); };
-  function mediaAction(action, ms) {
-    const pos = position();
-    if (action === 'playpause' || action === 'play' || action === 'pause') { player.posMs = pos; player.at = now(); player.playing = action === 'playpause' ? !player.playing : action === 'play'; }
-    else if (action === 'next' || action === 'prev') { player.track = (player.track + (action === 'next' ? 1 : TRACKS.length - 1)) % TRACKS.length; player.posMs = 0; player.at = now(); }
-    else if (action === 'seek' && ms != null && ms >= 0) { player.posMs = ms; player.at = now(); }
-    else return false;
-    return true;
-  }
   function state(since) {
-    const [title, artist, album, dur] = TRACKS[player.track];
     return {
-      update: null, ts: now(), host: 'DESK-PC', os: window.__demoOs || 'windows', cfgVersion: cfgVersion(), pushVersion, evSeq: seq, rules: ['music'], rulesPaused: rulesPaused > now() ? rulesPaused : null,
+      update: null, ts: now(), host: 'DESK-PC', os: window.__demoOs || 'windows', cfgVersion: cfgVersion(), pushVersion, evSeq: seq, rules: [], rulesPaused: rulesPaused > now() ? rulesPaused : null,
       events: since == null ? [] : events.filter((e) => e.seq > since),
       pc: {
         cpu: Math.max(1, wave(37, 8, 46, 0, 6)), cpuName: 'AMD Ryzen 9 7950X 16-Core Processor', cpuTemp: wave(60, 52, 68),
@@ -201,12 +180,8 @@
           return { gpu: gpus[0], gpus };
         })(),
       },
-      media: { app: 'Spotify', title, artist, album, durMs: dur, posMs: position(), playing: player.playing, canSeek: true, artId: player.track + 1 },
       audio: { ...audio },
       ping: { host: '1.1.1.1', ms: wave(13, 9, 16), avgMs: 12, lossPct: 0 },
-      // the microphone is "in use" for 20 s of every minute, to show the On air widget
-      privacy: (() => { const on = (now() / 1000) % 60 < 20; return { mic: on, camera: false, micApps: on ? ['Zoom'] : [], cameraApps: [] }; })(),
-      obs: { streaming: !!obs.streamingSince, recording: !!obs.recordingSince, recordPaused: obs.paused },
       toggles: { ...toggles, ...Object.fromEntries(muteKeys.map((id) => [id, audio.muted])) },
       // a face counts only for the list it was made for (an edited list starts over)
       cycles: Object.fromEntries(Object.entries(cycles).filter(([id, v]) => cycleLists[id] === v.list).map(([id, v]) => [id, v.target])),
@@ -217,16 +192,6 @@
   let cycleLists = {}; // cycle key id -> its list now, as JSON
   const cycles = {}, cyclePos = {}; // cycle keys: { target id, list } of the key that ran last, and its position in the list
   let muteKeys = ['mute']; // ids of the shortcuts whose command is builtin:mute; their state is the computer's
-
-  // made-up OBS: streaming for a while, buttons and scenes work
-  const dc = { muted: false, deaf: false, in: 'c1', noteAt: now() - 60000 }; // a fixed time, as the agent's notifications have
-  const obs = { streamingSince: now() - 754e3, recordingSince: 0, paused: false, scene: 'Desk', mic: false };
-  function obsState() {
-    return { enabled: true, control: true, snapshot: {
-      connected: true, error: null, streaming: !!obs.streamingSince, streamMs: obs.streamingSince ? now() - obs.streamingSince : 0,
-      recording: !!obs.recordingSince, recordPaused: obs.paused, recordMs: obs.recordingSince ? now() - obs.recordingSince : 0,
-      scene: obs.scene, scenes: ['Desk', 'Camera', 'Screen share', 'BRB'], micMuted: obs.mic, micName: 'Mic/Aux' } };
-  }
 
   // made-up Home Assistant entities; switching flips them
   const ha = {
@@ -325,13 +290,6 @@
       locked: p[0] === 'explorer', session: p[0] === 'claude' && i < 3 ? ['api-gateway', 'docs-site', 'infra'][i] : null, window: null, args: i ? '--type=renderer' : null })) };
   }
 
-  const ART = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><defs>' +
-    '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5f6d"/><stop offset=".55" stop-color="#7b2ff7"/><stop offset="1" stop-color="#12c2e9"/></linearGradient>' +
-    '<radialGradient id="s" cx=".5" cy=".42" r=".5"><stop offset="0" stop-color="#ffd86f"/><stop offset="1" stop-color="#ff6f61"/></radialGradient></defs>' +
-    '<rect width="300" height="300" fill="url(#g)"/><circle cx="150" cy="130" r="70" fill="url(#s)"/><rect y="170" width="300" height="130" fill="#1b1037" opacity=".85"/>' +
-    '<g stroke="#ff6fd8" stroke-width="3" opacity=".9">' + Array.from({ length: 9 }, (_, i) => `<line x1="0" y1="${180 + i * 14}" x2="300" y2="${180 + i * 14}"/>`).join('') +
-    Array.from({ length: 13 }, (_, i) => `<line x1="150" y1="170" x2="${-300 + i * 75}" y2="300"/>`).join('') + '</g></svg>');
-
   // ---- router
   const DEMO_PHOTOS = [['ph1', '#f97316', '#7c3aed'], ['ph2', '#0ea5e9', '#22c55e'], ['ph3', '#ec4899', '#facc15'], ['ph4', '#14b8a6', '#1e3a8a']];
   // headlines as the agent sends them: no links, the phone opens one by its id
@@ -355,15 +313,6 @@
   const json = (o, status = 200, headers = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
   const parse = (body) => { if (body == null || body === '') return null; try { return JSON.parse(body); } catch (_) { return String(body); } };
 
-  function obsAct(action, scene) {
-    if (action === 'stream') obs.streamingSince = obs.streamingSince ? 0 : now();
-    else if (action === 'record') { obs.recordingSince = obs.recordingSince ? 0 : now(); obs.paused = false; }
-    else if (action === 'pause') { if (obs.recordingSince) obs.paused = !obs.paused; }
-    else if (action === 'mic') obs.mic = !obs.mic;
-    else if (action === 'scene') { if (obsState().snapshot.scenes.includes(scene)) obs.scene = scene; }
-    else return false;
-    return true;
-  }
   async function handle(method, path, q, body, headers) {
     if (path === '/api/state') return json(state(q.has('ev') ? +q.get('ev') : null));
     if (path === '/api/config') return json({ version: cfgVersion(), config: publicConfig(await config()) });
@@ -389,7 +338,6 @@
       else return json({}, 400);
       return json({ ...audio });
     }
-    if (path.startsWith('/api/media/') && method === 'POST') return json({}, mediaAction(path.slice(11), q.has('ms') ? +q.get('ms') : null) ? 200 : 400);
     if (path === '/api/procs/kill' && method === 'POST') {
       // KillResult; refused unless an enabled page has a processes widget that allows it (AgentConfig.AllowKill)
       const c = await config(), allowed = (c.pages || []).filter((p) => p.enabled !== false).some((p) => widgets({ pages: [p] }).some((w) => w.type === 'processes' && w.options?.allowKill !== false));
@@ -434,53 +382,6 @@
     }
     if (path === '/api/calendar') return json(calendar());
     if (path === '/api/docker') return json({ ...docker(), control: allows(await config(), (t) => t === 'docker') });
-    if (path === '/api/obs') { const c = await config(); return json({ ...obsState(), enabled: c.obs?.enabled !== false, control: widgets(c).some((w) => w.type === 'obs' && w.options?.control === true) }); }
-    if (path === '/api/discord') {
-      const c = await config();
-      return json({ enabled: true, control: c.discord?.allowControl === true || widgets(c).some((w) => w.type === 'discord' && w.options?.control === true), snapshot: {
-        connected: true, error: null, user: 'demo', muted: dc.muted, deafened: dc.deaf, channelId: dc.in, channelName: dc.in ? 'Game night' : null, channelKind: dc.in ? 'voice' : null,
-        inputMode: dc.ptt ? 'PUSH_TO_TALK' : 'VOICE_ACTIVITY', pttKey: true,
-        members: dc.in ? [{ id: '1', name: 'demo', muted: dc.muted, deafened: dc.deaf }, { id: '2', name: 'Ada', muted: false, deafened: false, speaking: Math.floor(now() / 1500) % 2 === 0 }, { id: '3', name: 'Linus', muted: true, deafened: false }] : [],
-        channels: [{ id: 'c1', name: 'Game night', guild: 'Friends' }, { id: 'c2', name: 'Stand-up', guild: 'Work' }],
-        notifications: [{ ts: dc.noteAt, title: 'Ada', body: 'are you joining?' }] } });
-    }
-    if (path === '/api/steam') return json({ enabled: true, snapshot: {
-      connected: true, error: null, totalFriends: 2, onlineCount: 1, updated: now(),
-      friends: [
-        { id: '76561198000000001', name: 'Ada', state: 1, game: 'Hades II', hasAvatar: true, lastLogoff: null },
-        { id: '76561198000000002', name: 'Linus', state: 0, game: null, hasAvatar: true, lastLogoff: Math.floor(now() / 1000) - 7200 },
-      ],
-      activity: [{ id: '76561198000000001', name: 'Ada', hasAvatar: true, kind: 'playing', game: 'Hades II', at: now() - 180000 }],
-    } });
-    // the Steam library as the agent reads it from Steam's files: made-up games, covers drawn below
-    if (path === '/api/steam/library') {
-      const c = await config();
-      const mine = shownWidgets(c).filter((w) => w.type === 'steam-library');
-      return json({ enabled: mine.length > 0, found: true, error: null, running: '900010',
-        games: DEMO_GAMES.map(([id, name, hoursAgo, state, progress]) => ({ id, name, lastPlayed: hoursAgo == null ? 0 : Math.floor(now() / 1000) - hoursAgo * 3600,
-          sizeGb: 12.5, state, progress, cover: true })) });
-    }
-    if (path === '/api/steam/games') return json(DEMO_GAMES.map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
-    if (path === '/api/steam/launch' && method === 'POST') {
-      // the asking widget's own option, like the agent (PanelWidgets.Find): another widget's does not count
-      if (panelWidget(await config(), q.get('widget'), 'steam-library')?.options?.allowLaunch !== true) {
-        return json({ error: 'Turn on "Let the phone start games" in this Steam library widget\'s settings', code: 'off' }, 400);
-      }
-      return DEMO_GAMES.some((g) => g[0] === q.get('id')) ? json({ ok: true }) : json({ error: 'That game is not installed', code: 'notinstalled' }, 400);
-    }
-    if (path === '/api/steam/avatar') {
-      const ada = q.get('id') === '76561198000000001';
-      const letter = ada ? 'A' : 'L', fill = ada ? '#7c3aed' : '#2563eb';
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="${fill}"/><text x="48" y="64" font-family="system-ui,sans-serif" font-size="48" font-weight="700" text-anchor="middle" fill="#fff">${letter}</text></svg>`;
-      return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml' } });
-    }
-    if (path.startsWith('/api/discord/') && method === 'POST') {
-      const dcCfg = await config();
-      if (dcCfg.discord?.allowControl !== true && !allows(dcCfg, (t) => t === 'discord')) return json({ error: "controlling Discord is turned off in the widget's settings and in Settings › General › Discord" }, 400);
-      const a = path.slice(13);
-      if (a === 'mute') dc.muted = !dc.muted; else if (a === 'deafen') dc.deaf = !dc.deaf; else if (a === 'inputmode') dc.ptt = !dc.ptt; else if (a === 'leave') dc.in = null; else if (a === 'join') dc.in = q.get('channel'); else return json({ error: 'unknown action' }, 400);
-      return json({ ok: true });
-    }
     if (path === '/api/phones') return json([
       { id: '3f9a1c0d7b2e', model: 'UMIDIGI BISON', lastSeen: now() - 2000, via: 'USB', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
       { id: 'c81e728d9d4c', model: 'samsung SM-X200', lastSeen: now() - 140000, via: 'Wi-Fi', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
@@ -500,14 +401,6 @@
       if (!p || !shownWidgets(await config()).some((w) => w.type === 'photos')) return json({ error: 'Unknown photo' }, 404);
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="${p[1]}"/><stop offset="1" stop-color="${p[2]}"/></linearGradient></defs><rect width="1600" height="1000" fill="url(#g)"/><circle cx="1220" cy="260" r="120" fill="#fff8" /><path d="M0 820 L420 520 L760 760 L1100 480 L1600 860 V1000 H0Z" fill="#0006"/></svg>`;
       return new Response(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml' } });
-    }
-    // spectrum bars: like the agent, frames only for a widget on an enabled page; a made-up beat with a bass kick here
-    if (path === '/api/spectrum') {
-      const shown = shownWidgets(await config()).some((w) => w.type === 'spectrum');
-      const s = Date.now() / 1000, kick = Math.max(0, Math.cos(s * Math.PI * 2 * 2)) ** 6;
-      const b = shown ? Array.from({ length: 48 }, (_, i) => Math.round(Math.max(0, Math.min(100,
-        78 - i * 0.7 + (i < 8 ? kick * 22 : 0) + 14 * Math.sin(s * (2.1 + i * 0.37) + i) + 6 * Math.sin(s * 9.7 + i * 1.3))))) : null;
-      return json({ shown, active: shown, fps: 30, b });
     }
     if (path === '/api/feeds') { const c = await config(); return json({ items: DEMO_FEEDS(), updated: now(), errors: [], canOpen: feedsCanOpen(c) }); }
     if (path === '/api/feeds/open' && method === 'POST') {
@@ -549,10 +442,6 @@
       const [, , , profile, slot] = path.split('/');
       const ok = profile === DEMO_CONSOLE.id && (/^dial-(left|right|press)$/.test(slot) || (/^k(0|[1-9]\d*)$/.test(slot) && +slot.slice(1) < DEMO_CONSOLE.keys.length));
       return ok ? json({ ok: true }) : json({ error: 'nothing is set for this key' }, 404);
-    }
-    if (path.startsWith('/api/obs/') && method === 'POST') {
-      if (!allows(await config(), isObs)) return json({ error: "controlling OBS is turned off in the widget's settings" }, 400);
-      return obsAct(path.slice(9), q.get('scene')) ? json({ ok: true }) : json({ error: 'unknown action' }, 400);
     }
     if (path === '/api/ha/entities') return json({ configured: true, error: null, entities: Object.keys(ha).sort().map((id) => ({ id, name: ha[id].name, switchable: /^(light|switch|lock|scene)\./.test(id) })) });
     if (path === '/api/ha/states') return json(haStates((q.get('ids') || '').split(',').filter(Boolean)));
@@ -676,19 +565,10 @@
     return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect x="6" y="6" width="84" height="84" rx="20" fill="hsl(${a.hue} 65% 52%)"/>`
       + `<text x="48" y="62" font-family="system-ui,sans-serif" font-size="42" font-weight="700" text-anchor="middle" fill="#fff">${a.name.slice(0, 1)}</text></svg>`);
   };
-  // a portrait capsule for a made-up game: its colour and its name
-  const gameCover = (id) => {
-    const [, name = '?', , , , hue = 210] = DEMO_GAMES.find((g) => g[0] === id) || [];
-    const words = name.split(' ').map((w, i) => `<text x="100" y="${190 + i * 34}" font-family="system-ui,sans-serif" font-size="30" font-weight="800" text-anchor="middle" fill="#fff">${w}</text>`).join('');
-    return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">`
-      + `<stop offset="0" stop-color="hsl(${hue} 70% 45%)"/><stop offset="1" stop-color="hsl(${hue + 40} 60% 14%)"/></linearGradient></defs><rect width="200" height="300" fill="url(#g)"/>${words}</svg>`);
-  };
   const swapDemoImg = (img) => {
     if (img.tagName !== 'IMG') return;
     const src = img.getAttribute('src') || '';
-    if (/\/api\/art/.test(src)) img.src = ART;
-    else if (/\/api\/apps\/icon/.test(src)) img.src = appIcon(new URL(src, location.href).searchParams.get('id'));
-    else if (/\/api\/steam\/cover/.test(src)) img.src = gameCover(new URL(src, location.href).searchParams.get('id'));
+    if (/\/api\/apps\/icon/.test(src)) img.src = appIcon(new URL(src, location.href).searchParams.get('id'));
   };
   new MutationObserver((list) => {
     for (const m of list) {

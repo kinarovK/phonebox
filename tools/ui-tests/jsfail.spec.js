@@ -8,7 +8,7 @@ test('a widget image that fails to load does not show the failure box', async ({
   await page.evaluate(() => {
     const img = document.createElement('img');
     img.id = 'broken-cover';
-    img.src = '/panel/missing-cover-on-purpose.png'; // a 404 (the demo answers /agent/api/art itself)
+    img.src = '/panel/missing-cover-on-purpose.png'; // a 404
     document.body.append(img);
   });
   // the load has failed once the image is complete without any pixels

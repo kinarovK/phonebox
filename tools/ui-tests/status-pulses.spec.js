@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-// The status pulses (session dots, OBS LED, on-air sign, dictation mic) used to be infinite CSS animations.
+// The status pulses (session dots, dictation mic) used to be infinite CSS animations.
 // A running animation makes the browser produce a frame on every display refresh (120 a second on a 120 Hz phone) for as
 // long as the element is on screen, which cost the panel 50 to 100 percentage points of a CPU core each. They are now
 // stepped by one shared beat: main.js flips a few classes on <html> from its existing 250 ms tick, and only while something
@@ -9,8 +9,6 @@ const FIXTURES = {
   'waiting session dot': { html: '<div class="sess waiting"><span class="st"></span></div>', sel: '.sess .st', prop: 'opacity', values: ['1', '0.35'] },
   'busy session dot': { html: '<div class="sess busy"><span class="st"></span></div>', sel: '.sess .st', prop: 'opacity', values: ['1', '0.35'] },
   'shell session dot': { html: '<div class="sess shell"><span class="st"></span></div>', sel: '.sess .st', prop: 'opacity', values: ['1', '0.35'] },
-  'OBS LED': { html: '<div class="obs-pill on"><span class="obs-led"></span></div>', sel: '.obs-led', prop: 'boxShadow' },
-  'on-air sign': { html: '<div class="w-onair on"><div class="oa-sign">ON AIR</div></div>', sel: '.oa-sign', prop: 'boxShadow' },
   'dictation mic': { html: '<button class="dc-mic on" type="button">M</button>', sel: '.dc-mic', prop: 'opacity', values: ['1', '0.7'] },
 };
 

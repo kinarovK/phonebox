@@ -150,11 +150,8 @@ public sealed class CodexBarTests
 
             var engine = new RuleEngine(cfg, push,
                 new SessionMonitor(NullLogger<SessionMonitor>.Instance),
-                new MediaMonitor(NullLogger<MediaMonitor>.Instance),
                 new SystemMonitor(NullLogger<SystemMonitor>.Instance),
-                new PrivacyMonitor(NullLogger<PrivacyMonitor>.Instance),
                 new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance),
-                new ObsMonitor(cfg, NullLogger<ObsMonitor>.Instance),
                 quotas,
                 new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
                 new BatteryMonitor(NullLogger<BatteryMonitor>.Instance),

@@ -80,9 +80,8 @@ public sealed class AuditRegressionTests : IDisposable
         Write("");
         var cfg = new ConfigStore(path);
         var push = Push();
-        var engine = new RuleEngine(cfg, push, new SessionMonitor(NullLogger<SessionMonitor>.Instance), new MediaMonitor(NullLogger<MediaMonitor>.Instance),
-            new SystemMonitor(NullLogger<SystemMonitor>.Instance), new PrivacyMonitor(NullLogger<PrivacyMonitor>.Instance), new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance),
-            new ObsMonitor(cfg, NullLogger<ObsMonitor>.Instance), new QuotaMonitor(NullLogger<QuotaMonitor>.Instance), new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
+        var engine = new RuleEngine(cfg, push, new SessionMonitor(NullLogger<SessionMonitor>.Instance),
+            new SystemMonitor(NullLogger<SystemMonitor>.Instance), new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance), new QuotaMonitor(NullLogger<QuotaMonitor>.Instance), new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
             new BatteryMonitor(NullLogger<BatteryMonitor>.Instance), new PingMonitor(), new AudioControl(), NullLogger<RuleEngine>.Instance);
         return (engine, push, Write);
     }

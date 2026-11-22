@@ -73,7 +73,7 @@ test('every translated key is really translated, and the rest fall back to Engli
         .map((k) => `${lang}:${k}`));
     // a key whose text is identical to English is either a name that is not translated (Wi-Fi, USB, Client secret) or
     // padding; the Vietnamese dictionary is complete, so check it exactly, and spot-check the rest for copied sentences.
-    const SAME_IS_FINE = new Set(['s.discord.clientSecret', 'status.wiFi', 'status.usb', 's.cd.clientId']);
+    const SAME_IS_FINE = new Set(['status.wiFi', 'status.usb']);
     const copied = Object.keys(S).filter((lang) => lang !== 'en').flatMap((lang) =>
       Object.keys(S[lang])
         .filter((k) => S[lang][k] === en[k] && !SAME_IS_FINE.has(k) && en[k].length > 12 && /[a-z]{4,} [a-z]{3,}/.test(en[k]))
@@ -349,19 +349,6 @@ test('follow system distinguishes Traditional Chinese and the legacy Indonesian 
   expect(resolved).toEqual(['zh-Hant', 'zh-Hant', 'zh', 'id', 'en', 'en']);
 });
 
-
-test('the idle media widget uses the Arabic no-audio label', async ({ page }) => {
-  await show(page, [{ id: 'media', type: 'media', x: 0, y: 0, w: 8, h: 4, options: {} }], { language: 'ar' });
-  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-  await expect(page.locator('.w-media')).toBeVisible();
-  const label = await page.evaluate(async () => {
-    const main = await import('/panel/main.js');
-    main.D.state = { ...main.D.state, media: null };
-    main.emit('state');
-    return document.querySelector('.w-media .m-title').textContent;
-  });
-  expect(label).toBe('لا يوجد صوت');
-});
 
 test('the Arabic template dialog inserts the saved page title literally', async ({ page }) => {
   const title = 'Budget $& <2026> "Q4"';

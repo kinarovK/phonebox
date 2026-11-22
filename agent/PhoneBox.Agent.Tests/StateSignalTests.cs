@@ -33,17 +33,4 @@ public sealed class StateSignalTests
         finally { StateSignal.Changed -= Bad; StateSignal.Changed -= Good; }
         Assert.True(reached);
     }
-
-    [Fact]
-    public void AMediaChangeThatMattersPokesButTheTickingPositionDoesNot()
-    {
-        var a = new MediaSnapshot("Spotify", "One", "A", "", true, 1000, 200000, 1, true);
-        Assert.False(StateSignal.MediaChanged(a, a with { PosMs = 2200 }));          // just time passing
-        Assert.True(StateSignal.MediaChanged(a, a with { Playing = false }));          // pause
-        Assert.True(StateSignal.MediaChanged(a, a with { Title = "Two", PosMs = 0 })); // next track
-        Assert.True(StateSignal.MediaChanged(a, a with { PosMs = 90_000 }));           // a seek, not 1 s of playback
-        Assert.True(StateSignal.MediaChanged(null, a));
-        Assert.True(StateSignal.MediaChanged(a, null));
-        Assert.False(StateSignal.MediaChanged(null, null));
-    }
 }

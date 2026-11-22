@@ -651,39 +651,6 @@ nav a.on::before { color: var(--accent); }
       </div>
 
       <div class="card">
-        <h3 data-i18n="s.discord.title">Discord</h3>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="discord.enabled"><span></span></label> <span data-i18n="s.discord.enable">Connect to the Discord app on this PC (for the Discord widget)</span></div>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.discord.hint">Create an application at discord.com/developers/applications, add the redirect http://127.0.0.1 under OAuth2, and copy its client ID and secret here. Discord asks you to approve PhoneBox once. If it refuses the login, add your account under the application's App Testers. Step by step: docs/DISCORD.md.</p>
-        <div class="grid2">
-          <div class="field"><label data-i18n="s.discord.clientId">Client ID</label><input type="text" data-bind="discord.clientId" autocomplete="off" spellcheck="false"></div>
-          <div class="field"><label data-i18n="s.discord.clientSecret">Client secret</label><input type="password" data-bind="discord.clientSecret" autocomplete="off"></div>
-        </div>
-        <div class="row" style="margin:12px 0 4px"><label class="switch"><input type="checkbox" data-bind="discord.allowControl" aria-labelledby="discordAllowControlLabel"><span></span></label> <span id="discordAllowControlLabel" data-i18n="s.discord.allowControl">Let shortcuts and custom widgets control Discord, without a Discord widget</span></div>
-        <p class="hint" style="margin:0" data-i18n="s.discord.allowControlHint">For the agent's /api/discord actions: mute, deafen, input mode, leave and join. Off: they work only while a Discord widget with Control on is on an enabled page. On: they work without one. Either way, anything that can call the agent can use them, not only the widget: the paired phone (USB or Wi-Fi) and programs on this computer.</p>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.steam.title">Steam</h3>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="steam.enabled" aria-labelledby="steamEnabledLabel"><span></span></label> <span id="steamEnabledLabel" data-i18n="s.steam.enable">Connect Steam (for the Steam friends widget)</span></div>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.steam.hint">Create a user Web API key at steamcommunity.com/dev/apikey and enter your SteamID64 or profile URL. Custom profile names are resolved when saved; only the SteamID64 is stored. Your profile's friend list must be visible to this API key for GetFriendList; make Game details public to show games. The key stays on this computer. Step by step: docs/STEAM.md.</p>
-        <div class="grid2">
-          <div class="field"><label for="steamProfileInput" data-i18n="s.steam.id">SteamID64 or profile URL</label><input id="steamProfileInput" type="text" data-bind="steam.steamId" autocomplete="off" spellcheck="false" placeholder="76561198000000000"></div>
-          <div class="field"><label for="steamApiKeyInput" data-i18n="s.steam.key">User Web API key</label><input id="steamApiKeyInput" type="password" data-bind="steam.apiKey" autocomplete="off"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.obs.title">OBS Studio</h3>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="obs.enabled"><span></span></label> <span data-i18n-html="s.obs.enable">Connect to OBS (for the <b>OBS</b> widget, the On air widget and rules)</span></div>
-        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.obs.hint">In OBS: Tools › WebSocket Server Settings › <i>Enable WebSocket server</i>; copy the password from <i>Show Connect Info</i>.</p>
-        <div class="grid2">
-          <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" data-bind="obs.url" placeholder="ws://127.0.0.1:4455" spellcheck="false"></div>
-          <div class="field"><label data-i18n="s.obs.password">Password</label><input type="password" data-bind="obs.password" autocomplete="off"></div>
-        </div>
-        <div class="row"><button class="btn sm" id="obsTest" data-i18n="s.test">Test</button><span class="hint" id="obsState"></span></div>
-      </div>
-
-      <div class="card">
         <h3 data-i18n="s.night.title">Night mode</h3>
         <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="night.enabled"><span></span></label> <span data-i18n="s.night.enable">Dim the screen at night and show only the clock</span></div>
         <div class="grid2">
@@ -1895,7 +1862,6 @@ function optionField(w, o, onValChange) {
         ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, plain(`${s.icon} ${s.label}`) || s.id))),
         h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'ha-items': return haItemsEditor(w, o, set);
-    case 'steam-games': return steamGamesEditor(w, o, set);
     case 'shortcuts': {
       const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
       return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
@@ -1906,27 +1872,6 @@ function optionField(w, o, onValChange) {
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
         w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
   }
-}
-
-// Steam library: tick the favorite games, read from Steam's files on this computer when the editor opens. They come
-// first on the phone in the order they were ticked; a favorite that is no longer installed stays until it is unticked.
-function steamGamesEditor(w, o, set) {
-  const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x.map(String) : []; };
-  const box = h('div', { class: 'opts' }, h('span', { class: 'hint' }, t('w.loading')));
-  const draw = (games) => {
-    const names = new Map(games.map((g) => [g.id, g.name]));
-    const ids = [...games.map((g) => g.id), ...cur().filter((id) => !names.has(id))];
-    if (!ids.length) { box.replaceChildren(h('span', { class: 'hint' }, t('w.steamlib.empty'))); return; }
-    box.replaceChildren(...ids.map((id) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(id), onchange: (e) => {
-      const rest = cur().filter((x) => x !== id);
-      set(o.key, e.target.checked ? [...rest, id] : rest);
-    } }), names.get(id) ?? `${t('s.js.unavailable')} ${id}`)));
-  };
-  const load = () => fetch('/api/steam/games').then((r) => (r.ok ? r.json() : Promise.reject()))
-    .then((games) => draw(Array.isArray(games) ? games : []))
-    .catch(() => box.replaceChildren(h('span', { class: 'hint' }, t('w.steamlib.notFound'))));
-  load();
-  return h('div', { class: 'field' }, h('label', {}, o.label), box, h('button', { class: 'btn sm', onclick: load }, t('s.js.refresh')));
 }
 
 // Home Assistant widget: one row per entity (id, display name, icon, what to show, whether the phone may switch it).
@@ -2261,13 +2206,6 @@ $('haTest').onclick = async () => {
     $('haState').textContent = r.result;
   } catch (_) { $('haState').textContent = 'Could not check'; }
 };
-$('obsTest').onclick = async () => {
-  $('obsState').textContent = 'connecting…';
-  try {
-    const r = await (await fetch('/api/obs-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.obs || {}) })).json();
-    $('obsState').textContent = r.result;
-  } catch (_) { $('obsState').textContent = 'Could not check'; }
-};
 // ---------------------------------------------------------------- app console
 const consoleKeysText = (p) => (p.keys || []).map((k) => (k.label && k.label !== k.keys ? `${k.label} = ${k.keys}` : k.keys)).join('\n');
 const consoleKeysParse = (text) => text.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
@@ -2519,13 +2457,9 @@ const tl = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
 const TRIGGERS = {
   'session-waiting': { label: 'an AI session needs me', match: 'any project (or: api|docs, codex)' },
   'session-busy': { label: 'an AI session is working', match: 'any project (or: api|docs, codex)' },
-  'media-playing': { label: 'music or video plays', match: 'any app (or: Spotify|Music)' },
   'process-running': { label: 'an app is running', match: 'zoom|Teams|obs64' },
   'app-in-front': { label: 'an app is in front', match: 'Code|obs64|Safari' },
-  'mic-in-use': { label: 'the microphone is in use', match: 'any app (or: Zoom|Teams)' },
-  'camera-in-use': { label: 'the camera is in use', match: 'any app (or: Zoom|Teams)' },
   'calendar-event': { label: 'a calendar event is on', match: 'any event (or: meeting|call)' },
-  'obs-live': { label: 'OBS is recording or streaming' },
   'cpu-above': { label: 'the CPU is busy', value: '% (for 15 s)', def: 85 },
   idle: { label: 'I am away from the PC', value: 'minutes', def: 5 },
   time: { label: 'it is between', match: '22:00-07:00' },
@@ -2543,9 +2477,6 @@ const PRIORITIES = { 2: 'low', 5: 'normal', 8: 'high' };
 const pageId = (...ids) => ids.find((id) => cfg.pages.some((p) => p.id === id)) || cfg.pages[0]?.id || '';
 const RULE_PRESETS = [
   ['✳️ Claude needs me → AI page', () => ({ name: 'Claude needs me', when: 'session-waiting', then: 'goto', page: pageId('ai', 'work'), whileActive: true })],
-  ['🎵 Music plays → music page', () => ({ name: 'Music', when: 'media-playing', match: 'Spotify', then: 'goto', page: pageId('music', 'home'), whileActive: true })],
-  ['🔴 On air while the mic is on', () => ({ name: 'On air', when: 'mic-in-use', then: 'notify', text: '{detail} is using the microphone', level: 'warn', whileActive: false })],
-  ['📆 In a meeting → on air', () => ({ name: 'In a meeting', when: 'calendar-event', then: 'push', key: 'onair', pushValue: '{detail}', whileActive: true })],
   ['🔥 CPU busy → notification', () => ({ name: 'CPU busy', when: 'cpu-above', value: 90, then: 'notify', text: '{detail} for a while', level: 'warn', whileActive: false })],
   ['🌙 Away → ambient page', () => ({ name: 'Away', when: 'idle', value: 10, then: 'goto', page: pageId('ambient', 'clock', 'calm'), whileActive: true })],
   ['🕙 Evenings → calm page', () => ({ name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: pageId('calm', 'clock', 'ambient'), whileActive: true })],
@@ -2561,7 +2492,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {}; cfg.obs ??= { enabled: false, url: 'ws://127.0.0.1:4455' }; cfg.discord ??= { enabled: false }; cfg.steam ??= { enabled: false };
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {};
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
@@ -3286,7 +3217,6 @@ function fillDefaults() {
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
   cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
-  cfg.steam ??= { enabled: false };
 }
 
 async function load() {

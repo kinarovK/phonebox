@@ -164,11 +164,8 @@ public class RuleTests
 
     private static RuleEngine NewEngine(ConfigStore cfg, PushStore push) => new(cfg, push,
         new SessionMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionMonitor>.Instance),
-        new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance),
         new SystemMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemMonitor>.Instance),
-        new PrivacyMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<PrivacyMonitor>.Instance),
         new CalendarMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarMonitor>.Instance),
-        new ObsMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsMonitor>.Instance),
         new QuotaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<QuotaMonitor>.Instance),
         new GitHubMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<GitHubMonitor>.Instance),
         new BatteryMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance),
@@ -236,11 +233,8 @@ public class RuleTests
 
             var engine = new RuleEngine(cfg, push,
                 new SessionMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionMonitor>.Instance),
-                new MediaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaMonitor>.Instance),
                 new SystemMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemMonitor>.Instance),
-                new PrivacyMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<PrivacyMonitor>.Instance),
                 new CalendarMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarMonitor>.Instance),
-                new ObsMonitor(cfg, Microsoft.Extensions.Logging.Abstractions.NullLogger<ObsMonitor>.Instance),
                 new QuotaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<QuotaMonitor>.Instance),
                 gh,
                 new BatteryMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance),

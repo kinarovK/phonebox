@@ -87,14 +87,11 @@ public static class Lan
 
     /// <summary>Endpoints the phone may use over Wi-Fi. Settings, tests and pairing stay local-only.</summary>
     public static bool AllowedOverLan(PathString path) =>
-        path.StartsWithSegments("/api/state") || path.StartsWithSegments("/api/config") || path.StartsWithSegments("/api/art")
-        || path.StartsWithSegments("/api/media") || path.StartsWithSegments("/api/volume") || path.StartsWithSegments("/api/quotas")
+        path.StartsWithSegments("/api/state") || path.StartsWithSegments("/api/config")
+        || path.StartsWithSegments("/api/volume") || path.StartsWithSegments("/api/quotas")
         || path.StartsWithSegments("/api/work") || path.StartsWithSegments("/api/procs") || path.StartsWithSegments("/api/run")
         || path.StartsWithSegments("/api/apps") || path.StartsWithSegments("/api/shortcuts/icon") || path.StartsWithSegments("/api/console") || path == "/api/dictate"
-        // the Steam library widget: the list of installed games, an installed game's cover (the tiles' <img>), and starting a
-        // game (off unless the asking widget, on an enabled page, allows it). /api/steam/games, the settings page's picker, stays local.
-        || path == "/api/steam/library" || path == "/api/steam/cover" || path == "/api/steam/launch"
-        || path.StartsWithSegments("/api/widget") || path.StartsWithSegments("/api/calendar") || path.StartsWithSegments("/api/feeds") || path.StartsWithSegments("/api/photos") || path == "/api/camera" || path == "/api/spectrum" || path.StartsWithSegments("/api/docker") || path.StartsWithSegments("/api/obs") || path.StartsWithSegments("/api/discord") || path == "/api/steam" || path == "/api/steam/avatar" || path.StartsWithSegments("/api/batteries") || path.StartsWithSegments("/api/ha/states") || path.StartsWithSegments("/api/ha/toggle") || path.StartsWithSegments("/api/approvals") || path.StartsWithSegments("/api/rules/pause") || path.StartsWithSegments("/api/phone/battery") || path.StartsWithSegments("/api/stream") || path.StartsWithSegments("/api/trackpad") || path == "/api/pair/claim" || path == "/api/wake/macs" || IsWebhook(path);
+        || path.StartsWithSegments("/api/widget") || path.StartsWithSegments("/api/calendar") || path.StartsWithSegments("/api/feeds") || path.StartsWithSegments("/api/photos") || path == "/api/camera" || path.StartsWithSegments("/api/docker") || path.StartsWithSegments("/api/batteries") || path.StartsWithSegments("/api/ha/states") || path.StartsWithSegments("/api/ha/toggle") || path.StartsWithSegments("/api/approvals") || path.StartsWithSegments("/api/rules/pause") || path.StartsWithSegments("/api/phone/battery") || path.StartsWithSegments("/api/stream") || path.StartsWithSegments("/api/trackpad") || path == "/api/pair/claim" || path == "/api/wake/macs" || IsWebhook(path);
 
     /// <summary>
     /// The one Wi-Fi path that needs no key: a phone pairing without USB trades a one-time code for it (see

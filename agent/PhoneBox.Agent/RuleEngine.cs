@@ -11,8 +11,8 @@ namespace PhoneBox.Agent;
 /// the phone to a page, shows a notification or pushes a value. Rules marked "while active" undo their effect when the
 /// condition ends: the phone goes back to the page it was on and a pushed value is removed again.
 /// </summary>
-public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonitor sessions, MediaMonitor media, SystemMonitor system,
-    PrivacyMonitor privacy, CalendarMonitor calendar, ObsMonitor obs, QuotaMonitor quotas, GitHubMonitor github, BatteryMonitor batteries,
+public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonitor sessions, SystemMonitor system,
+    CalendarMonitor calendar, QuotaMonitor quotas, GitHubMonitor github, BatteryMonitor batteries,
     PingMonitor ping, AudioControl audio, ILogger<RuleEngine> log) : BackgroundService
 {
     /// <summary>CPU spikes are normal; the CPU rule waits this long unless the rule sets its own "for" time.</summary>
@@ -203,12 +203,6 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
                     || names.Any(n => s.Project.Contains(n, StringComparison.OrdinalIgnoreCase) || s.Tool.Equals(n, StringComparison.OrdinalIgnoreCase))));
                 return s is null ? (false, "") : (true, status == "waiting" ? $"{s.Project}: {s.WaitingFor ?? "needs you"}" : $"{s.Project} is working");
             }
-            case "media-playing":
-            {
-                var m = media.Snapshot();
-                var ok = m is { Playing: true } && (names.Length == 0 || names.Any(n => m.App.Contains(n, StringComparison.OrdinalIgnoreCase)));
-                return ok ? (true, string.IsNullOrEmpty(m!.Artist) ? m.Title : $"{m.Title} · {m.Artist}") : (false, "");
-            }
             case "process-running":
             {
                 var procs = Processes();
@@ -221,19 +215,6 @@ public sealed class RuleEngine(ConfigStore config, PushStore push, SessionMonito
                 var front = FrontApp();
                 var hit = front is not null && names.Any(n => front.Contains(n, StringComparison.OrdinalIgnoreCase));
                 return hit ? (true, front!) : (false, "");
-            }
-            case "mic-in-use":
-            case "camera-in-use":
-            {
-                var p = privacy.Snapshot();
-                var apps = (r.When == "mic-in-use" ? p?.MicApps : p?.CameraApps) ?? [];
-                var hit = apps.FirstOrDefault(a => names.Length == 0 || names.Any(n => a.Contains(n, StringComparison.OrdinalIgnoreCase)));
-                return hit is null ? (false, "") : (true, hit);
-            }
-            case "obs-live":
-            {
-                var o = obs.Snapshot();
-                return obs.Live ? (true, o.Streaming ? "OBS is streaming" : "OBS is recording") : (false, "");
             }
             case "calendar-event":
             {

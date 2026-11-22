@@ -52,6 +52,28 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
     }
 
     [Fact]
+    public void ConfigFromBeforeTheMediaAndEntertainmentRemovalStillLoads()
+    {
+        // OBS, Discord and Steam had their own sections, the widgets sat on pages, and rules could react to media,
+        // the microphone, the camera and OBS
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, """
+            {"obs":{"enabled":true,"url":"ws://127.0.0.1:4455","password":"p"},
+             "discord":{"enabled":true,"clientId":"1","clientSecret":"s","allowControl":true},
+             "steam":{"enabled":true,"steamId":"76561198000000001","apiKey":"k"},
+             "night":{"start":"01:15"},
+             "rules":[{"id":"m","when":"media-playing","then":"notify"},{"id":"o","when":"obs-live","then":"notify"},
+                      {"id":"c","when":"cpu-above","then":"notify"}],
+             "pages":[{"id":"p","enabled":true,"widgets":[{"type":"media","x":0,"y":0,"w":6,"h":3},{"type":"steam-library","x":6,"y":0,"w":6,"h":3},
+                      {"type":"clock","x":0,"y":3,"w":12,"h":3}]}]}
+            """);
+        var store = new ConfigStore(path);
+        Assert.Equal("01:15", store.Get().Night.Start);
+        Assert.Equal(["clock"], store.Get().Pages.Single().Widgets!.Select(w => w.Type));
+        Assert.Equal(["c"], store.Get().Rules.Select(r => r.Id));
+    }
+
+    [Fact]
     public void LegacyDeckPreservesNumericColumns()
     {
         var store = new ConfigStore(Path.Combine(_dir, "config.json"));

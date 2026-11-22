@@ -41,14 +41,8 @@ public sealed class AgentConfig
     public CameraConfig Cameras { get; set; } = new();
     /// <summary>Home Assistant address and long-lived access token (the token never goes to the phone).</summary>
     public HomeAssistantConfig HomeAssistant { get; set; } = new();
-    /// <summary>OBS Studio's WebSocket server (obs-websocket 5).</summary>
-    public ObsConfig Obs { get; set; } = new();
-    /// <summary>Discord desktop app (local IPC): the developer application's client id and secret (the secret never goes to the phone).</summary>
-    public DiscordConfig Discord { get; set; } = new();
     /// <summary>App console widget: key and dial bindings per app (the phone gets labels and ids, not the keys to press).</summary>
     public ConsoleConfig Console { get; set; } = new();
-    /// <summary>Steam friends presence (the Web API key stays on this computer and is never sent to the phone).</summary>
-    public SteamConfig Steam { get; set; } = new();
 
     /// <summary>The pages a phone shows: its own selection (Settings › Phones), or all of them.</summary>
     public IEnumerable<PageConfig> PagesFor(string? deviceId)
@@ -345,7 +339,7 @@ public sealed class RuleConfig
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public bool Enabled { get; set; } = true;
-    /// <summary>session-waiting, session-busy, media-playing, process-running, app-in-front, mic-in-use, camera-in-use, obs-live, calendar-event, cpu-above, idle, time, push.</summary>
+    /// <summary>session-waiting, session-busy, process-running, app-in-front, calendar-event, cpu-above, idle, time, push.</summary>
     public string When { get; set; } = "session-waiting";
     /// <summary>App / process names ("zoom|Teams"), a time window ("22:00-07:00") or a push key, depending on <see cref="When"/>.</summary>
     public string? Match { get; set; }
@@ -381,7 +375,7 @@ public sealed class RuleConfig
     public string? Op { get; set; }
     public string? Arg { get; set; }
 
-    public static readonly string[] Triggers = ["session-waiting", "session-busy", "media-playing", "process-running", "app-in-front", "mic-in-use", "camera-in-use", "obs-live", "calendar-event",
+    public static readonly string[] Triggers = ["session-waiting", "session-busy", "process-running", "app-in-front", "calendar-event",
         "cpu-above", "idle", "time", "push", "quota-above", "review-requested", "ci-failed", "battery-low", "ping-high", "always"];
     public static readonly string[] Actions = ["goto", "notify", "push", "shortcut"];
 }
@@ -397,33 +391,6 @@ public sealed class ChargeConfig
     public string? Entity { get; set; }
     public string? OnShortcut { get; set; }
     public string? OffShortcut { get; set; }
-}
-
-public sealed class ObsConfig
-{
-    public bool Enabled { get; set; }
-    public string Url { get; set; } = "ws://127.0.0.1:4455";
-    public string? Password { get; set; }
-}
-
-public sealed class DiscordConfig
-{
-    public bool Enabled { get; set; }
-    public string? ClientId { get; set; }
-    public string? ClientSecret { get; set; }
-    /// <summary>
-    /// Allow mute, deafen, leave and join through <c>/api/discord/{action}</c> without a Discord widget: for shortcuts,
-    /// scripts and custom widgets. Off by default; then only a Discord widget with its <c>control</c> option on, on an
-    /// enabled page, allows them.
-    /// </summary>
-    public bool AllowControl { get; set; }
-}
-
-public sealed class SteamConfig
-{
-    public bool Enabled { get; set; }
-    public string? SteamId { get; set; }
-    public string? ApiKey { get; set; }
 }
 
 public sealed class HomeAssistantConfig
@@ -503,14 +470,6 @@ public sealed partial class ConfigStore(string path)
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // keep emoji and non-ASCII text readable
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
-
-    /// <summary>Retain a secret redacted from settings GETs when a client sends it back as missing or null.</summary>
-    internal static bool PreserveSteamApiKey(AgentConfig? proposed, string? storedKey)
-    {
-        if (proposed?.Steam is not { ApiKey: null } steam || storedKey is null) return false;
-        steam.ApiKey = storedKey;
-        return true;
-    }
 
     private readonly Lock _lock = new();
     private AgentConfig _config = Normalize(new AgentConfig());
@@ -727,14 +686,6 @@ public sealed partial class ConfigStore(string path)
         }
         c.Ping ??= new();
         c.Ping.Adapters = (c.Ping.Adapters ?? []).Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(16).ToList();
-        c.Obs ??= new();
-        c.Discord ??= new();
-        c.Discord.ClientId = string.IsNullOrWhiteSpace(c.Discord.ClientId) ? null : c.Discord.ClientId.Trim();
-        c.Discord.ClientSecret = string.IsNullOrWhiteSpace(c.Discord.ClientSecret) ? null : c.Discord.ClientSecret.Trim();
-        c.Steam ??= new();
-        c.Steam.SteamId = string.IsNullOrWhiteSpace(c.Steam.SteamId) ? null : c.Steam.SteamId.Trim();
-        c.Steam.ApiKey = string.IsNullOrWhiteSpace(c.Steam.ApiKey) ? null : c.Steam.ApiKey.Trim();
-        if (string.IsNullOrWhiteSpace(c.Obs.Url)) c.Obs.Url = "ws://127.0.0.1:4455";
         c.HomeAssistant ??= new();
         c.HomeAssistant.Url = string.IsNullOrWhiteSpace(c.HomeAssistant.Url) ? null : c.HomeAssistant.Url.Trim().TrimEnd('/');
         c.HomeAssistant.Token = string.IsNullOrWhiteSpace(c.HomeAssistant.Token) ? null : c.HomeAssistant.Token.Trim();
@@ -927,7 +878,6 @@ public sealed partial class ConfigStore(string path)
                     ? t.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
                     : ["cpu", "gpu", "ram", "net"];
                 ws.RemoveAll(w => w.Type == "stat");
-                if (!On("media")) { ws.RemoveAll(w => w.Type == "media"); if (clock is not null) clock.W = 12; }
                 foreach (var w in ws) w.H = tiles.Count > 0 ? 4 : 6;
                 for (var i = 0; i < tiles.Count; i++)
                 {

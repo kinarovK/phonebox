@@ -6,23 +6,6 @@ using Xunit;
 /// <summary>Config normalization: templates, the pre-0.6.2 page migration, grid limits, ids and what the phone sees.</summary>
 public class ConfigTests
 {
-    [Fact]
-    public void NullOrMissingSteamApiKeyKeepsStoredKeyButEmptyCanClearIt()
-    {
-        var proposed = JsonSerializer.Deserialize<AgentConfig>("{}", ConfigStore.ReadOpts)!;
-        Assert.True(ConfigStore.PreserveSteamApiKey(proposed, "stored-secret"));
-        Assert.Equal("stored-secret", proposed.Steam.ApiKey);
-
-        proposed = JsonSerializer.Deserialize<AgentConfig>("{\"steam\":{\"apiKey\":null}}", ConfigStore.ReadOpts)!;
-        Assert.True(ConfigStore.PreserveSteamApiKey(proposed, "stored-secret"));
-        Assert.Equal("stored-secret", proposed.Steam.ApiKey);
-
-        proposed.Steam.ApiKey = "";
-        Assert.False(ConfigStore.PreserveSteamApiKey(proposed, "stored-secret"));
-        Assert.Equal("", proposed.Steam.ApiKey);
-        Assert.False(ConfigStore.PreserveSteamApiKey(proposed, null));
-    }
-
     private static AgentConfig Load(string json)
     {
         var path = Path.Combine(Path.GetTempPath(), $"phonebox-cfg-{Guid.NewGuid():N}.json");
@@ -120,9 +103,9 @@ public class ConfigTests
     [Fact]
     public void TemplatesExpandIntoWidgets()
     {
-        var c = Load("""{ "pages": [ { "template": "music" }, { "template": "music" } ] }""");
-        Assert.Equal(["music", "music-2"], c.Pages.Select(p => p.Id));
-        Assert.Contains(c.Pages[0].Widgets!, w => w.Type == "media");
+        var c = Load("""{ "pages": [ { "template": "ai" }, { "template": "ai" } ] }""");
+        Assert.Equal(["ai", "ai-2"], c.Pages.Select(p => p.Id));
+        Assert.Contains(c.Pages[0].Widgets!, w => w.Type == "quotas");
         Assert.Null(c.Pages[0].Template);
     }
 
@@ -163,13 +146,13 @@ public class ConfigTests
         var config = Load("""
             {
               "pages": [
-                { "template": "music" },
-                { "id": "music", "title": "Existing music page" }
+                { "template": "ai" },
+                { "id": "ai", "title": "Existing AI page" }
               ]
             }
             """);
 
-        Assert.Equal(["music-2", "music"], config.Pages.Select(p => p.Id));
+        Assert.Equal(["ai-2", "ai"], config.Pages.Select(p => p.Id));
     }
 
     [Fact]
@@ -358,14 +341,6 @@ public class LanTests
     [InlineData("/api/feeds/open", true)]
     [InlineData("/api/photos", true)]
     [InlineData("/api/photos/0123456789abcdef", true)]
-    [InlineData("/api/steam", true)]
-    [InlineData("/api/steam/avatar", true)]
-    [InlineData("/api/steam/other", false)]
-    [InlineData("/api/steam/library", true)]
-    [InlineData("/api/steam/cover", true)]
-    [InlineData("/api/steam/launch", true)]
-    [InlineData("/api/steam/library/x", false)]
-    [InlineData("/api/steam/games", false)]
     [InlineData("/api/push/temperature", true)]
     [InlineData("/api/settings", false)]
     [InlineData("/api/pair", false)]
@@ -379,7 +354,6 @@ public class LanTests
     [InlineData("/api/settings/shortcut-icon", false)]
     [InlineData("/api/claude/hook", false)]
     [InlineData("/api/codex/hook", false)]
-    [InlineData("/api/obs-test", false)]
     [InlineData("/api/ha/test", false)]
     [InlineData("/api/phones", false)]
     [InlineData("/api/rules/test", false)]

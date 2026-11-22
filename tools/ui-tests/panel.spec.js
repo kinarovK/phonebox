@@ -50,11 +50,6 @@ test('no widget fails to build on any page', async ({ page }) => {
 test('every widget in the catalogue builds and runs without errors', async ({ page }) => {
   test.setTimeout(90_000); // Each catalog page runs its render and polling lifecycle; the catalog now exceeds 100 types.
   const errors = watchErrors(page);
-  await page.route('**/agent/api/steam/avatar?id=*', (route) => route.fulfill({
-    status: 200,
-    contentType: 'image/svg+xml',
-    body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><circle cx=".5" cy=".5" r=".5"/></svg>',
-  }));
   await page.goto('/panel/');
   // one page per widget type, at its default size, through the demo's stored settings
   const count = await page.evaluate(async () => {

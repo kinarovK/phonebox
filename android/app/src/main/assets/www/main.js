@@ -14,8 +14,6 @@ import './widgets/photos.js';
 import './widgets/console.js';
 import './widgets/dictate.js';
 import './widgets/camera.js';
-import './widgets/spectrum.js';
-import './widgets/steam-library.js';
 
 // PhoneBox desk panel. Pages are 12 × 6 grids of widgets, designed in the agent's settings page.
 // The panel talks to the PhoneBox agent through "/agent/*", which the Android shell proxies over USB
@@ -62,8 +60,7 @@ export const PREVIEW = new URLSearchParams(location.search).has('preview') && wi
 /** Used until the agent has sent its settings once (first start without a connection). */
 export const FALLBACK_PAGES = [{
   id: 'home', title: 'Home', icon: '🏠', enabled: true, widgets: [
-    { id: 'clock', type: 'clock', x: 0, y: 0, w: 6, h: 4, options: {} },
-    { id: 'media', type: 'media', x: 6, y: 0, w: 6, h: 4, options: {} },
+    { id: 'clock', type: 'clock', x: 0, y: 0, w: 12, h: 4, options: {} },
     { id: 'cpu', type: 'stat', x: 0, y: 4, w: 3, h: 2, options: { metric: 'cpu' } },
     { id: 'gpu', type: 'stat', x: 3, y: 4, w: 3, h: 2, options: { metric: 'gpu' } },
     { id: 'ram', type: 'stat', x: 6, y: 4, w: 3, h: 2, options: { metric: 'ram' } },
@@ -826,42 +823,6 @@ function applyShortcutIcon(b, icon, id, cover) {
   img.src = url;
 }
 
-// ---------------------------------------------------------------- media (shared state, any number of widgets)
-export let media = null;          // last media state + the time it was received
-export let volDragging = null;
-export function setVolDragging(control, dragging) {
-  if (dragging) volDragging = control;
-  else if (volDragging === control) volDragging = null;
-}
-// the agent says how old the position was when it sent it (it was read up to a second before the 1 s tick sent it);
-// counting from "that long before it arrived" keeps the bar from running behind. Capped: a bogus age must not jump it.
-const mediaSampleAt = (m) => performance.now() - Math.min(Math.max(Number(m?.ageMs) || 0, 0), 5000);
-// The next sample of the same track is not trusted blindly: the bar is counted on the phone between samples, and each
-// sample is a second old and read at a slightly different moment, so taking it as is makes the time stutter. A bar
-// within 0.3 s of the sample stays as it is, up to 1.5 s off it moves 30 % of the way, and anything bigger (a seek, a
-// pause, a new track, a different source) snaps.
-export function mediaFrom(prev, m) {
-  if (!m) return null;
-  const next = { ...m, at: mediaSampleAt(m) };
-  const now = performance.now();
-  // just after the user moved the position bar the agent's samples still hold the old position for a moment: keep the
-  // chosen one until a sample agrees with it (or the hold runs out)
-  if (prev?.hold > now && prev.title === m.title && prev.app === m.app) {
-    const target = prev.posMs + (prev.playing ? now - prev.at : 0);
-    if (Math.abs(next.posMs + (m.playing ? now - next.at : 0) - target) >= 1500) return { ...next, posMs: prev.posMs, at: prev.at, hold: prev.hold };
-  }
-  if (!prev || !prev.playing || !m.playing || prev.title !== m.title || prev.app !== m.app || prev.durMs !== m.durMs) return next;
-  const shown = prev.posMs + (now - prev.at);
-  const off = next.posMs + (now - next.at) - shown;
-  if (Math.abs(off) < 300) return { ...next, posMs: prev.posMs, at: prev.at };
-  if (Math.abs(off) < 1500) return { ...next, posMs: shown + off * 0.3, at: now };
-  return next;
-}
-export const setMediaState = (m) => {
-  if (D.state) D.state.media = m || null;
-  media = mediaFrom(media, m);
-  emit('state');
-};
 // The background glow: the accent colour (Settings › Display), or the album art's colour while music plays.
 export let DEFAULT_AMBIENT = '45, 212, 191';
 export let artTint = true;
@@ -890,32 +851,6 @@ export function averageColor(img) {
 }
 export const setAmbient = (rgb) => document.documentElement.style.setProperty('--ambient', (artTint && rgb) || DEFAULT_AMBIENT);
 
-/** The empty media card. A function, not a constant: its texts are translated when the widget is built. */
-export const mediaHtml = () => `
-  <div class="m-top">
-    <div class="art-wrap"><img class="art" alt=""><div class="art-ph">♪</div></div>
-    <div class="m-text"><div class="m-app"><span class="m-source-icon" aria-hidden="true"></span><span class="m-app-name">Media</span></div><div class="m-title">${t('w.nothingPlaying')}</div><div class="m-artist">${t('w.startOnPc')}</div></div>
-  </div>
-  <div class="m-progress"><div class="bar" role="slider" tabindex="0" aria-label="Position" aria-valuemin="0"><div class="fill"></div><div class="scrub-tip" aria-hidden="true">0:00</div></div><div class="times"><span class="m-pos">0:00</span><span class="m-dur">0:00</span></div></div>
-  <div class="m-controls">
-    <button class="ic" data-media="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg></button>
-    <button class="ic play" data-media="playpause" aria-label="Play/Pause">
-      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
-    </button>
-    <button class="ic" data-media="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l10.5-7z"/></svg></button>
-    <div class="vol">
-      <button class="ic sm mute" aria-label="Mute">
-        <svg class="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zm11.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
-        <svg class="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zm12.6 3 2.2-2.2-1.4-1.4-2.2 2.2-2.2-2.2-1.4 1.4 2.2 2.2-2.2 2.2 1.4 1.4 2.2-2.2 2.2 2.2 1.4-1.4z"/></svg>
-      </button>
-      <input type="range" class="volr" min="0" max="100" step="1" value="50"><span class="vol-val">--</span>
-    </div>
-  </div>
-  <div class="offline-msg"><b data-i18n="panel.computerNotConnected">${t('panel.computerNotConnected')}</b>
-    <span data-i18n="panel.offlineHelp">${t('panel.offlineHelp')}</span></div>`;
-
-// ---------------------------------------------------------------- quotas
 export const Q_STYLE = { antigravity: { color: '#38bdf8', logo: '✦' }, claude: { color: '#d97757', logo: '✳' }, codex: { color: '#e5e7eb', logo: '◎' }, cursor: { color: '#67e8f9', logo: '◆' }, grok: { color: '#f8fafc', logo: '✶' } };
 
 export function fmtReset(ts) {
@@ -1398,7 +1333,7 @@ export function handleEvent(e) {
   else if (e.kind === 'reload') location.reload();
 }
 
-export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', spectrum: '📶', 'app-console': '🎛️', discord: '💬', steam: '👥', 'steam-activity': '🔔', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', media: '🎵', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
+export const WIDGET_ICONS = { camera: '📹', dictate: '🎙️', 'app-console': '🎛️', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
   github: '🐙', processes: '⚙️', shortcuts: '🎛️', button: '🔘', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', countdown: '⏳', note: '📝', command: '💻',
   push: '📡', inbox: '📬', label: '🔤', analog: '🕰️', progress: '📆', stopwatch: '⏱️', timer: '⏲️', counter: '🔢', breathe: '🫁', quote: '💬',
   checklist: '✅', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', sun: '🌅', air: '🍃', hackernews: '📰', feeds: '🗞️', photos: '🖼️', exchange: '💱', crypto: '🪙', image: '🖼️', pcswitch: '🖥️' };
@@ -1995,7 +1930,7 @@ pager.addEventListener('touchstart', (e) => {
   swipeTracking = false;
   if (e.touches.length !== 1 || pages.length < 2) return;
   // Dragging a slider, the volume bar, a list or the station carousel must never flip (or wrap) the page.
-  if (volDragging || e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb, .bar, .radio-carousel-track, .ac-dial')) return;
+  if (e.target.closest?.('button, input, textarea, select, a, [contenteditable], .s-list, .vb, .ac-dial')) return;
   swipeStartX = e.touches[0].clientX;
   swipeStartY = e.touches[0].clientY;
   swipeStartPage = curPage;
@@ -2391,7 +2326,6 @@ export function applyState(s, replayGen = null) {
   if (fresh || replayGen === evGen) for (const e of s.events || []) evOffer(e);
   if (!fresh) return replayGen === evGen;
   D.state = s;
-  media = mediaFrom(media, s.media);
   setOnline(true);
   if (s.cfgVersion !== undefined && cfgVersion !== null && s.cfgVersion !== cfgVersion) loadConfig();
   if (s.pushVersion !== undefined && s.pushVersion !== pushVersion) loadPush();
@@ -2439,7 +2373,6 @@ window.onAgentStream = (event, data) => {
   try { d = JSON.parse(data); } catch (_) { return; }
   if (event === 'state') { applyState(d); for (const e of evPre || []) evOffer(e); evPre = null; }
   else if (event === 'work') applyWork(d);
-  else if (event === 'spectrum') window.dispatchEvent(new CustomEvent('phonebox-spectrum', { detail: d }));
   else if (event === 'event') { if (evPre) { evPre.push(d); if (evPre.length > 100) evPre.shift(); } else evOffer(d); }
 };
 export const streaming = () => streamOn && Date.now() - lastStateAt < 3000;
@@ -2487,7 +2420,7 @@ export async function poll() {
 // ticks of 250 ms (N = 2 is a half-second on, a half-second off). It only moves while something that pulses is on screen
 // (every page is mounted, side by side, and a stack keeps its other cards in place at opacity 0, so being in the page is not enough), and the
 // tick above is skipped when the panel is not visible or the night screen is up.
-const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .obs-pill.on, .w-onair.on, .dc-mic.on';
+const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .dc-mic.on';
 const pulseShown = (el) => { if (el.closest('.stack-item:not(.active)')) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight; };
 let beatN = 0;
 function beat() {

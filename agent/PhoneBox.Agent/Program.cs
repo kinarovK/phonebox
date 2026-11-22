@@ -73,9 +73,7 @@ builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddSingleton<HomeAssistant>();
 builder.Services.AddSingleton<AppConsole>();
 builder.Services.AddSingleton<Dictation>();
-builder.Services.AddSingleton<SpectrumAnalyzer>();
 AddMonitor<SystemMonitor>(builder.Services);
-AddMonitor<MediaMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
 AddMonitor<ProcessMonitor>(builder.Services);
 AddMonitor<SessionMonitor>(builder.Services);
@@ -88,13 +86,8 @@ AddMonitor<PingMonitor>(builder.Services);
 AddMonitor<AdbReverse>(builder.Services);
 AddMonitor<SessionLockMonitor>(builder.Services);
 AddMonitor<UpdateService>(builder.Services);
-AddMonitor<PrivacyMonitor>(builder.Services);
 AddMonitor<CalendarMonitor>(builder.Services);
 AddMonitor<DockerMonitor>(builder.Services);
-AddMonitor<ObsMonitor>(builder.Services);
-AddMonitor<DiscordMonitor>(builder.Services);
-AddMonitor<SteamMonitor>(builder.Services);
-builder.Services.AddSingleton<SteamLibrary>();
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
 AddMonitor<ChargeGuard>(builder.Services);
@@ -308,21 +301,7 @@ app.MapGet("/favicon.ico", () => AppPaths.Resource("phonebox.ico") is { } s ? Re
 // The version lets the settings page save only over what it loaded (X-Config-Version, see ConfigStore.Save).
 app.MapGet("/api/settings", (HttpRequest req, ConfigStore cfg, HttpResponse res) =>
 {
-    var config = cfg.Get();
-    var json = JsonSerializer.Serialize(config, ConfigStore.WriteOpts);
-    // Only a same-origin browser fetch from the desktop settings page gets credentials. The phone's native USB proxy
-    // does not send Fetch Metadata headers; redact for every other request on the local port, including callers that
-    // omit the phone headers or try to supply them themselves.
-    var desktopSettingsFetch = req.HttpContext.Connection.LocalPort == Port
-        && req.Headers["Sec-Fetch-Site"] == "same-origin"
-        && req.Headers["Sec-Fetch-Mode"] == "cors"
-        && req.Headers["Sec-Fetch-Dest"] == "empty";
-    if (req.HttpContext.Connection.LocalPort == Port && !desktopSettingsFetch)
-    {
-        var publicConfig = JsonSerializer.SerializeToNode(config, ConfigStore.WriteOpts)?.AsObject();
-        if (publicConfig?["steam"] is JsonObject steam) steam.Remove("apiKey");
-        json = publicConfig?.ToJsonString(ConfigStore.WriteOpts) ?? json;
-    }
+    var json = JsonSerializer.Serialize(cfg.Get(), ConfigStore.WriteOpts);
     res.Headers["X-Config-Version"] = cfg.Version.ToString();
     return Results.Text(json, "application/json; charset=utf-8");
 });
@@ -340,28 +319,6 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame 
     AgentConfig? proposed = null;
     try { proposed = JsonSerializer.Deserialize<AgentConfig>(body, ConfigStore.ReadOpts); }
     catch (JsonException) { }
-    // /api/settings redacts Steam's key for callers that are not the same-origin desktop page.
-    // Keep the configured secret if that redacted (or older) client sends it back as missing/null.
-    if (ConfigStore.PreserveSteamApiKey(proposed, cfg.Get().Steam.ApiKey))
-        body = JsonSerializer.Serialize(proposed, ConfigStore.WriteOpts);
-    if (proposed?.Steam is { } steam)
-    {
-        steam.SteamId = string.IsNullOrWhiteSpace(steam.SteamId) ? null : steam.SteamId.Trim();
-        if (steam.SteamId is { } profile && (profile.Length != 17 || !profile.All(char.IsAsciiDigit)))
-        {
-            if (!steam.Enabled || !SteamMonitor.WidgetWanted(proposed))
-                return Results.BadRequest(new { error = "Add a Steam widget to an enabled page and enable Steam before saving a profile URL" });
-            if (string.IsNullOrWhiteSpace(steam.ApiKey))
-                return Results.BadRequest(new { error = "Enter your Steam Web API key before saving a profile URL" });
-            try
-            {
-                steam.SteamId = await SteamMonitor.ResolveAccountId(profile, steam.ApiKey, ct);
-                body = JsonSerializer.Serialize(proposed, ConfigStore.WriteOpts);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (Exception ex) { return Results.BadRequest(new { error = SteamMonitor.Redact(SteamMonitor.UserError(ex), steam.ApiKey) }); }
-        }
-    }
     string? err;
     long savedVersion;
     lock (IconCommit) err = cfg.Save(body, expected, out savedVersion);
@@ -479,13 +436,10 @@ object State(IServiceProvider sp, long? ev)
         evSeq = push.Seq,
         events = ev is { } since ? push.Since(since) : [],
         pc = sp.GetRequiredService<SystemMonitor>().Snapshot(),
-        media = sp.GetRequiredService<MediaMonitor>().Snapshot(),
         audio = sp.GetRequiredService<AudioControl>().Snapshot(),
         ping = sp.GetRequiredService<PingMonitor>().Snapshot(),
         rules = sp.GetRequiredService<RuleEngine>().Active(),
         rulesPaused = sp.GetRequiredService<RuleEngine>().PausedUntil(),
-        privacy = sp.GetRequiredService<PrivacyMonitor>().Snapshot(),
-        obs = sp.GetRequiredService<ObsMonitor>().Snapshot() is { Connected: true } o ? new { o.Streaming, o.Recording, o.RecordPaused } : null,
         toggles = Shortcuts.States(sp.GetRequiredService<ConfigStore>().Get(), push, sp.GetRequiredService<AudioControl>()),
         cycles = Shortcuts.CycleStates(sp.GetRequiredService<ConfigStore>().Get()),
     };
@@ -576,73 +530,6 @@ app.MapPost("/api/console/{profile}/{slot}", async (string profile, string slot,
     return error is null ? Results.Ok(new { ok = true }) : Results.Json(new { error }, statusCode: status);
 });
 
-// OBS Studio (widget): state, scenes and the widget's buttons (only if a widget allows control).
-app.MapGet("/api/obs", (ObsMonitor obs, ConfigStore cfg) => Results.Json(new
-{
-    enabled = cfg.Get().Obs.Enabled,
-    snapshot = obs.Snapshot(),
-    control = cfg.Get().Widgets(enabledPagesOnly: true).Any(w => (w.Type == "obs" || w.Type.StartsWith("obs-")) && w.Bool("control") == true),
-}));
-app.MapPost("/api/obs/{action}", async (string action, string? scene, ObsMonitor obs) =>
-    await obs.ActAsync(action, scene) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
-// Settings › General › OBS › Test (local only: deliberately not under /api/obs, which the phone may reach over Wi-Fi)
-app.MapPost("/api/obs-test", async (ObsConfig body) => Results.Json(new { result = await ObsMonitor.TestAsync(body.Url, body.Password) }));
-
-// Discord (widget): voice channel, mute / deafen, joinable voice channels, notifications; buttons only if a widget allows control.
-app.MapGet("/api/discord", (DiscordMonitor dc, ConfigStore cfg) => Results.Json(new
-{
-    enabled = cfg.Get().Discord.Enabled,
-    snapshot = dc.Snapshot(),
-    control = DiscordMonitor.ControlAllowed(cfg.Get()),
-}));
-// Ids go in the query string: the Android app lets image requests through by exact path (READ_ONLY_IMAGES).
-app.MapGet("/api/discord/img", async (string kind, string id, string hash, DiscordMonitor dc, CancellationToken ct) =>
-    await dc.ImageAsync(kind, id, hash, ct) is { } img
-        ? Results.File(img.Data, img.Type, lastModified: null, entityTag: null, enableRangeProcessing: false) : Results.NotFound());
-app.MapPost("/api/discord/{action}", async (string action, string? channel, DiscordMonitor dc) =>
-    await dc.ActAsync(action, channel) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
-
-// Steam friends presence; the API key stays on the computer and only the public presence snapshot reaches the phone.
-app.MapGet("/api/steam", (SteamMonitor steam, ConfigStore cfg) =>
-{
-    var current = cfg.Get();
-    var widgets = current.Widgets(enabledPagesOnly: true).ToArray();
-    var includeFriends = widgets.Any(w => w.Type == "steam");
-    var includeOffline = widgets.Any(w => w.Type == "steam" && w.Bool("offline") == true);
-    var includeActivity = widgets.Any(w => w.Type == "steam-activity");
-    return Results.Json(new
-    {
-        enabled = current.Steam.Enabled,
-        snapshot = steam.Snapshot(includeFriends, includeOffline, includeActivity),
-    });
-});
-app.MapGet("/api/steam/avatar", async (string id, SteamMonitor steam, CancellationToken ct) =>
-    await steam.AvatarAsync(id, ct) is { } img
-        ? Results.File(img.Data, img.Type, lastModified: null, entityTag: null, enableRangeProcessing: false) : Results.NotFound());
-
-// Steam library from Steam's own files on this computer (no API key, no account): installed games, covers, the game
-// being played. Nothing is read while no Steam library widget is on an enabled page.
-app.MapGet("/api/steam/library", (SteamLibrary library) => Results.Json(library.View()));
-// The installed games (id and name) for the widget's favorites picker in settings. Not in Lan.cs: the computer only.
-app.MapGet("/api/steam/games", (SteamLibrary library) => Results.Json(library.Installed()));
-// A cover from Steam's appcache/librarycache, for an installed app id only (SteamLibrary.FindCover checks the path).
-// The id goes in the query string: the Android app lets image requests through by exact path (READ_ONLY_IMAGES).
-app.MapGet("/api/steam/cover", (string? id, SteamLibrary library, HttpResponse res) =>
-{
-    if (library.CoverPath(id) is not { } path) return Results.NotFound();
-    byte[] bytes;
-    try { bytes = File.ReadAllBytes(path); } catch { return Results.NotFound(); }
-    if (bytes.Length > SteamLibrary.MaxCoverBytes) return Results.NotFound();
-    res.Headers.CacheControl = "private, max-age=86400";
-    return Results.File(bytes, path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
-});
-// Starts an installed game through Steam (steam://rungameid/<id>) for the asking widget ("widget=pageId/widgetId"),
-// only with that widget's "Let the phone start games" on (off by default), like the App console and Dictation.
-app.MapPost("/api/steam/launch", (string? id, string? widget, HttpRequest req, SteamLibrary library) =>
-    library.Launch(req.Headers["X-PhoneBox-Device"].ToString(), widget, id) is { } refused
-        ? Results.BadRequest(new { error = refused.Error, code = refused.Code })
-        : Results.Ok(new { ok = true }));
-
 // Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
 app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));
 
@@ -678,7 +565,7 @@ app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.R
 // One "state" frame for all open streams: they wake on the same second (below), so the state is built and serialized once
 // per tick, not once per phone. Everything State() reads is a singleton, so the root provider will do.
 var stateFrames = new StateFrameCache(() => State(app.Services, null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
-app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, SpectrumAnalyzer spectrum, ILogger<Program> log) =>
+app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor sessions, GitHubMonitor gh, ILogger<Program> log) =>
 {
     var ct = ctx.RequestAborted;
     var isPhone = ctx.Request.Headers.ContainsKey("X-PhoneBox-App");
@@ -704,7 +591,6 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
         var seq = push.Seq;
         var lastWork = "";
         var next = 0L;
-        var lastSpec = 0L;
         var lastState = 0L;
         var tick = 0;
         while (!ct.IsCancellationRequested)
@@ -731,20 +617,9 @@ app.MapGet("/api/stream", async (HttpContext ctx, PushStore push, SessionMonitor
                 }
                 next = (now / 1000 + 1) * 1000; // the next whole second, the same for every stream (see stateFrames)
             }
-            // spectrum frames for a visualizer on screen (SpectrumAnalyzer runs only while a panel asks for it). While
-            // capture runs, every open stream gets them, also a second phone without a visualizer: the stream is opened
-            // by the app shell and /api/spectrum by the panel, and nothing ties the two together (over USB both phones
-            // are 127.0.0.1). The frames are small (48 numbers) and capture stops ~5 s after the last visible widget.
-            var specActive = spectrum.Active;
-            if (specActive && DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastSpec >= 1000 / SpectrumAnalyzer.Fps - 3)
-            {
-                lastSpec = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if (spectrum.Frame() is { } bands) await Send("spectrum", new { b = bands });
-            }
             var waitMs = next - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             // a change that arrived within 100 ms of the last state waits out the rest of that gap
             if (Volatile.Read(ref poked) == 1) waitMs = Math.Min(waitMs, lastState + 100 - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-            if (specActive) waitMs = Math.Min(waitMs, lastSpec + 1000 / SpectrumAnalyzer.Fps - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             await wake.WaitAsync(TimeSpan.FromMilliseconds(Math.Max(5, waitMs)), ct);
         }
     }
@@ -796,15 +671,6 @@ app.MapGet("/api/approvals", (ApprovalStore a) => Results.Json(new { items = a.S
 app.MapPost("/api/approvals/{id}", (string id, string decision, string? value, ApprovalStore a) =>
     a.Decide(id, decision, value) ? Results.Ok() : Results.NotFound());
 
-// Spectrum bars widget: each call keeps audio capture running for a few seconds and returns the latest bands
-// (the live stream also sends them as "spectrum" events; panels without the stream poll this instead).
-// Only band levels leave the agent, never audio; nothing is captured unless an enabled page has the widget.
-app.MapGet("/api/spectrum", (SpectrumAnalyzer spectrum) =>
-{
-    var shown = spectrum.Want();
-    return Results.Json(new { shown, active = spectrum.Active, fps = SpectrumAnalyzer.Fps, b = shown ? spectrum.Frame() : null });
-});
-
 // Output of a command widget (the command itself stays here).
 app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? force, CommandRunner runner) =>
     runner.Get(page, widget, force == true) is { } r ? Results.Json(r) : Results.NotFound());
@@ -830,16 +696,6 @@ app.MapGet("/api/phones", (ConfigStore cfg) =>
         name = c.Phones.FirstOrDefault(p => p.Id == id)?.Name,
         pages = c.Phones.FirstOrDefault(p => p.Id == id)?.Pages,
     }).OrderByDescending(p => p.lastSeen ?? 0));
-});
-
-app.MapGet("/api/art", (MediaMonitor media) =>
-    media.Art is { } art ? Results.File(art.Bytes, art.Mime) : Results.NotFound());
-
-app.MapPost("/api/media/{action}", async (string action, long? ms, MediaMonitor media) =>
-{
-    var ok = await media.Control(action, ms);
-    StateSignal.Poke();
-    return ok ? Results.Json(new { ok = true, media = media.Snapshot() }) : Results.BadRequest();
 });
 
 app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>
