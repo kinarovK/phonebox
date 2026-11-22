@@ -21,9 +21,6 @@ public sealed class AgentConfig
     public CursorConfig Cursor { get; set; } = new();
     /// <summary>Antigravity chats on the AI sessions widget (off by default).</summary>
     public AntigravityConfig Antigravity { get; set; } = new();
-    /// <summary>OpenCode prompts and sessions on the phone; everything is off until the settings page turns it on.</summary>
-    [JsonPropertyName("opencode")]
-    public OpenCodeConfig OpenCode { get; set; } = new();
     public List<PageConfig> Pages { get; set; } = [];
     /// <summary>Per-phone settings when several phones use this agent: a name and which pages each one shows.</summary>
     public List<PhoneConfig> Phones { get; set; } = [];
@@ -51,8 +48,6 @@ public sealed class AgentConfig
                 w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance, w.Options,
             }),
         }),
-        // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
-        opencode = new { OpenCode.AlwaysCountdownSec },
     };
 
     /// <summary>Ending processes is allowed when an enabled page has a processes widget that allows it.</summary>
@@ -209,26 +204,6 @@ public sealed class AntigravityConfig
     /// <summary>Show recent Antigravity chats on the AI sessions widget (off by default).</summary>
     public bool Sessions { get; set; }
     /// <summary>Show each Antigravity chat's title from its local annotation file on the phone (off by default).</summary>
-    public bool ShareSessionTitles { get; set; }
-}
-
-public sealed class OpenCodeConfig
-{
-    /// <summary>Show OpenCode permission prompts on the phone. Off until Settings › General turns it on: letting the
-    /// phone approve commands is opt-in, like Claude Code's hook install.</summary>
-    public bool PhoneApprovals { get; set; }
-    /// <summary>Show recent OpenCode sessions on the AI sessions widget (off by default, like Cursor's).</summary>
-    public bool Sessions { get; set; }
-    /// <summary>How long the phone may answer before the prompt is left to OpenCode's own window on the desktop.</summary>
-    public int TimeoutSec { get; set; } = 90;
-    /// <summary>Only use the phone when the PC has been idle for a minute (OpenCode's own prompt is on the screen otherwise).</summary>
-    public bool OnlyWhenAway { get; set; }
-    /// <summary>Seconds the Allow always button waits before it can be pressed (it saves a pattern for the project); 0 arms it at once.</summary>
-    public int AlwaysCountdownSec { get; set; } = 10;
-    /// <summary>Also watch OpenCode inside WSL distros that are already running (see OpenCodeServices); off until turned on.</summary>
-    public bool WatchWsl { get; set; }
-    /// <summary>Show each OpenCode session's title on the phone. OpenCode draws the titles from the conversation,
-    /// so they stay off the phone until you turn this on, like Claude's shareSessionTitles.</summary>
     public bool ShareSessionTitles { get; set; }
 }
 
@@ -419,9 +394,6 @@ public sealed partial class ConfigStore(string path)
         c.Claude.TimeoutSec = Math.Clamp(c.Claude.TimeoutSec, 10, 3600);
         c.Cursor ??= new();
         c.Antigravity ??= new();
-        c.OpenCode ??= new();
-        c.OpenCode.TimeoutSec = Math.Clamp(c.OpenCode.TimeoutSec, 10, 3600);
-        c.OpenCode.AlwaysCountdownSec = Math.Clamp(c.OpenCode.AlwaysCountdownSec, 0, 60);
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = UpdateConfig.DefaultRepo;
         c.Lan.Port = Math.Clamp(c.Lan.Port, 1024, 65535);
         if (string.IsNullOrWhiteSpace(c.Lan.Token)) c.Lan.Token = NewToken();

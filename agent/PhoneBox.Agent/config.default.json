@@ -20,10 +20,6 @@
   "antigravity": { "sessions": false, "shareSessionTitles": false },
   // Live Codex quotas read through the Codex CLI (off by default; Settings › General › AI quotas & CodexBar)
   "codexBar": { "codexLiveQuota": false },
-  // OpenCode permission prompts on the phone: Allow (once or always) and Deny, read from OpenCode's
-  // background service on 127.0.0.1. Off by default: set "phoneApprovals": true (or Settings › General) to let
-  // the phone answer. "watchWsl" adds OpenCode inside running WSL distros, "shareSessionTitles" the session titles.
-  "opencode": { "phoneApprovals": false, "sessions": false, "timeoutSec": 90, "alwaysCountdownSec": 10, "watchWsl": false, "shareSessionTitles": false },
 
   // Night mode: between these times the screen dims and only the clock stays. Tap to wake it for 30 s.
   "night": { "enabled": true, "start": "00:30", "end": "07:30", "brightness": 0.02 },

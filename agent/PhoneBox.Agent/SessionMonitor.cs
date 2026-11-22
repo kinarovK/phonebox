@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace PhoneBox.Agent;
 
 /// <param name="Status">busy | waiting | shell | idle</param>
-/// <param name="Title">The chat's title: carried only while the user shares session titles — Claude Code's own setting, "Show OpenCode session titles" for OpenCode, or "Show Antigravity chat titles on the phone" for Antigravity.</param>
+/// <param name="Title">The chat's title: carried only while the user shares session titles — Claude Code's own setting, or "Show Antigravity chat titles on the phone" for Antigravity.</param>
 public sealed record AgentSession(string Id, string Tool, string Name, string Project, string Status,
     string? WaitingFor, long Since, long StartedAt, int? Pid = null,
     string? Model = null, string? Effort = null, long? TotalTokens = null, long? InputTokens = null,
@@ -20,7 +20,6 @@ public sealed record AgentSession(string Id, string Tool, string Name, string Pr
 ///  - Codex: the latest events in recent rollout files under ~/.codex/sessions
 ///  - Cursor (opt-in): recent agent transcripts under ~/.cursor/projects/*/agent-transcripts
 ///  - Antigravity (opt-in): recent user transcripts under ~/.gemini/antigravity/brain and ~/.gemini/antigravity-cli/brain
-///  - OpenCode: recent sessions from the local HTTP API of its background service (native and in WSL)
 /// </summary>
 public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigStore? config = null) : BackgroundService
 {
@@ -41,24 +40,19 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
     /// <summary>
     /// The sessions, for everything that sends them anywhere (the live stream, /api/work, the rules). This is the one
     /// place they leave this class, so the title settings are applied here: Claude Code's chats carry a title only
-    /// while Settings › Claude Code › "Show session titles on the phone" is on, OpenCode's only while
-    /// Settings › General › "Show OpenCode session titles" is on, and Antigravity's only while
-    /// Settings › General › "Show Antigravity chat titles on the phone" is on. An OpenCode row whose sharing was just turned off
-    /// also loses the title from its Name — the reader puts the short session id there when titles are off, and the
-    /// next monitor refresh (about two seconds) does the same; until then this keeps the title off the phone.
+    /// while Settings › Claude Code › "Show session titles on the phone" is on, and Antigravity's only while
+    /// Settings › General › "Show Antigravity chat titles on the phone" is on.
     /// </summary>
     public IReadOnlyList<AgentSession> Snapshot()
     {
         var all = _sessions;
         if (!all.Any(s => s.Title is not null)) return all;
         var claude = ShareTitles;
-        var opencode = config?.Get().OpenCode.ShareSessionTitles ?? false;
         var antigravity = config?.Get().Antigravity.ShareSessionTitles ?? false;
-        if (claude && opencode && antigravity) return all;
+        if (claude && antigravity) return all;
         return all.Select(s => s.Tool switch
         {
             "claude" when !claude => s with { Title = null },
-            "opencode" when !opencode => s with { Title = null, Name = OpenCodeSessions.ShortId(s.Id["opencode:".Length..]) },
             "antigravity" when !antigravity => s with { Title = null },
             _ => s,
         }).ToList();
@@ -76,17 +70,6 @@ public sealed partial class SessionMonitor(ILogger<SessionMonitor> log, ConfigSt
             var list = new List<AgentSession>();
             try { list.AddRange(ReadClaude(titles: ShareTitles)); } catch (Exception ex) { log.LogDebug("claude sessions: {Msg}", ex.Message); }
             try { list.AddRange(ReadCodex()); } catch (Exception ex) { log.LogDebug("codex sessions: {Msg}", ex.Message); }
-            // OpenCode sessions are off until Settings › General › "Show OpenCode sessions" is enabled; while off,
-            // the service is not read at all — not even the every-2-seconds GET.
-            if (config?.Get().OpenCode.Sessions == true)
-            {
-                try
-                {
-                    var opencode = config!.Get().OpenCode;
-                    list.AddRange(await OpenCodeSessions.ReadAsync(log, ct, wslEnabled: opencode.WatchWsl, titles: opencode.ShareSessionTitles));
-                }
-                catch (Exception ex) { log.LogDebug("opencode sessions: {Msg}", ex.Message); }
-            }
             // Cursor sessions are off until Settings › General › Cursor sessions is enabled.
             if (config?.Get().Cursor.Sessions == true)
             {

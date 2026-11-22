@@ -407,12 +407,12 @@ W.sessions = {
     const tokens = (n) => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
     const statusText = (s) => s.status === 'busy' ? t('sess.working') : s.status === 'waiting' ? t('sess.waiting') : s.status === 'shell' ? t('sess.shell') : s.outcome === 'completed' ? t('sess.completed') : s.outcome === 'failed' ? t('sess.failed') : s.outcome === 'aborted' ? t('sess.aborted') : t('sess.idle');
     // The tool each session comes from: one glyph in the list, a glyph and a name in the details panel.
-    const toolIcon = (tool) => tool === 'claude' ? '✳' : tool === 'codex' ? '◎' : tool === 'cursor' ? '◆' : tool === 'opencode' ? '◈' : tool === 'antigravity' ? Q_STYLE.antigravity.logo : '◎';
-    const toolTitle = (tool) => tool === 'claude' ? 'Claude Code' : tool === 'codex' ? 'Codex' : tool === 'cursor' ? 'Cursor' : tool === 'opencode' ? 'OpenCode' : tool === 'antigravity' ? 'Antigravity' : 'Codex';
+    const toolIcon = (tool) => tool === 'claude' ? '✳' : tool === 'codex' ? '◎' : tool === 'cursor' ? '◆' : tool === 'antigravity' ? Q_STYLE.antigravity.logo : '◎';
+    const toolTitle = (tool) => tool === 'claude' ? 'Claude Code' : tool === 'codex' ? 'Codex' : tool === 'cursor' ? 'Cursor' : tool === 'antigravity' ? 'Antigravity' : 'Codex';
     const ageText = (since) => Date.now() - since < 60_000 ? 'just now' : shortDur(Date.now() - since) + ' ago';
     // A session's title is the main label and the project folder goes under it: Claude Code sends it only while
-    // Settings › Claude Code › "Show session titles on the phone" is on, OpenCode only while "Show OpenCode session
-    // titles" is on, and Antigravity only while "Show Antigravity chat titles on the phone" is on; without a title
+    // Settings › Claude Code › "Show session titles on the phone" is on, and Antigravity only while "Show Antigravity
+    // chat titles on the phone" is on; without a title
     // the folder is the label, as before.
     const titleOf = (s) => s.title || s.project || s.name;
     const folderOf = (s) => (s.title ? s.project : '');

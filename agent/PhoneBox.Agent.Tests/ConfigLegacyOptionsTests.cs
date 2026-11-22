@@ -118,4 +118,19 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
         Assert.Equal("01:15", store.Get().Night.Start);
         Assert.Equal(["clock"], store.Get().Pages.Single().Widgets!.Select(w => w.Type));
     }
+
+    [Fact]
+    public void ConfigFromBeforeTheOpenCodeRemovalStillLoads()
+    {
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, """
+            {"opencode":{"phoneApprovals":true,"sessions":true,"timeoutSec":90,"alwaysCountdownSec":10,"watchWsl":true,"shareSessionTitles":true},
+             "claude":{"phoneApprovals":true,"timeoutSec":45},
+             "night":{"start":"01:15"}}
+            """);
+        var config = new ConfigStore(path).Get();
+        Assert.Equal("01:15", config.Night.Start);
+        Assert.Equal(45, config.Claude.TimeoutSec);
+        Assert.DoesNotContain("opencode", JsonSerializer.Serialize(config.ToPublic()), StringComparison.OrdinalIgnoreCase);
+    }
 }

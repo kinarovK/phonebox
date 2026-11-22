@@ -389,7 +389,6 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .sess .tl.claude { color: #d97757; }
 .sess .tl.codex { color: #e5e7eb; }
 .sess .tl.cursor { color: #67e8f9; }
-.sess .tl.opencode { color: #a78bfa; }
 .sess .tl.antigravity { color: #38bdf8; }
 .sess-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .sess .nm { min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -557,7 +556,6 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 }
 .ap-head { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
 .ap-logo { color: #d97757; font-size: 16px; }
-.ap-logo.opencode { color: #a78bfa; }
 .ap-logo.codex { color: #67e8f9; }
 .ap-logo.claude { color: #d97757; }
 .ap-sep { color: var(--dim); }
@@ -572,34 +570,13 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .ap-desc:empty { display: none; }
 .ap-detail { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 10px 12px; border-radius: 12px; background: #06080b; border: 1px solid var(--line);
   font: 12.5px/1.45 "Roboto Mono", monospace; color: #d5dce5; white-space: pre-wrap; word-break: break-word; touch-action: pan-y; -webkit-user-select: text; user-select: text; }
-/* What Allow always would save (OpenCode's proposed pattern), shown so the card says what it agrees to. */
-.ap-pattern { font-size: 12px; color: var(--muted); }
-.ap-pattern:empty { display: none; }
 .ap-foot { display: flex; align-items: center; gap: 12px; }
 .ap-time { flex: 1; font-size: 12px; color: var(--dim); }
 .ap-btn { min-width: 150px; padding: 14px 22px; border-radius: 14px; font-size: 17px; font-weight: 700; }
 .ap-btn.deny { background: rgba(239, 68, 68, .16); color: #fca5a5; border: 1px solid rgba(239, 68, 68, .4); }
-.ap-btn.always { background: rgba(34, 197, 94, .13); color: #86efac; border: 1px solid rgba(34, 197, 94, .4); }
 .ap-btn.allow { background: #22c55e; color: #052e14; }
 .ap-btn:active { transform: scale(.96); }
 .ap-btn:disabled { opacity: .4; }
-/* OpenCode's third button (Allow always): the two greens and the deny share the row, so the countdown hides and
-   the buttons give up their fixed width. */
-#approval.with-always .ap-time { display: none; }
-#approval.with-always .ap-btn { min-width: 0; flex: 1; padding: 14px 8px; }
-/* Agent questions (OpenCode forms): the question steps aside and the answers take the space. */
-#approval.with-choices .ap-detail { flex: 0 0 auto; max-height: 26%; }
-#approval.with-choices .ap-choices { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; touch-action: pan-y; }
-.ap-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: start; padding: 12px 16px; border-radius: 14px;
-  background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: var(--text); font-size: 15px; font-weight: 600; }
-.ap-opt small { font-size: 12px; font-weight: 400; color: var(--muted); }
-.ap-opt:active { transform: scale(.98); }
-.ap-opt:disabled { opacity: .4; }
-.ap-custom { display: flex; gap: 8px; align-items: stretch; }
-.ap-custom input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 14px; background: #06080b; border: 1px solid var(--line);
-  color: var(--text); font: inherit; font-size: 15px; -webkit-user-select: text; user-select: text; }
-.ap-custom input:focus { outline: none; border-color: rgba(34, 197, 94, .5); }
-.ap-custom .ap-btn { min-width: 0; padding: 12px 18px; font-size: 15px; }
 
 /* ---------- night ---------- */
 #night { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 30; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; color: #4a3a33; }

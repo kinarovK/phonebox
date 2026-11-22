@@ -458,14 +458,6 @@ nav a.on::before { color: var(--accent); }
         <label class="check"><input type="checkbox" data-bind="claude.onlyWhenAway"> <span data-i18n="s.claude.onlyWhenAway">Only when I am away from the PC (no keyboard or mouse for a minute)</span></label>
         <label class="check"><input type="checkbox" data-bind="claude.shareConversation"> <span data-i18n="s.claude.shareConversation">Show the conversation on the phone (tap a Claude Code session to see its recent messages and steps; these are your prompts and Claude's replies, sent only to your phone)</span></label>
         <div class="field" style="max-width:260px;margin-top:12px"><label data-i18n="s.claude.timeout">Seconds to answer before the terminal takes over</label><input type="number" min="10" max="3600" data-bind="claude.timeoutSec" data-type="int"></div>
-
-        <div class="row" style="margin:14px 0 4px"><b style="min-width:92px">OpenCode</b></div>
-        <p class="hint" style="margin:-2px 0 12px 100px" data-i18n="s.opencode.hint">OpenCode permission prompts and agent questions reach the phone while its background service is running. Off until you turn it on here. Allow always saves the requested pattern for the project, so it arms only after a short countdown.</p>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="opencode.phoneApprovals"><span></span></label> <span data-i18n="s.opencode.askOnPhone">Ask on the phone</span></div>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="opencode.sessions"><span></span></label> <span data-i18n="s.opencode.sessions">Show OpenCode sessions</span></div>
-        <label class="check"><input type="checkbox" data-bind="opencode.shareSessionTitles"> <span data-i18n="s.opencode.shareSessionTitles">Show OpenCode session titles on the phone (OpenCode draws them from the conversation)</span></label>
-        <div class="row" style="margin-bottom:8px"><label class="switch"><input type="checkbox" data-bind="opencode.watchWsl"><span></span></label> <span data-i18n="s.opencode.watchWsl">Also watch OpenCode in WSL</span></div>
-        <div class="field" style="max-width:260px"><label data-i18n="s.opencode.countdown">Seconds before Allow always can be pressed (0 = at once)</label><input type="number" min="0" max="60" data-bind="opencode.alwaysCountdownSec" data-type="int"></div>
       </div>
 
       <div class="card">
@@ -1673,7 +1665,7 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
+  cfg.pages = fitPages(cfg.pages); cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;

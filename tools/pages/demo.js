@@ -49,7 +49,6 @@
       updates: { auto: true, repo: 'ersinkoc/phonebox' },
       claude: { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false },
       antigravity: { sessions: false, shareSessionTitles: false },
-      opencode: { phoneApprovals: false, sessions: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false },
       pages: PAGES.filter((id) => byId[id]).map((id) => {
         const t = byId[id], seen = {};
         return { appearance: null, id, title: t.title, icon: t.icon, enabled: true, idleSec: null, widgets: t.widgets.map((w) => {

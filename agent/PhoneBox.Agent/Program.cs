@@ -71,7 +71,6 @@ AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
 AddMonitor<ProcessMonitor>(builder.Services);
 AddMonitor<SessionMonitor>(builder.Services);
-AddMonitor<OpenCodeApprovals>(builder.Services);
 AddMonitor<GitHubMonitor>(builder.Services);
 AddMonitor<PingMonitor>(builder.Services);
 AddMonitor<AdbReverse>(builder.Services);
@@ -464,8 +463,8 @@ app.MapDelete("/api/codex/hook", (ConfigStore cfg) => CodexHook.Configure(false,
 
 // Permission prompts waiting for the phone (posted by an AI coding agent hook).
 app.MapGet("/api/approvals", (ApprovalStore a) => Results.Json(new { items = a.Snapshot() }));
-app.MapPost("/api/approvals/{id}", (string id, string decision, string? value, ApprovalStore a) =>
-    a.Decide(id, decision, value) ? Results.Ok() : Results.NotFound());
+app.MapPost("/api/approvals/{id}", (string id, string decision, ApprovalStore a) =>
+    a.Decide(id, decision) ? Results.Ok() : Results.NotFound());
 
 app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req) =>
     Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString()) }));

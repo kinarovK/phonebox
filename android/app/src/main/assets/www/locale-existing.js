@@ -194,7 +194,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Abläuft in 1 Woche {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity-Sitzungen: arbeiten, warten, im Leerlauf.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / Antigravity-Sitzungen: arbeiten, warten, im Leerlauf.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -225,7 +225,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Chart",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Wählen Sie eine Voreinstellung aus und passen Sie dann die einzelnen Werte an. Sichere Bereiche und Seitennavigation bleiben reserviert.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode-Sitzungen: arbeiten, warten, im Leerlauf.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Claude Code / Codex-Sitzungen: arbeiten, warten, im Leerlauf.",
       "Claude and Codex usage limits.": "Claude und Codex Nutzungsgrenzen.",
       "Clock": "Uhr",
@@ -696,7 +695,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Expire dans {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessions Claude Code / Codex / Cursor / OpenCode / Antigravity: en cours, en attente, inactif.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Sessions Claude Code / Codex / Cursor / Antigravity: en cours, en attente, inactif.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -727,7 +726,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Graphique",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Choisissez un préréglage, puis ajustez les valeurs individuelles. Les zones sécurisées et la navigation de page restent réservées.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Sessions Claude Code / Codex / Cursor / OpenCode: en cours, en attente, inactif.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Sessions Claude Code / Codex: en cours, en attente, inactif.",
       "Claude and Codex usage limits.": "Limites d'utilisation de Claude et Codex.",
       "Clock": "Horloge",
@@ -1198,7 +1196,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Expira en 1 año {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sesiones de Claude Code / Codex / Cursor / OpenCode / Antigravity: en funcionamiento, esperando, inactivo.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Sesiones de Claude Code / Codex / Cursor / Antigravity: en funcionamiento, esperando, inactivo.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -1229,7 +1227,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Gráfico",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Elija un preset y ajuste los valores individuales. Las áreas seguras y la navegación de página permanecen reservadas.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Sesiones de Claude Code / Codex / Cursor / OpenCode: en funcionamiento, esperando, inactivo.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Sesiones Claude Code / Codex: en funcionamiento, esperando, inactivo.",
       "Claude and Codex usage limits.": "Límites de uso de Claude y Codex.",
       "Clock": "Reloj",
@@ -1700,7 +1697,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Scade in 1 giorno {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessioni Claude Code / Codex / Cursor / OpenCode / Antigravity: in esecuzione, in attesa, inattivi.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Sessioni Claude Code / Codex / Cursor / Antigravity: in esecuzione, in attesa, inattivi.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -1731,7 +1728,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Grafico",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Scegli un preset e regola i singoli valori. Le aree sicure e la navigazione della pagina rimangono riservate.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Sessioni Claude Code / Codex / Cursor / OpenCode: in esecuzione, in attesa, inattivi.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Sessioni Claude Code / Codex: in esecuzione, in attesa, inattivi.",
       "Claude and Codex usage limits.": "Limiti di utilizzo Claude e Codex.",
       "Clock": "Orologio",
@@ -2202,7 +2198,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Expira em 1 ano {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sessões Claude Code / Codex / Cursor / OpenCode / Antigravity: em funcionamento, esperando, ocioso.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Sessões Claude Code / Codex / Cursor / Antigravity: em funcionamento, esperando, ocioso.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -2233,7 +2229,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Gráfico",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Escolha uma predefinição e ajuste os valores individuais. Áreas seguras e navegação de página permanecem reservadas.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Sessões Claude Code / Codex / Cursor / OpenCode: em funcionamento, esperando, ocioso.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Sessões Claude Code / Codex: em funcionamento, esperando, ocioso.",
       "Claude and Codex usage limits.": "Limites de uso Claude e Codex.",
       "Clock": "Relógio",
@@ -2721,7 +2716,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Vervalt in 1 week {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity sessies: werken, wachten, inactief.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / Antigravity sessies: werken, wachten, inactief.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -2752,7 +2747,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Grafiek",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Kies een voorinstelling en pas vervolgens individuele waarden aan. Veilige gebieden en paginanavigatie blijven gereserveerd.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode sessies: werken, wachten, inactief.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Claude Code / Codex sessies: werken, wachten, inactief.",
       "Claude and Codex usage limits.": "Gebruikslimieten van Claude en Codex.",
       "Clock": "Klok",
@@ -3223,7 +3217,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Wygasa w ciągu {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Sesje Claude Code / Codex / Cursor / OpenCode / Antigravity: praca, oczekiwanie, bezczynność.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Sesje Claude Code / Codex / Cursor / Antigravity: praca, oczekiwanie, bezczynność.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -3254,7 +3248,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Chart",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Wybierz ustawienia wstępne, a następnie dostosuj indywidualne wartości. Bezpieczne obszary i nawigacja na stronie pozostają zarezerwowane.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Sesje Claude Code / Codex / Cursor / OpenCode: praca, oczekiwanie, bezczynność.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Sesje Claude Code / Codex: praca, oczekiwanie, bezczynność.",
       "Claude and Codex usage limits.": "Limity użytkowania Claude i Codex.",
       "Clock": "Zegar",
@@ -3725,7 +3718,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "Истечение в {time} ."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Сеансы Claude Code / Codex / Cursor / OpenCode / Antigravity: работающие, ожидающие, неактивные.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Сеансы Claude Code / Codex / Cursor / Antigravity: работающие, ожидающие, неактивные.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -3756,7 +3749,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Диаграмма",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Выберите предварительное настройку, а затем измените индивидуальные значения. Безопасные зоны и навигацию страницы остаются зарезервированными.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Сеансы Claude Code / Codex / Cursor / OpenCode: работающие, ожидающие, неактивные.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Сеансы Claude Code / Codex: работающие, ожидающие, неактивные.",
       "Claude and Codex usage limits.": "Ограничения использования Claude и Codex.",
       "Clock": "Часы",
@@ -4559,7 +4551,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "届满日期 {time}."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex 光标 OpenCode / Antigravity 会话:工作,等待,闲置。",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex 光标 / Antigravity 会话:工作,等待,闲置。",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -4590,7 +4582,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "图表",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "选择预设,然后调整单个值。 安全区域和页面导航保留。",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Claude Code / Codex 光标 OpenCode 会话:工作,等待,闲置。",
       "Claude Code / Codex sessions: working, waiting, idle.": "Claude Code / Codex 会话:工作、等待、空闲。",
       "Claude and Codex usage limits.": "Claude 和 Codex 使用限制。",
       "Clock": "时钟",

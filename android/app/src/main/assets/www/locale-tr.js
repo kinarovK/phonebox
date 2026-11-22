@@ -173,7 +173,7 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "s.pair.expires": "{time}'de sona erer."
     },
     "catalog": {
-      "Claude Code / Codex / Cursor / OpenCode / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode / Antigravity oturumları: çalışma, bekleme, boş.",
+      "Claude Code / Codex / Cursor / Antigravity sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / Antigravity oturumları: çalışma, bekleme, boş.",
       "1": "1",
       "2": "2",
       "3": "3",
@@ -204,7 +204,6 @@ window.PhoneBoxLocaleData = Object.assign(window.PhoneBoxLocaleData || {}, {
       "Chart": "Grafik",
       "Choose a preset, then adjust individual values. Safe areas and page navigation remain reserved.": "Öne Çıkan Bir Ön Ayar Seç, Sonra Bireysel Değerleri Düzenle. Güvenli Alanlar ve Sayfa Navigasyonu Rezerv Edilmiştir.",
       "Claude": "Claude",
-      "Claude Code / Codex / Cursor / OpenCode sessions: working, waiting, idle.": "Claude Code / Codex / Cursor / OpenCode oturumları: çalışma, bekleme, boş.",
       "Claude Code / Codex sessions: working, waiting, idle.": "Claude Code / Codex oturumları: çalışmaktadır, beklemektedir, boştur.",
       "Claude and Codex usage limits.": "Claude ve Codex kullanım sınırları.",
       "Clock": "Saat",

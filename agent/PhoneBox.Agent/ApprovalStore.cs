@@ -7,21 +7,9 @@ namespace PhoneBox.Agent;
 /// <param name="Detail">What it wants to do: the command, the file path, the URL…</param>
 /// <param name="Tool">The tool the coding agent wants to use (Bash, Edit, Write, WebFetch, an MCP tool…).</param>
 /// <param name="Detail">What it wants to do: the command, the file path, the URL…</param>
-/// <param name="Kind">"permission" (Allow / Deny) or "question" (an agent question; OpenCode's can be answered on the phone).</param>
-/// <param name="Options">For a question: the answers to pick from, in order.</param>
-/// <param name="Custom">For a question: a typed answer is accepted too (OpenCode's "custom" field flag).</param>
-/// <param name="Always">Offer an Allow always button: true for OpenCode's permission prompts (OpenCode saves the pattern).</param>
-/// <param name="AlwaysNotBefore">Earliest moment Allow always may be taken: the countdown, checked here too — the
-/// phone's own countdown is a guard rail, not the security check.</param>
-/// <param name="AlwaysPattern">What Allow always would save for the project (OpenCode's proposed pattern), shown on
-/// the card so the user can see what they would allow from then on.</param>
+/// <param name="Kind">"permission" (Allow / Deny) or "question" (an agent question, answered at the PC).</param>
 public sealed record Approval(string Id, string Source, string Session, string Project, string Cwd, string Tool, string Detail,
-    string? Description, long CreatedAt, long ExpiresAt, string Kind = "permission",
-    ApprovalOption[]? Options = null, bool Custom = false, bool Always = false,
-    long AlwaysNotBefore = 0, string? AlwaysPattern = null);
-
-/// <summary>One answer an agent question can be answered with.</summary>
-public sealed record ApprovalOption(string Value, string Label, string? Description);
+    string? Description, long CreatedAt, long ExpiresAt, string Kind = "permission");
 
 /// <summary>
 /// Permission prompts waiting for an answer from the phone. An AI coding-agent hook posts the request and waits; the
@@ -78,41 +66,18 @@ public sealed class ApprovalStore(PushStore events, ILogger<ApprovalStore> log)
         }
     }
 
-    public bool Decide(string id, string decision, string? value = null)
+    public bool Decide(string id, string decision)
     {
         if (!_pending.TryGetValue(id, out var p)) return false;
         var a = p.Approval;
         var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
         if (a.ExpiresAt <= now) return false;
         // An answer is tied to the card it answers — the phone's countdown is a guard rail, not the security check.
-        // A permission card takes allow / deny, and "always" only when the card offers it (OpenCode saves the
-        // pattern) and not before the countdown. A question card takes an answer: one of the card's choices, or a
-        // typed answer when the card allows one. "skip" ("Got it") ends a question the phone cannot answer, without
-        // a decision. Anything else is not this card's answer and is refused.
-        string? result;
-        if (a.Kind == "question")
-        {
-            var raw = value ?? "";
-            // the card's choices are matched exactly as they were offered (no trimming or capping first); a typed
-            // answer is trimmed and capped for the reply
-            string Typed(string s) { var t = s.Trim(); return t.Length > 500 ? t[..500] : t; }
-            if (decision == "skip" && a.Options is not { Length: > 0 } && !a.Custom) result = "skip";
-            else if (decision == "answer" && raw.Length > 0
-                && a.Options is { Length: > 0 } opts && Array.Find(opts, o => o.Value == raw) is { } hit)
-                result = hit.Value;
-            else if (decision == "answer" && a.Custom && Typed(raw) is { Length: > 0 } typed)
-                result = typed; // a typed answer — also one that is not among the card's choices; blank is no answer
-            else result = null;
-        }
-        else
-        {
-            result = decision switch
-            {
-                "allow" or "deny" => decision,
-                "always" when a.Always && now >= a.AlwaysNotBefore => "always",
-                _ => null,
-            };
-        }
+        // A permission card takes allow / deny. A question card takes only "skip" ("Got it"): the question is
+        // answered at the PC, so it ends without a decision. Anything else is not this card's answer and is refused.
+        var result = a.Kind == "question"
+            ? decision == "skip" ? "skip" : null
+            : decision is "allow" or "deny" ? decision : null;
         if (result is null)
         {
             log.LogDebug("approval {Id}: refused {Decision} (not an answer this card takes)", id, decision);

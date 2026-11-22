@@ -43,15 +43,14 @@ public static class ClaudeHook
             question ? "question" : "permission");
 
         var decision = await approvals.AskAsync(a, aborted);
-        // "skip" and an OpenCode-style typed answer ("answer") have no Claude Code equivalent: no decision here
-        if (decision is not ("allow" or "always" or "deny")) return null;
+        // "skip" (a question answered at the PC) has no Claude Code equivalent: no decision here
+        if (decision is not ("allow" or "deny")) return null;
         return new
         {
             hookSpecificOutput = new
             {
                 hookEventName = "PermissionRequest",
-                // "always" (Allow always, an OpenCode answer) has no Claude Code equivalent and allows once like "allow"
-                decision = decision is "allow" or "always"
+                decision = decision == "allow"
                     ? (object)new { behavior = "allow" }
                     : new { behavior = "deny", message = "Denied from the PhoneBox panel." },
             },
@@ -59,11 +58,9 @@ public static class ClaudeHook
     }
 
     /// <summary>
-    /// What the panel shows as the project: the workspace name WorkBuddy remembers for a directory (its sessions are
-    /// invisible to <see cref="SessionMonitor"/>), otherwise the folder name as before.
+    /// What the panel shows as the project: the folder name.
     /// </summary>
-    internal static string ProjectName(string cwd, string? homeDir = null) =>
-        WorkBuddyNames.For(cwd, homeDir) ?? Path.GetFileName(cwd.TrimEnd('\\', '/'));
+    internal static string ProjectName(string cwd) => Path.GetFileName(cwd.TrimEnd('\\', '/'));
 
     private static string ToolTitle(string tool) => tool switch
     {
