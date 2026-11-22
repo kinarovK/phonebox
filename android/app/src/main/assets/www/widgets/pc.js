@@ -868,7 +868,6 @@ W.onair = {
     };
   },
 };
-W['meeting-status'] = W.onair;
 
 W.battery = {
   needs: ['tick'],

@@ -18,53 +18,22 @@ public sealed class ObsPermissionTests
         await using var fixture = await ObsPermissionFixture.Create();
         fixture.Configure(pageEnabled: false, control: true, stack);
         Assert.Contains("turned off", await fixture.Monitor.ActAsync("record", null));
-        Assert.False((await fixture.Monitor.DeckAct("record", null, null, null, default)).Ok);
         Assert.Equal(0, fixture.Mutations);
     }
 
     [Fact]
-    public async Task VisibleWidgetPermissionStillControlsBothObsSurfaces()
+    public async Task VisibleWidgetPermissionStillControlsObs()
     {
         await using var fixture = await ObsPermissionFixture.Create();
         fixture.Configure(pageEnabled: true, control: false);
         Assert.NotNull(await fixture.Monitor.ActAsync("record", null));
-        Assert.False((await fixture.Monitor.DeckAct("record", null, null, null, default)).Ok);
         Assert.Equal(0, fixture.Mutations);
         fixture.Configure(pageEnabled: true, control: true);
         Assert.Null(await fixture.Monitor.ActAsync("record", null));
-        Assert.True((await fixture.Monitor.DeckAct("record", null, null, null, default)).Ok);
-        Assert.Equal(2, fixture.Mutations);
+        Assert.Equal(1, fixture.Mutations);
         fixture.Configure(pageEnabled: false, control: true);
         Assert.NotNull(await fixture.Monitor.ActAsync("record", null));
-        Assert.False((await fixture.Monitor.DeckAct("record", null, null, null, default)).Ok);
-        Assert.Equal(2, fixture.Mutations);
-    }
-
-    [Fact]
-    public async Task HidingTheWidgetDuringDiscoveryStopsTheDeckAction()
-    {
-        await using var fixture = await ObsPermissionFixture.Create();
-        fixture.Configure(pageEnabled: true, control: true, obsEnabled: true);
-        fixture.HoldInputs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        var act = fixture.Monitor.DeckAct("record", null, null, null, default);
-        try
-        {
-            await fixture.InputsEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            fixture.Configure(pageEnabled: false, control: true, obsEnabled: true);
-        }
-        finally { fixture.HoldInputs.TrySetResult(); }
-        Assert.False((await act.WaitAsync(TimeSpan.FromSeconds(10))).Ok);
-        Assert.Equal(0, fixture.Mutations);
-    }
-
-    [Fact]
-    public async Task TurningObsOffStopsServingTheCachedDeck()
-    {
-        await using var fixture = await ObsPermissionFixture.Create();
-        fixture.Configure(pageEnabled: true, control: true, obsEnabled: true);
-        Assert.True((await fixture.Monitor.DeckSnapshot(default).WaitAsync(TimeSpan.FromSeconds(10)))["connected"]!.GetValue<bool>());
-        fixture.Configure(pageEnabled: true, control: true, obsEnabled: false);
-        Assert.False((await fixture.Monitor.DeckSnapshot(default).WaitAsync(TimeSpan.FromSeconds(10)))["connected"]!.GetValue<bool>());
+        Assert.Equal(1, fixture.Mutations);
     }
 
     [Fact]
@@ -128,17 +97,14 @@ public sealed class ObsPermissionFixture : IAsyncDisposable
         catch { await f.DisposeAsync(); throw; }
     }
 
-    /// <summary>When set, GetInputList is answered only after it completes (bounded), so discovery stays in flight.</summary>
-    public TaskCompletionSource? HoldInputs { get; set; }
-    public TaskCompletionSource InputsEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     /// <summary>When set, requests are read but never answered.</summary>
     public volatile bool Silent;
 
-    public void Configure(bool pageEnabled, bool control, bool stack = false, bool obsEnabled = false)
+    public void Configure(bool pageEnabled, bool control, bool stack = false)
     {
         object widget = new { type = "obs", options = new { control } };
         if (stack) widget = new { type = "stack", options = new { widgets = new[] { widget } } };
-        var error = _config.Save(JsonSerializer.Serialize(new { obs = new { enabled = obsEnabled }, pages = new object[] {
+        var error = _config.Save(JsonSerializer.Serialize(new { obs = new { enabled = false }, pages = new object[] {
             new { id = "home", enabled = true, widgets = new[] { new { type = "clock" } } },
             new { id = "obs", enabled = pageEnabled, widgets = new[] { widget } },
         } }));
@@ -156,11 +122,6 @@ public sealed class ObsPermissionFixture : IAsyncDisposable
             var type = d["requestType"]!.GetValue<string>();
             if (type == "ToggleRecord") Interlocked.Increment(ref _mutations);
             if (Silent) continue;
-            if (type == "GetInputList")
-            {
-                InputsEntered.TrySetResult();
-                if (HoldInputs is { } hold) await hold.Task.WaitAsync(TimeSpan.FromSeconds(10), _stop.Token);
-            }
             var reply = new JsonObject { ["op"] = 7, ["d"] = new JsonObject {
                 ["requestId"] = d["requestId"]!.DeepClone(), ["requestStatus"] = new JsonObject { ["result"] = true },
                 ["responseData"] = new JsonObject(),
@@ -174,7 +135,6 @@ public sealed class ObsPermissionFixture : IAsyncDisposable
         try
         {
             _stop.Cancel();
-            HoldInputs?.TrySetResult();
             _client.Abort();
             _peer?.Abort();
             foreach (var task in new[] { _read, _serve }) if (task is not null)

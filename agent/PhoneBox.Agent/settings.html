@@ -540,7 +540,6 @@ nav a.on::before { color: var(--accent); }
     <section id="general">
       <h2 data-i18n="s.nav.general">General</h2>
       <div class="card" id="appearanceSettings"></div>
-      <div class="card" id="controlSettings"></div>
       <p class="lead" data-i18n="s.general.lead">Weather, night mode, display behaviour and the phone connection.</p>
 
       <div class="card">
@@ -1281,7 +1280,6 @@ function widgetSummary(w) {
     case 'checklist': return `${o.title || t('time.today')} · ${(o.items || d.options[1].default).length} items`;
     case 'exchange': return `${o.base || 'EUR'} → ${(o.symbols || d.options[1].default).join(', ')}`;
     case 'crypto': return (o.coins || d.options[0].default).join(', ');
-    case 'radio': return choice('view');
     case 'image': return o.caption || (o.url || 'no address').replace(/^https?:\/\//, '').slice(0, 40);
     case 'stack': {
       const list = getStackItems(w, { key: 'widgets', default: d.options?.find((x) => x.key === 'widgets')?.default });
@@ -1877,25 +1875,6 @@ function optionField(w, o, onValChange) {
         }).catch(() => {});
       }
       return field(optsBox);
-    }
-    case 'control-target': {
-      let selected = v;
-      const select = h('select', { onchange: e => { selected=e.target.value; set(o.key, selected); } }, h('option', { value: '' }, t('s.js.automaticAll')));
-      const load = async () => {
-        try {
-          const response = await fetch('/api/controls/state');
-          if (!response.ok) return;
-          const data = await response.json();
-          let items = o.group === 'application' ? [...new Set((data.audio?.sessions || []).map(s => s.name))].map(name => ({ id: name, name }))
-            : o.group === 'media' ? data.media || [] : o.group === 'monitor' ? data.monitors || []
-            : (data.audio?.devices || []).filter(d => !o.group || d.direction === o.group);
-          select.replaceChildren(h('option', { value: '' }, t('s.js.automaticAll')),
-            ...items.map(item => h('option', { value: item.id, selected: item.id === selected }, item.name)));
-          if (selected && !items.some(item => item.id === selected)) select.append(h('option', { value: selected, selected: true }, t('s.js.unavailable') + ' ' + selected));
-        } catch (_) { }
-      };
-      load();
-      return field(h('div', { class: 'row', style: { gap: '8px' } }, select, h('button', { class: 'btn sm', onclick: load }, t('s.js.refresh'))));
     }
     case 'number':
       return field(h('input', { type: 'number', min: o.min, max: o.max, step: o.step, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
@@ -3013,264 +2992,6 @@ async function testKey() {
 }
 
 // ---------------------------------------------------------------- general
-function renderControlSettings() {
-  const root = $('controlSettings');
-  const c = cfg.controls ??= { actions: [], profiles: [] }; c.actions ??= []; c.profiles ??= [];
-  const field = (label, obj, key, type = 'text') => {
-    const input = h('input', {type, value:obj[key] ?? '', 'aria-label':label});
-    if (type === 'checkbox') input.checked = !!obj[key];
-    const sync = () => { obj[key] = type === 'checkbox' ? input.checked : type === 'number' ? Number(input.value) : input.value; changed(); };
-    input.oninput = input.onchange = sync;
-    return h('div', {class:'field'},h('label',{},label),input);
-  };
-  const request = async (path, method='POST') => {
-    const r = await fetch('/api/controls/'+path,{method}); const j = await r.json().catch(()=>({}));
-    if (!r.ok || j.ok === false) throw new Error(j.error || t('s.cd.requestFailed')); return j;
-  };
-  const btn = (text, fn) => h('button',{class:'btn',type:'button',onclick:async e=>{
-    const b=e.currentTarget;b.disabled=true;try{await fn();}catch(error){toast(error.message,true);}finally{b.disabled=false;}
-  }},text);
-  root.replaceChildren(h('h3',{},'Control Deck'),h('p',{class:'hint'},t('s.cd.lead')));
-  root.append(field(t('s.cd.audio'),c,'allowListening','checkbox'),field(t('s.cd.power'),c,'allowPower','checkbox'),field(t('s.cd.radioLogos'),c,'allowOnlineRadioLogos','checkbox'));
-  const spotify=h('details',{},h('summary',{},t('s.cd.spotifyConn')));
-  const auth=h('p',{class:'hint'},t('s.cd.spotifyAuthHint'));
-  spotify.append(field(t('s.cd.clientId'),c,'spotifyClientId'),field(t('s.cd.deviceId'),c,'spotifyDevice'),auth,
-    btn(t('s.cd.connect'),async()=>{
-      if(!await save())return; const j=await request('spotify/connect','GET');
-      const live=$('controlSettings');const result=h('p',{},t('s.cd.registerRedirect')+j.redirectUri,h('br'),h('a',{href:j.url,target:'_blank',rel:'noopener'},t('s.cd.continueSpotify')));live.prepend(result);
-    }),btn(t('s.cd.checkConn'),async()=>{const j=await request('spotify/state','GET');auth.textContent=j.connected?t('s.cd.connected'):j.error || t('s.cd.notConnected');}),
-    btn(t('s.cd.disconnect'),async()=>{await request('spotify/disconnect');auth.textContent=t('s.cd.disconnected');}));
-  root.append(spotify);
-  const integration=h('details',{},h('summary',{},t('s.cd.audioInt')),field(t('s.cd.mixerExe'),c,'mixerExecutable'),field(t('s.cd.mixerDll'),c,'mixerLibrary'));root.append(integration);
-  const hintsRaw={shortcut:'Target: existing shortcut ID.',app:'Target: application shortcut ID.',macro:'Target: macro shortcut ID.',snippet:'Target: text shortcut ID.',meeting:'Target: meeting shortcut ID.',discord:'Target: Discord shortcut ID.',focus:'Target: work/focus macro shortcut ID.',project:'Target: folder/project shortcut ID.',keys:'Target: chord, e.g. Ctrl+Shift+M.',text:'Target: text to type.',task:'Target: executable shortcut ID. Output remains on the computer.',server:'Target: executable shortcut ID. Stop affects only the process started by this control.',sound:'Target: full sound file path. Device: output ID. Value: volume 0–100.',radio:'Target: direct HTTP(S) stream or Windows-only HLS (.m3u8) URL. Device: output ID. Value: volume 0–100.',playlist:'Target: spotify:playlist:… (also album, track or episode).',midi:'Target: hex MIDI bytes, e.g. B0 07 {value}. Device: numeric output port. Value: 0–127.',osc:'Target: OSC address, e.g. /volume. Device: host:port. Value: whole number (sent as an OSC float).',service:'Target: Windows service name. Argument: start, stop, restart.',workflow:'Target: owner/repo. Argument: workflow filename. Device: optional branch/ref.','window-layout':'Target: process name. Argument: left, right, center, max.','display-profile':'Target: monitor ID. Argument: JSON with width, height, hz, optional x/y.','audio-route':'Target: process.exe. Device: output ID. Requires SoundVolumeView.',mixer:'Target: Strip[0].Gain or Bus[0].Gain. Value: −60 to 12 dB.','mixer-mute':'Target: Strip[0].Mute (or supported toggle). Value: 0 or 1.',presentation:'Target: POWERPNT or soffice. Argument: start, next, prev, end, blank.'};
-  const hints = Object.fromEntries(Object.entries(hintsRaw).map(([k, v]) => [k, tl(v)]));
-  const stationFilter = h('input', { type: 'search', placeholder: t('s.cd.filterStations'), style: { marginBottom: '6px' } });
-  const stationList = h('div', { class: 'stack-list' });
-  const radioDetails = h('details', {}, h('summary', {}, t('s.cd.stations')),
-    h('p', { class: 'hint' }, t('s.cd.stationsHint')),
-    stationFilter, stationList);
-  root.append(radioDetails);
-  const actions = h('div'); root.append(h('h4', {}, t('s.cd.bindings')), actions);
-
-  let renderStations = () => {};
-  const moveRadio = (fromIdx, toIdx) => {
-    const radios = c.actions.filter((a) => a.kind === 'radio');
-    if (fromIdx < 0 || fromIdx >= radios.length || toIdx < 0 || toIdx >= radios.length || fromIdx === toIdx) return;
-    const [moved] = radios.splice(fromIdx, 1);
-    radios.splice(toIdx, 0, moved);
-    let rPtr = 0;
-    c.actions = c.actions.map((a) => (a.kind === 'radio' ? radios[rPtr++] : a));
-    changed();
-    renderStations();
-    renderActions();
-  };
-
-  renderStations = () => {
-    const radios = c.actions.filter((a) => a.kind === 'radio');
-    const q = stationFilter.value.trim().toLowerCase();
-    const visible = q ? radios.filter((r) => (r.label || r.id || '').toLowerCase().includes(q)) : radios;
-    if (!visible.length) {
-      stationList.replaceChildren(h('p', { class: 'hint', style: { margin: '6px 0' } }, radios.length ? t('s.cd.noMatchStations') : t('s.cd.noStations')));
-      return;
-    }
-    stationList.replaceChildren(...visible.map((station) => {
-      const idx = radios.indexOf(station);
-      const isEnabled = station.enabled !== false;
-      const row = h('div', {
-        class: 'stack-row' + (isEnabled ? '' : ' off'),
-        draggable: !q ? 'true' : null,
-        ondragstart: (e) => {
-          if (q || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') { e.preventDefault(); return; }
-          row.classList.add('dragging');
-          e.dataTransfer.setData('application/phonebox-radio-idx', String(idx));
-          e.dataTransfer.effectAllowed = 'move';
-        },
-        ondragend: () => {
-          row.classList.remove('dragging');
-          stationList.querySelectorAll('.stack-row.over').forEach((el) => el.classList.remove('over'));
-        },
-        ondragover: (e) => {
-          if (q) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          row.classList.add('over');
-        },
-        ondragleave: () => row.classList.remove('over'),
-        ondrop: (e) => {
-          if (q) return;
-          e.preventDefault();
-          e.stopPropagation();
-          row.classList.remove('over');
-          const fromIdx = parseInt(e.dataTransfer.getData('application/phonebox-radio-idx'), 10);
-          if (!Number.isNaN(fromIdx) && fromIdx !== idx) moveRadio(fromIdx, idx);
-        }
-      },
-        h('span', { class: 'stack-row-handle', title: q ? t('s.cd.clearToDrag') : t('s.cd.dragReorder') }, '⋮⋮'),
-        h('input', {
-          type: 'checkbox',
-          class: 'stack-row-check',
-          checked: isEnabled,
-          title: isEnabled ? 'Enabled' : 'Disabled',
-          onchange: (e) => {
-            e.stopPropagation();
-            station.enabled = e.target.checked;
-            changed();
-            renderStations();
-            renderActions();
-          }
-        }),
-        h('span', { class: 'stack-row-ico' }, emo('📻')),
-        h('span', { class: 'stack-row-name', title: station.target || '' }, station.label || station.id),
-        h('div', { class: 'stack-row-actions' },
-          h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move up', disabled: !!q || idx === 0, onclick: (e) => { e.stopPropagation(); moveRadio(idx, idx - 1); } }, '▲'),
-          h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move down', disabled: !!q || idx === radios.length - 1, onclick: (e) => { e.stopPropagation(); moveRadio(idx, idx + 1); } }, '▼')
-        )
-      );
-      return row;
-    }));
-  };
-  stationFilter.oninput = () => renderStations();
-
-  const renderActions = () => {
-    actions.replaceChildren(...c.actions.map((a) => {
-      if (a.enabled === undefined) a.enabled = true;
-      const box = h('details', {}, h('summary', {}, a.label || a.id));
-      const kind = h('select', { 'aria-label': t('s.cd.controlKind') }, ...Object.keys(hints).map((k) => h('option', { value: k, selected: a.kind === k }, k)));
-      const hint = h('p', { class: 'hint' }, hints[a.kind] || t('s.cd.selectKind'));
-      const iconField = field(t('s.cd.iconUrl'), a, 'icon');
-      iconField.hidden = a.kind !== 'radio';
-      kind.onchange = () => { a.kind = kind.value; hint.textContent = hints[a.kind]; iconField.hidden = a.kind !== 'radio'; changed(); renderStations(); };
-      const enField = field(t('s.cd.enabled'), a, 'enabled', 'checkbox');
-      enField.querySelector('input').addEventListener('change', () => renderStations());
-      const lblField = field(t('s.cd.controlLabel'), a, 'label');
-      lblField.querySelector('input').addEventListener('change', () => renderStations());
-      box.append(enField, field(t('s.cd.controlId'), a, 'id'), lblField, h('label', {}, 'Kind'), kind, hint, field(t('s.cd.target'), a, 'target'), iconField, field(t('s.cd.argument'), a, 'argument'), field(t('s.cd.device'), a, 'device'), field(t('s.cd.value'), a, 'value', 'number'));
-      const output = h('pre', { style: { maxHeight: '240px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
-      box.append(btn(t('s.cd.showOutput'), async () => { const r = await fetch('/api/controls/task-output/' + encodeURIComponent(a.id)); if (!r.ok) throw new Error(t('s.cd.outputUnavailable')); output.textContent = await r.text(); }), btn(t('s.cd.removeControl'), () => { c.actions = c.actions.filter((x) => x !== a); changed(); renderActions(); }), output);
-      return box;
-    }));
-    renderStations();
-  };
-  renderActions();
-  root.append(btn(t('s.cd.addControl'), () => { c.actions.push({ id: 'control-' + crypto.randomUUID().slice(0, 8), label: t('s.cd.newControl'), kind: 'shortcut', target: '', value: 75, enabled: true }); changed(); renderActions(); actions.lastChild.open = true; }));
-
-  const radioDir = h('details', {}, h('summary', {}, t('s.cd.radioImportTitle')));
-  const countrySelect = h('select', { 'aria-label': t('s.cd.country'), style: { minWidth: '200px' } }, h('option', { value: '' }, t('s.cd.loadCountriesFirst')));
-  const limitInput = h('input', { type: 'number', min: 1, max: 100, value: 30, style: { width: '90px' }, 'aria-label': t('s.cd.stationCount') });
-  const dirStatus = h('p', { class: 'hint', style: { margin: '6px 0' } }, t('s.cd.radioImportHint'));
-  const checkReport = h('pre', { style: { maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap' } });
-  radioDir.append(
-    dirStatus,
-    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', marginBottom: '8px' } },
-      btn(t('s.cd.loadCountries'), async () => {
-        try {
-          const res = await request('radio-directory/countries', 'GET');
-          const list = res.countries || [];
-          countrySelect.replaceChildren(
-            h('option', { value: '' }, t('s.cd.selectCountry')),
-            ...list.map((cty) => h('option', { value: cty.code }, `${cty.name} (${cty.stationCount})`))
-          );
-          dirStatus.textContent = `Loaded ${list.length} countries.`;
-        } catch (e) {
-          dirStatus.textContent = e.message || 'Could not load countries from radio-browser.info.';
-          throw e;
-        }
-      }),
-      countrySelect,
-      limitInput,
-      btn(t('s.cd.importStations'), async () => {
-        const cc = countrySelect.value;
-        if (!cc) { toast(t('s.js.pickCountry'), true); return; }
-        const MAX_ACTIONS = 512;
-        c.actions ||= [];
-        if (c.actions.length >= MAX_ACTIONS) {
-          dirStatus.textContent = `Control Deck is full (${MAX_ACTIONS} controls maximum). Remove unused controls before importing.`;
-          toast(`Control Deck is full (${MAX_ACTIONS} max)`, true);
-          return;
-        }
-        const limit = Math.max(1, Math.min(100, parseInt(limitInput.value || '30', 10)));
-        try {
-          const res = await request(`radio-directory/stations?country=${encodeURIComponent(cc)}&limit=${limit}`, 'GET');
-          const stations = res.stations || [];
-          const streamKey = (target) => {
-            const value = (target || '').trim();
-            try {
-              const url = new URL(value);
-              url.hash = '';
-              return url.href;
-            } catch { return value; }
-          };
-          const existingTargets = new Set(c.actions.filter((a) => a.kind === 'radio').map((a) => streamKey(a.target)));
-          const existingIds = new Set(c.actions.map((a) => a.id));
-          let added = 0, skipped = 0, capped = 0;
-          for (const st of stations) {
-            const normUrl = streamKey(st.streamUrl);
-            if (!normUrl || existingTargets.has(normUrl)) { skipped++; continue; }
-            if (c.actions.length >= MAX_ACTIONS) { capped++; continue; }
-            let id = st.id || ('radio-' + crypto.randomUUID().slice(0, 8));
-            let suffix = 2;
-            while (existingIds.has(id)) id = `${st.id}-${suffix++}`;
-            existingIds.add(id);
-            existingTargets.add(normUrl);
-            c.actions.push({ id, label: st.label, kind: 'radio', target: st.streamUrl, value: 80, enabled: true });
-            added++;
-          }
-          if (added > 0) { changed(); renderActions(); }
-          const msg = `Imported ${added} new station(s)`
-            + (skipped ? ` (${skipped} already present)` : '')
-            + (capped ? ` — stopped at ${MAX_ACTIONS}-control limit (${capped} omitted)` : '')
-            + '. Click Save to apply.';
-          dirStatus.textContent = msg;
-          toast(capped ? `Imported ${added} stations (${MAX_ACTIONS} limit reached)` : `Imported ${added} station(s)`);
-        } catch (e) {
-          dirStatus.textContent = e.message || 'Could not import stations from radio-browser.info.';
-          throw e;
-        }
-      }),
-      btn(t('s.cd.checkStreams'), async () => {
-        const radios = c.actions.filter((a) => a.kind === 'radio');
-        if (!radios.length) { toast(t('s.js.noRadio'), true); return; }
-        dirStatus.textContent = `Checking ${radios.length} stream(s)…`;
-        const r = await fetch('/api/controls/radio-directory/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stations: radios.map((a) => ({ id: a.id, streamUrl: a.target })) })
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || 'Stream check failed');
-        const results = j.results || [];
-        const byId = new Map(results.map((x) => [x.id, x]));
-        const okCount = results.filter((x) => x.ok).length;
-        dirStatus.textContent = `Checked ${results.length} stream(s): ${okCount} live, ${results.length - okCount} unreachable (no controls were modified).`;
-        checkReport.textContent = radios.map((a) => {
-          const st = byId.get(a.id);
-          return `${st?.ok ? '✓' : '✗'} ${a.label || a.id} — ${st?.status || 'Unknown'} (${a.target})`;
-        }).join('\n');
-      })
-    ),
-    checkReport
-  );
-  root.append(radioDir);
-  root.append(h('details',{},h('summary',{},t('s.cd.availableShortcutIds')),h('p',{class:'hint'},t('s.cd.createShortcutsFirst')),...cfg.shortcuts.map(s=>h('div',{},s.id+' — '+s.label))));
-  const profiles=h('div');root.append(h('h4',{},t('s.cd.profilesTitle')),profiles);
-  const renderProfiles=()=>profiles.replaceChildren(...c.profiles.map(p=>{
-    const box=h('details',{},h('summary',{},p.label || p.id));
-    box.append(field(t('s.cd.profileId'),p,'id'),field(t('s.cd.profileLabel'),p,'label'),field(t('s.cd.overrideOutput'),p,'output'),field(t('s.cd.overrideInput'),p,'input'));
-    const levels=h('details',{},h('summary',{},t('s.cd.capturedLevelsTitle')));
-    for(const level of p.levels || []) levels.append(h('p',{class:'hint'},level.kind+': '+level.id),field('Volume',level,'volume','number'),field('Muted',level,'muted','checkbox'));
-    box.append(levels);
-    const list=h('textarea',{'aria-label':'Profile action IDs',rows:3},(p.actions || []).join('\n'));
-    const syncActions=()=>{p.actions=list.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);changed();};
-    list.oninput=list.onchange=syncActions;
-    box.append(h('label',{},t('s.cd.controlIds')),list,h('p',{class:'hint'},t('s.cd.capturedLevels',{ n: (p.levels?.length || 0) })),btn(t('s.cd.removeProfile'),()=>{c.profiles=c.profiles.filter(x=>x!==p);changed();renderProfiles();}));return box;
-  }));renderProfiles();
-  root.append(btn(t('s.cd.captureProfile'),async()=>{c.profiles.push(await request('capture'));changed();renderProfiles();profiles.lastChild.open=true;}),btn(t('s.cd.addProfile'),()=>{c.profiles.push({id:'profile-'+crypto.randomUUID().slice(0,8),label:t('s.cd.newRoutine'),levels:[],defaults:{},actions:[]});changed();renderProfiles();profiles.lastChild.open=true;}));
-  const hardware=h('pre',{style:{maxHeight:'240px',overflow:'auto',whiteSpace:'pre-wrap'}});
-  root.append(btn(t('s.cd.listDeviceIds'),async()=>{
-    const d=await request('state','GET');hardware.textContent=[...(d.audio?.devices || []).map(i=>i.direction+': '+i.name+'\n'+i.id),...(d.monitors || []).map(i=>'Monitor: '+i.name+'\n'+i.id),...(d.midi || []).map(i=>'MIDI: '+i.name+'\n'+i.id)].join('\n\n');if(d.hardwareLoading)hardware.textContent+='\n'+t('s.cd.discoveryRunning');
-  }),hardware);
-}
-
 let appearancePreviewFrame = null, appearancePreviewReady = false, appearancePreviewObserver = null;
 
 function appearanceEditor(owner, parents, label, widget = false) {
@@ -3411,7 +3132,6 @@ function bindLanguage() {
     applyLanguageUi(cfg.display.language);
     // every section holds localized strings: rebuild them all, not only the pages editor
     renderAppearanceSettings();
-    renderControlSettings();
     renderPages();
     renderDeck();
     renderRules();
@@ -3429,7 +3149,6 @@ function bindLanguage() {
 
 function bindForm() {
   renderAppearanceSettings();
-  renderControlSettings();
   bindLanguage();
   document.querySelectorAll('[data-bind]').forEach((el) => {
     const p = el.dataset.bind, type = el.dataset.type;

@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-// The status pulses (session dots, OBS LED, on-air sign, dictation mic, radio equalizer) used to be infinite CSS animations.
+// The status pulses (session dots, OBS LED, on-air sign, dictation mic) used to be infinite CSS animations.
 // A running animation makes the browser produce a frame on every display refresh (120 a second on a 120 Hz phone) for as
 // long as the element is on screen, which cost the panel 50 to 100 percentage points of a CPU core each. They are now
 // stepped by one shared beat: main.js flips a few classes on <html> from its existing 250 ms tick, and only while something
@@ -13,7 +13,6 @@ const FIXTURES = {
   'on-air sign': { html: '<div class="w-onair on"><div class="oa-sign">ON AIR</div></div>', sel: '.oa-sign', prop: 'boxShadow' },
   'dictation mic': { html: '<button class="dc-mic on" type="button">M</button>', sel: '.dc-mic', prop: 'opacity', values: ['1', '0.7'] },
 };
-const RADIO = '<div class="radio-card is-playing"><div class="radio-logo-box"><span class="radio-eq"><i></i><i></i><i></i></span></div></div>';
 
 async function load(page) {
   await page.clock.install({ time: new Date('2026-01-01T12:00:00Z') });
@@ -53,21 +52,6 @@ for (const [name, f] of Object.entries(FIXTURES)) {
     expect(seen.filter((v, i) => i && v !== seen[i - 1]).length, 'it must keep changing').toBeGreaterThanOrEqual(3);
   });
 }
-
-test('the radio equalizer bars have no running animation and move apart from each other', async ({ page }) => {
-  await load(page);
-  await mount(page, RADIO);
-  const running = await page.evaluate(() => [...document.querySelectorAll('#pulse-fixture, #pulse-fixture *')].flatMap((e) => e.getAnimations()).filter((a) => a.playState === 'running').length);
-  expect(running, 'EXPECTED: no CSS animation on the bars | ACTUAL: ' + running).toBe(0);
-  const bars = [[], [], []];
-  for (let i = 0; i < 24; i++) {
-    await page.clock.runFor(250);
-    const now = await page.evaluate(() => [...document.querySelectorAll('#pulse-fixture .radio-eq i')].map((e) => getComputedStyle(e).transform));
-    now.forEach((t, k) => bars[k].push(t));
-  }
-  for (const seq of bars) expect(new Set(seq).size, 'each bar moves between two heights').toBe(2);
-  expect(new Set(bars.map((b) => b.join('|'))).size, 'the bars do not move in lockstep').toBe(3);
-});
 
 test('the beat does not run while nothing on screen pulses', async ({ page }) => {
   await load(page);

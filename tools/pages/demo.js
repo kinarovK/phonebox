@@ -25,7 +25,7 @@
     ['screenoff', 'Screen Off', '🌙', '#8b5cf6'], ['lock', 'Lock', '🔒', '#ef4444'], ['settings', 'Settings', '⚙️', '#94a3b8'],
   ].map(([id, label, icon, color]) => ({ id, label, icon, color, cmd: id === 'mute' ? 'builtin:mute' : 'demo', args: null, toggle: false }));
   const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'deck', 'music', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
-    'codexbar', 'devops', 'audio-deck', 'stream-deck', 'meeting-deck', 'development-deck', 'music-deck', 'system-deck'];
+    'codexbar', 'devops'];
 
   let catalog = null;
   async function loadCatalog() {
@@ -49,18 +49,9 @@
     const byId = Object.fromEntries(templates.map((t) => [t.id, t]));
     const rule = (r) => ({ enabled: true, match: null, value: null, page: null, text: null, level: null, key: null, pushValue: null, whileActive: true, shortcut: null,
       priority: 5, forSec: 0, cooldownMin: 0, days: null, during: null, countdownSec: null, op: null, arg: null, ...r });
-    const action = (id, label, kind, target, value = 0) => ({ id, label, kind, target, argument: null, value, device: null });
     // every section the agent serves, with its defaults (Config.cs), so the settings page shows what a real one does
     c = {
       codexBar: { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 },
-      controls: { allowListening: false, allowPower: false, actions: [
-        action('build', 'Build', 'task', 'npm run build'), action('tests', 'Run tests', 'task', 'npm test'),
-        action('web', 'Web dev server', 'server', 'npm run dev'), action('api', 'API dev server', 'server', 'dotnet watch'),
-        action('meet-mic', 'Mute in meeting', 'meeting', 'Ctrl+D'), action('meet-cam', 'Camera', 'meeting', 'Ctrl+E'), action('meet-hand', 'Raise hand', 'meeting', 'Ctrl+Alt+H'),
-        action('chime', 'Chime', 'sound', 'chime.wav', 75), action('applause', 'Applause', 'sound', 'applause.wav', 75),
-      ], profiles: [{ id: 'meeting', label: 'Meeting', levels: [], actions: [], output: null, input: null, defaults: {} },
-        { id: 'music', label: 'Music', levels: [], actions: [], output: null, input: null, defaults: {} }],
-        spotifyToken: null, spotifyDevice: null, mixerExecutable: null, mixerLibrary: null, spotifyClientId: null, spotifyRefreshToken: null },
       deviceSerial: null, adbPath: null,
       weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
       night: { enabled: false, start: '00:30', end: '07:30', brightness: 0.02 },
@@ -364,50 +355,6 @@
   const json = (o, status = 200, headers = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
   const parse = (body) => { if (body == null || body === '') return null; try { return JSON.parse(body); } catch (_) { return String(body); } };
 
-  // Control Deck preview data only. Native integrations live in the desktop agent.
-  const deck = {
-    platform: 'windows', hardwareLoading: false, mediaError: null, ducking: false, sleep: [],
-    audio: { available: true, error: null, defaults:{'output:0':'speaker','output:1':'speaker','output:2':'speaker','input:0':'mic','input:1':'mic','input:2':'mic'}, devices: [
-      { id: 'speaker', name: 'Desk speakers', direction: 'output', default: true, volume: 42, muted: false, peak: .45, channels: 2, canControl: true, channelVolumes:[42,42] },
-      { id: 'headphones', name: 'Headphones', direction: 'output', default: false, volume: 60, muted: false, peak: .2, channels: 2, canControl: true, channelVolumes:[60,60] },
-      { id: 'mic', name: 'Desk microphone', direction: 'input', default: true, volume: 75, muted: true, peak: .15, channels: 1, canControl: true, channelVolumes: null },
-    ], sessions: [
-      { id: 'spotify', name: 'Spotify', pid: 101, deviceId: 'speaker', volume: 65, muted: false, peak: .55 },
-      { id: 'browser', name: 'Browser', pid: 102, deviceId: 'speaker', volume: 30, muted: false, peak: .25 },
-    ] },
-    media: [
-      { id: 'spotify', name: 'Spotify', title: 'Midnight Circuit', playing: true, position: 61000, duration: 214000, canSeek: true, canShuffle: true, canRepeat: true, shuffle: false, repeat: 'None' },
-      { id: 'browser', name: 'Browser', title: 'Engineering session', playing: false, position: 10000, duration: 600000, canSeek: true, canShuffle: false, canRepeat: false, shuffle: false, repeat: 'None' },
-    ],
-    monitors: [{ id: 'display', name: 'Desk display', brightness: 60, width: 2560, height: 1440, hz: 144 }],
-    powerPlans: [{ id: 'balanced', name: 'Balanced', kind: 'power-plan', state: 'Active', available: true }, { id: 'performance', name: 'High performance', kind: 'power-plan', state: 'Available', available: true },
-      { id: 'saver', name: 'Power saver', kind: 'power-plan', state: 'Available', available: true }], midi: [],
-  };
-  const actionState = {}; // what a configured control last did: "Running", "Finished", "Stopped"…
-  async function deckState() {
-    const c = await config(), controls = c.controls || {};
-    // the output device follows the computer's volume, and the first player is the one in /api/state
-    Object.assign(deck.audio.devices[0], { volume: audio.volume, muted: audio.muted });
-    Object.assign(deck.media[0], { title: TRACKS[player.track][0], playing: player.playing, position: position(), duration: TRACKS[player.track][3] });
-    return { ...deck, allowListening: !!controls.allowListening, allowPower: !!controls.allowPower,
-      // ControlDeck.Describe / DescribeShortcut: ids, labels and kinds only
-      actions: (controls.actions || []).filter((a) => a.enabled !== false).map((a) => ({ id: a.id, name: a.label, kind: a.kind, state: actionState[a.id] ?? (/^(app|project|shortcut|focus)$/.test(a.kind) ? (c.shortcuts.some((x) => x.id === a.target) ? 'Ready' : 'Shortcut is missing') : null),
-        available: !/^(app|project|shortcut|focus)$/.test(a.kind) || c.shortcuts.some((x) => x.id === a.target) })),
-      shortcuts: (c.shortcuts || []).map((x) => ({ id: x.id, name: x.label, kind: { 'builtin:keys': 'keys', 'builtin:text': 'text', 'builtin:macro': 'macro' }[x.cmd] || (String(x.cmd).startsWith('builtin:') ? 'shortcut' : 'app'), state: null, available: true })),
-      profiles: (controls.profiles || []).map((x) => ({ id: x.id, name: x.label, kind: 'profile', state: null, available: true })) };
-  }
-  const deckLeases = new Map();
-  // one made-up OBS behind both the OBS widget (/api/obs) and the Control Deck's OBS widgets (/api/controls/obs)
-  const deckObsExtra = { inputs: [{ id: 'Desktop Audio', name: 'Desktop Audio', volume: 70, muted: false }, { id: 'Mic/Aux', name: 'Mic/Aux', volume: 80, muted: false }],
-    sources: { Desk: [{ id: 1, name: 'Webcam', enabled: true }, { id: 2, name: 'Screen capture', enabled: true }, { id: 3, name: 'Lower third', enabled: false }],
-      Camera: [{ id: 4, name: 'Webcam', enabled: true }], 'Screen share': [{ id: 5, name: 'Screen capture', enabled: true }], BRB: [{ id: 6, name: 'Be right back card', enabled: true }] },
-    transitions: [{ transitionName: 'Fade', transitionKind: 'fade_transition' }, { transitionName: 'Cut', transitionKind: 'cut_transition' }], transition: 'Fade', duration: 300, replayActive: false, cameraActive: false };
-  function deckObsState() {
-    const o = obsState().snapshot, x = deckObsExtra;
-    x.inputs[1].muted = obs.mic; // the microphone the OBS widget mutes
-    return { connected: true, scene: o.scene, scenes: o.scenes, inputs: x.inputs, sources: x.sources[o.scene] || [], streaming: o.streaming, recording: o.recording, recordPaused: o.recordPaused,
-      streamMs: o.streamMs, recordMs: o.recordMs, transitions: x.transitions, transition: x.transition, duration: x.duration, replayAvailable: true, replayActive: x.replayActive, cameraAvailable: true, cameraActive: x.cameraActive };
-  }
   function obsAct(action, scene) {
     if (action === 'stream') obs.streamingSince = obs.streamingSince ? 0 : now();
     else if (action === 'record') { obs.recordingSince = obs.recordingSince ? 0 : now(); obs.paused = false; }
@@ -417,109 +364,7 @@
     else return false;
     return true;
   }
-  const spotifyId = (i) => 'spotify:track:' + String(i).padStart(22, '0');
-  const spotifyTrack = (i) => ({ id: spotifyId(i), name: TRACKS[i][0], artist: TRACKS[i][1], image: 'https://i.scdn.co/image/demo' + i });
-  const deckSpotify = () => ({ connected: true, current: spotifyTrack(player.track), playing: player.playing,
-    queue: TRACKS.map((_, i) => i).filter((i) => i !== player.track).map(spotifyTrack) });
-  async function controlCommand(kind, q) {
-    const id = q.get('id'), op = q.get('op'), value = q.has('value') ? +q.get('value') : null;
-    const c = await config();
-    if (kind === 'device' || kind === 'session') {
-      const item = (kind === 'device' ? deck.audio.devices : deck.audio.sessions).find(x => x.id === id);
-      if (!item) return { ok: false, error: 'Device unavailable' };
-      if (value != null) {
-        if(kind==='device' && (op==='left'||op==='right'))item.channelVolumes[op==='left'?0:1]=value;
-        else item.volume = Math.max(0, Math.min(100, value));
-      }
-      if (q.has('muted')) item.muted = q.get('muted') === 'true';
-      if (item === deck.audio.devices[0]) Object.assign(audio, { volume: item.volume, muted: item.muted });
-    } else if (kind === 'default') {
-      const item = deck.audio.devices.find(d => d.id === id); if (!item) return { ok: false, error: 'Device unavailable' };
-      const roles=op==='media'?[1]:op==='communications'?[2]:op==='console'?[0]:[0,1,2];
-      for(const role of roles)deck.audio.defaults[item.direction+':'+role]=id;
-      if(roles.includes(1))deck.audio.devices.filter(d => d.direction === item.direction).forEach(d => d.default = d.id === id);
-    } else if (kind === 'media') {
-      const item = deck.media.find(m => m.id === id); if (!item) return { ok: false, error: 'Player unavailable' };
-      if (item === deck.media[0]) { if (['playpause', 'next', 'prev', 'seek'].includes(op)) mediaAction(op, value); }
-      else if (op === 'playpause') item.playing = !item.playing;
-      else if (op === 'seek') item.position = value;
-      if (op === 'shuffle') item.shuffle = !!value;
-      if (op === 'repeat') item.repeat = ['None', 'Track', 'List'][value];
-    } else if (kind === 'ptt') {
-      if (op === 'begin') {
-        const mic = deck.audio.devices.find(d => d.id === id && d.direction === 'input'); if (!mic) return { ok: false, error: 'No microphone' };
-        const lease = 'demo-' + Math.random(); deckLeases.set(lease, { mic, muted: mic.muted }); mic.muted = false;
-        return { ok: true, lease };
-      }
-      const lease = deckLeases.get(q.get('lease')); if (!lease) return { ok: false, error: 'Expired lease' };
-      if (op === 'end') { lease.mic.muted = lease.muted; deckLeases.delete(q.get('lease')); }
-    } else if (kind === 'duck') deck.ducking = op !== 'off';
-    else if (kind === 'brightness') deck.monitors[0].brightness = Math.max(0, Math.min(100, value));
-    else if (kind === 'panic') { deck.audio.devices.forEach(d => d.muted = true); audio.muted = true; }
-    else if (kind === 'sleep') deck.sleep = value ? [{ id, at: now() + value * 60000 }] : [];
-    else if (kind === 'power-plan') {
-      if (!deck.powerPlans.some(x => x.id === id)) return { ok: false, error: 'Power plan unavailable' };
-      deck.powerPlans.forEach(x => x.state = x.id === id ? 'Active' : 'Available');
-    } else if (kind === 'profile') {
-      if (!(c.controls?.profiles || []).some(x => x.id === id)) return { ok: false, error: 'Profile unavailable' };
-    } else if (kind === 'action') {
-      // "shortcut:<id>" runs one of the settings' shortcuts; anything else is a configured control
-      if (id?.startsWith('shortcut:')) return c.shortcuts.some(x => x.id === id.slice(9)) ? { ok: true } : { ok: false, error: 'Configured shortcut is missing' };
-      const a = (c.controls?.actions || []).find(x => x.id === id); if (!a) return { ok: false, error: 'Control is not configured' };
-      if (a.enabled === false && !(op === 'stop' && /^(task|server|sound|radio)$/.test(a.kind))) return { ok: false, error: 'Control is disabled' };
-      if (a.kind === 'server') actionState[id] = op === 'stop' ? 'Stopped' : 'Running';
-      else if (a.kind === 'task') { if (op === 'stop') actionState[id] = 'Stopped'; else { actionState[id] = 'Running'; setTimeout(() => { actionState[id] = 'Finished'; }, 4000); } }
-      else if (a.kind === 'radio') {
-        const stop = op === 'stop' || (op === 'toggle' && actionState[id] === 'Playing');
-        for (const r of (c.controls?.actions || []).filter(x => x.kind === 'radio')) actionState[r.id] = 'Stopped';
-        if (!stop) actionState[id] = 'Playing';
-      }
-      else if (a.kind === 'sound') { if (op === 'stop') delete actionState[id]; else actionState[id] = 'Playing'; }
-    } else if (kind === 'sound-stop') { for (const a of c.controls?.actions || []) if ((!id || a.id === id) && actionState[a.id] === 'Playing') delete actionState[a.id]; }
-    else if (kind === 'power-arm' || kind === 'power') return { ok: false, error: 'Power controls are disabled in desktop settings' };
-    else if (!['desktop', 'lock', 'monitor-off'].includes(kind)) return { ok: false, error: 'Unknown control' };
-    return { ok: true };
-  }
-
   async function handle(method, path, q, body, headers) {
-    if (path === '/api/controls/obs') return json(deckObsState());
-    if (path.startsWith('/api/controls/obs/') && method === 'POST') {
-      // ObsMonitor.DeckAct: only when a widget allows control, and only for inputs, sources and scenes OBS really has
-      if (!allows(await config(), isObs)) return json({ ok: false, error: "Enable OBS control in the widget's desktop settings" });
-      const action = path.split('/').pop(), id = q.get('id'), value = q.has('value') ? +q.get('value') : null, enabled = q.has('enabled') ? q.get('enabled') === 'true' : null;
-      const x = deckObsExtra, input = x.inputs.find((i) => i.id === id), source = (x.sources[obs.scene] || []).find((i) => String(i.id) === id);
-      const refused = json({ ok: false, error: 'OBS refused this control' });
-      if (action === 'volume') { if (!input || !(value >= 0 && value <= 100)) return refused; input.volume = value; }
-      else if (action === 'mute') { if (!input || enabled == null) return refused; input.muted = enabled; if (input === x.inputs[1]) obs.mic = enabled; }
-      else if (action === 'scene') { if (!obsAct('scene', id) || obs.scene !== id) return refused; }
-      else if (action === 'source') { if (!source || enabled == null) return refused; source.enabled = enabled; }
-      else if (action === 'transition') { if (!x.transitions.some((t) => t.transitionName === id)) return refused; x.transition = id; }
-      else if (action === 'duration') { if (!(value >= 50 && value <= 10000)) return refused; x.duration = value; }
-      else if (action === 'record' || action === 'pause' || action === 'stream') obsAct(action);
-      else if (action === 'replay') x.replayActive = !x.replayActive;
-      else if (action === 'save-replay') { if (!x.replayActive) return refused; }
-      else if (action === 'camera') x.cameraActive = !x.cameraActive;
-      else return refused;
-      return json({ ok: true });
-    }
-    if (path === '/api/controls/spotify/state') return json(deckSpotify());
-    if (path.startsWith('/api/controls/spotify/action/') && method === 'POST') {
-      const action = path.split('/').pop();
-      if (action === 'play-queued') {
-        const i = TRACKS.findIndex((_, n) => spotifyId(n) === q.get('id'));
-        if (i < 0 || i === player.track) return json({ ok: false, error: 'That queue item is no longer available' });
-        Object.assign(player, { track: i, posMs: 0, at: now(), playing: true });
-      } else if (action !== 'favorite' && action !== 'playlist') return json({ ok: false, error: 'Unknown Spotify control' });
-      return json({ ok: true });
-    }
-    if (path === '/api/controls/spotify/connect') return json({ error: 'Spotify sign-in needs the installed computer agent' }, 400);
-    if (path === '/api/controls/spotify/disconnect') return json({ ok: true });
-    if (path === '/api/controls/capture') return json({ id: 'profile-' + Date.now().toString(36), label: 'Captured preview profile',
-      levels: [...deck.audio.devices.map((d) => ({ kind: 'device', id: d.id, volume: d.volume, muted: d.muted })), ...deck.audio.sessions.map((d) => ({ kind: 'session', id: d.id, volume: d.volume, muted: d.muted }))],
-      actions: [], output: null, input: null, defaults: { ...deck.audio.defaults } });
-    if (path.startsWith('/api/controls/task-output/')) return new Response(actionState[decodeURIComponent(path.split('/').pop())] ? '> made-up output: the demo runs no commands\n' : '', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-    if (path === '/api/controls/state') return json(await deckState());
-    if (path.startsWith('/api/controls/command/') && method === 'POST') return json(await controlCommand(path.split('/').pop(), q));
     if (path === '/api/state') return json(state(q.has('ev') ? +q.get('ev') : null));
     if (path === '/api/config') return json({ version: cfgVersion(), config: publicConfig(await config()) });
     if (path.startsWith('/api/widget/') && path.endsWith('/note') && method === 'POST') {
@@ -841,7 +686,7 @@
   const swapDemoImg = (img) => {
     if (img.tagName !== 'IMG') return;
     const src = img.getAttribute('src') || '';
-    if (/\/api\/(art|controls\/radio-logo)|^https:\/\/i\.scdn\.co\/image\/demo\d+$/.test(src)) img.src = ART;
+    if (/\/api\/art/.test(src)) img.src = ART;
     else if (/\/api\/apps\/icon/.test(src)) img.src = appIcon(new URL(src, location.href).searchParams.get('id'));
     else if (/\/api\/steam\/cover/.test(src)) img.src = gameCover(new URL(src, location.href).searchParams.get('id'));
   };

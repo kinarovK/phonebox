@@ -36,6 +36,22 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
     }
 
     [Fact]
+    public void ConfigFromBeforeTheControlDeckRemovalStillLoads()
+    {
+        // the removed Control Deck kept its bindings in "controls" and its widgets on ordinary pages
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, """
+            {"controls":{"allowListening":true,"spotifyClientId":"abc","actions":[{"id":"r1","kind":"radio","target":"https://example.com/live.mp3"}],
+              "profiles":[{"id":"p","levels":[{"kind":"device","id":"spk","volume":40,"muted":false}],"actions":[null]}]},
+             "night":{"start":"01:15"},
+             "pages":[{"id":"p","enabled":true,"widgets":[{"type":"audio-mixer","x":0,"y":0,"w":6,"h":3},{"type":"clock","x":6,"y":0,"w":6,"h":3}]}]}
+            """);
+        var store = new ConfigStore(path);
+        Assert.Equal("01:15", store.Get().Night.Start);
+        Assert.Equal(["clock"], store.Get().Pages.Single().Widgets!.Select(w => w.Type));
+    }
+
+    [Fact]
     public void LegacyDeckPreservesNumericColumns()
     {
         var store = new ConfigStore(Path.Combine(_dir, "config.json"));

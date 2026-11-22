@@ -95,7 +95,7 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 [dir="rtl"] .grid > .w { direction: rtl; }
 [dir="rtl"] input[type="range"] { direction: ltr; }
 /* Charts and playback controls use physical x coordinates; command output keeps its terminal order. */
-[dir="rtl"] :where(canvas, .bar, .times, .track, .deck-meter, .cmd-o) { direction: ltr; unicode-bidi: isolate; }
+[dir="rtl"] :where(canvas, .bar, .times, .track, .cmd-o) { direction: ltr; unicode-bidi: isolate; }
 .w { position: relative; min-width: 0; min-height: 0; overflow: hidden; container-type: size; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: clamp(10px, 7cqmin, 20px); }
 

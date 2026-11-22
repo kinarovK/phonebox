@@ -67,9 +67,6 @@ builder.Services.AddSingleton<AudioControl>();
 builder.Services.AddSingleton<AppCatalog>();
 builder.Services.AddSingleton(_ => new ShortcutIconUploads(Path.Combine(configDir, "icons")));
 builder.Services.AddSingleton<PairingCodes>();
-builder.Services.AddSingleton<SpotifyControl>();
-builder.Services.AddSingleton<ControlDeck>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<ControlDeck>());
 builder.Services.AddSingleton<PushStore>();
 builder.Services.AddSingleton<CommandRunner>();
 builder.Services.AddSingleton<ApprovalStore>();
@@ -104,67 +101,6 @@ AddMonitor<ChargeGuard>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
-
-app.MapGet("/api/controls/state", async (ControlDeck deck, CancellationToken ct) => Results.Json(await deck.Snapshot(ct)));
-app.MapPost("/api/controls/command/{kind}", async (string kind, string? id, string? op, int? value, bool? muted,
-    string? lease, ControlDeck deck, CancellationToken ct) => Results.Json(await deck.Act(kind, id, op, value, muted, lease, ct)));
-app.MapGet("/api/controls/listen", async (HttpResponse response, ControlDeck deck, CancellationToken ct) => await deck.Listen(response, ct));
-app.MapPost("/api/controls/capture", (ControlDeck deck) => Results.Json(deck.CaptureProfile()));
-app.MapGet("/api/controls/task-output/{id}", (string id, ControlDeck deck) => Results.Text(deck.TaskOutput(id), "text/plain"));
-app.MapGet("/api/controls/radio-logo", async (string? id, ControlDeck deck, HttpContext ctx, CancellationToken ct) =>
-{
-    if (string.IsNullOrWhiteSpace(id)) return Results.NotFound();
-    var logo = await deck.RadioLogoAsync(id, ct);
-    if (logo is null) return Results.NotFound();
-    ctx.Response.Headers.CacheControl = logo.Value.IsFallback ? "no-store" : "public, max-age=3600";
-    ctx.Response.Headers.XContentTypeOptions = "nosniff";
-    ctx.Response.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'";
-    return Results.Bytes(logo.Value.Bytes, logo.Value.Mime);
-});
-app.MapGet("/api/controls/spotify/state", async (SpotifyControl spotify, CancellationToken ct) => Results.Json(await spotify.Snapshot(ct)));
-app.MapPost("/api/controls/spotify/action/{action}", async (string action, string? id, SpotifyControl spotify, ControlDeck deck, CancellationToken ct) =>
-{
-    var res = action is "play-queued" or "playlist"
-        ? await deck.RunWithMediaFocusAsync(async token =>
-        {
-            var result = await spotify.Act(action, id, token);
-            if (result.Ok) deck.StopAllRadios();
-            return result;
-        }, ct)
-        : await spotify.Act(action, id, ct);
-    return Results.Json(res);
-});
-app.MapGet("/api/controls/spotify/connect", (SpotifyControl spotify) =>
-{ try { return Results.Json(new { url = spotify.Begin(), redirectUri = spotify.RedirectUri }); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
-app.MapPost("/api/controls/spotify/disconnect", async (SpotifyControl spotify, CancellationToken ct) => { await spotify.Disconnect(ct); return Results.Ok(); });
-app.MapGet("/api/controls/spotify/callback", async (string? state, string? code, SpotifyControl spotify, CancellationToken ct) =>
-{
-    try { return state is not null && code is not null && await spotify.Complete(state, code, ct)
-        ? Results.Text("Spotify connected. Return to PhoneBox settings; this tab can be closed.", "text/plain")
-        : Results.BadRequest("Spotify sign-in expired or was refused. Start again from desktop settings."); }
-    catch { return Results.BadRequest("Spotify sign-in failed. Start again from desktop settings."); }
-});
-app.MapGet("/api/controls/obs", async (ObsMonitor obs, CancellationToken ct) => Results.Json(await obs.DeckSnapshot(ct)));
-app.MapPost("/api/controls/obs/{action}", async (string action, string? id, int? value, bool? enabled, ObsMonitor obs, CancellationToken ct) =>
-    Results.Json(await obs.DeckAct(action, id, value, enabled, ct)));
-app.MapGet("/api/controls/radio-directory/countries", async (CancellationToken ct) =>
-{
-    try { return Results.Json(new { countries = await RadioBrowserDirectory.GetCountriesAsync(ct) }); }
-    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-    catch (Exception ex) { return Results.Json(new { ok = false, error = ex is RadioDirectoryUnavailableException ? ex.Message : "Radio directory is temporarily unavailable." }, statusCode: StatusCodes.Status502BadGateway); }
-});
-app.MapGet("/api/controls/radio-directory/stations", async (string? country, int? limit, CancellationToken ct) =>
-{
-    try { return Results.Json(new { stations = await RadioBrowserDirectory.GetStationsByCountryAsync(country ?? "", limit ?? 40, ct) }); }
-    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-    catch (Exception ex) { return Results.Json(new { ok = false, error = ex is RadioDirectoryUnavailableException ? ex.Message : "Radio directory is temporarily unavailable." }, statusCode: StatusCodes.Status502BadGateway); }
-});
-app.MapPost("/api/controls/radio-directory/check", async (HttpRequest req, CancellationToken ct) =>
-{
-    var body = await req.ReadFromJsonAsync<RadioCheckRequest>(new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
-    var results = await RadioBrowserDirectory.CheckStreamsAsync(body?.Stations ?? [], ct);
-    return Results.Json(new { results });
-});
 
 // The panel in a desktop browser (the layout editor's live preview, /panel/) calls the API as /agent/api/..., the same
 // path the phone uses; on the local port that is simply /api/... Routing runs after this, so it sees the new path.
@@ -243,10 +179,8 @@ app.Use(async (ctx, next) =>
     else
     {
         var host = ctx.Request.Host.Host;
-        var spotifyCallback = ctx.Request.Method == "GET" && ctx.Request.Path == "/api/controls/spotify/callback"
-            && app.Services.GetRequiredService<SpotifyControl>().HasPendingState(ctx.Request.Query["state"]);
         if ((host != "127.0.0.1" && host != "localhost") || (origin != "" && !SameOrigins.Contains(origin))
-            || (!spotifyCallback && BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path)))
+            || BrowserGuard.IsForeign(ctx.Request.Headers["Sec-Fetch-Site"], ctx.Request.Headers["Sec-Fetch-Mode"], ctx.Request.Method, ctx.Request.Path))
         {
             ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
@@ -393,7 +327,7 @@ app.MapGet("/api/settings", (HttpRequest req, ConfigStore cfg, HttpResponse res)
     return Results.Text(json, "application/json; charset=utf-8");
 });
 
-app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck deck, PhotoFrame photos, CameraFeeds cameras, ShortcutIconUploads icons, ILogger<Program> log, CancellationToken ct) =>
+app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame photos, CameraFeeds cameras, ShortcutIconUploads icons, ILogger<Program> log, CancellationToken ct) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     using var r = new StreamReader(req.Body);
@@ -433,10 +367,8 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ControlDeck
     lock (IconCommit) err = cfg.Save(body, expected, out savedVersion);
     if (err == ConfigStore.Conflict) return Results.Json(new { error = err }, statusCode: StatusCodes.Status409Conflict);
     if (err is not null) return Results.BadRequest(new { error = err });
-    deck.StopDisabledControls();
     photos.SettingsSaved();
     cameras.SettingsSaved();
-    deck.ReconcileRadios(waitForGate: true);
     icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id)); // drop uploads for shortcuts that got deleted
     ShortcutIcons.ClearHasIconCache();
     log.LogInformation("settings saved");
@@ -547,7 +479,7 @@ object State(IServiceProvider sp, long? ev)
         evSeq = push.Seq,
         events = ev is { } since ? push.Since(since) : [],
         pc = sp.GetRequiredService<SystemMonitor>().Snapshot(),
-        media = sp.GetRequiredService<ControlDeck>().EffectiveMedia(sp.GetRequiredService<MediaMonitor>().Snapshot()),
+        media = sp.GetRequiredService<MediaMonitor>().Snapshot(),
         audio = sp.GetRequiredService<AudioControl>().Snapshot(),
         ping = sp.GetRequiredService<PingMonitor>().Snapshot(),
         rules = sp.GetRequiredService<RuleEngine>().Active(),
@@ -903,20 +835,11 @@ app.MapGet("/api/phones", (ConfigStore cfg) =>
 app.MapGet("/api/art", (MediaMonitor media) =>
     media.Art is { } art ? Results.File(art.Bytes, art.Mime) : Results.NotFound());
 
-app.MapPost("/api/media/{action}", async (string action, long? ms, MediaMonitor media, ControlDeck deck, CancellationToken ct) =>
+app.MapPost("/api/media/{action}", async (string action, long? ms, MediaMonitor media) =>
 {
-    var outcome = await deck.RunWithMediaFocusAsync(async token =>
-    {
-        var sysSnapshot = media.Snapshot();
-        if (await deck.TryControlRadioMediaCoreAsync(action, sysSnapshot, token) is { } radioHandled)
-            return (Ok: radioHandled, Media: deck.EffectiveMedia(media.Snapshot()));
-        var starting = action is "next" or "prev" || (action == "playpause" && sysSnapshot?.Playing != true);
-        var ok = await media.Control(action, ms);
-        if (ok && starting) deck.StopAllRadios();
-        return (Ok: ok, Media: deck.EffectiveMedia(media.Snapshot()));
-    }, ct);
+    var ok = await media.Control(action, ms);
     StateSignal.Poke();
-    return outcome.Ok ? Results.Json(new { ok = true, media = outcome.Media }) : Results.BadRequest();
+    return ok ? Results.Json(new { ok = true, media = media.Snapshot() }) : Results.BadRequest();
 });
 
 app.MapPost("/api/volume", (int? level, string? op, AudioControl audio) =>

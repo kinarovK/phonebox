@@ -11,8 +11,7 @@ const DEMO_NAMES = [
   '🏠 Home', '🧭 Dashboard', '✳️ AI quotas', '🤖 Sessions', '📊 System', '⚙️ Processes', '🎛️ Shortcuts',
   '🎵 Music', '🎯 Status', '🌅 Ambient', '🌍 World', '✅ Daily', '💱 Markets', '📡 Feeds', '🍅 Focus',
   '🫁 Calm', '🕰️ Clock', '⚡ Automation', '🗓️ Planner', '🛏️ Nightstand', '🏖️ Weekend', '🎧 Deep work',
-  '🧭 CodexBar', '🛠️ DevOps', '🎛️ Audio deck', '🎛️ Streaming deck', '🎛️ Meeting deck',
-  '🎛️ Development deck', '🎛️ Music deck', '🎛️ Computer controls',
+  '🧭 CodexBar', '🛠️ DevOps',
   // shortcut presets shown in the sample deck, and the ids the deck sample uses
   'terminal — Terminal', 'code — VS Code', 'browser — Browser', 'files — Files', 'music — Spotify',
   'chat — Discord', 'snip — Snip', 'taskmgr — Task Manager', 'mute — Mute', 'screenoff — Screen Off',
@@ -24,17 +23,14 @@ const DEMO_NAMES = [
   'UMIDIGI BISON · connected now over USB · WebView 134',
   'samsung SM-X200 · seen 2 min ago over Wi-Fi · WebView 134',
   '0.9.16 (up to date)',
-  // deck controls, radio slots and shortcut sample data the demo config carries
-  'AI quotas', 'Deep work', 'Audio deck', 'Streaming deck', 'Meeting deck', 'Development deck',
-  'Music deck', 'Computer controls', 'Hacker News', 'Smart Stack', 'Workflow GitHub',
-  'Radio internet', 'Mixer OBS', 'Screen Off', 'Run tests', 'Web dev server', 'API dev server',
-  'Mute in meeting', 'Raise hand',
+  // template names and shortcut sample data the demo config carries
+  'AI quotas', 'Deep work', 'Hacker News', 'Smart Stack', 'Workflow GitHub', 'Screen Off',
   // placeholder paths shown as example values inside inputs
   'C:\\Users\\you\\Pictures\\Frame', 'C:\\ffmpeg\\bin\\ffmpeg.exe',
 ];
 
 // Any run of two English words with no Vietnamese diacritics. Ids, codes, units, urls and single words (product names
-// like "Control Deck", "Spotify", "Claude") are allowed to stay English.
+// like "Spotify", "Claude") are allowed to stay English.
 function englishLeftovers(texts, allowed) {
   const allow = new Set(allowed);
   const norm = (s) => s.replace(/\s+/g, ' ').trim();
@@ -71,8 +67,8 @@ test('the settings page shows no English left in Vietnamese, with every section 
   await page.goto('/settings/');
   await expect(page.locator('#langSel')).toHaveValue('vi', { timeout: 15000 });
 
-  // <details> hides its contents from a text scan until it is open, which is how the Control Deck hints and the audio
-  // profile labels escaped earlier sweeps: open every one, then read the visible text of every leaf element.
+  // <details> hides its contents from a text scan until it is open, which is how some hints
+  // escaped earlier sweeps: open every one, then read the visible text of every leaf element.
   await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
   await page.waitForTimeout(800);
 
@@ -104,10 +100,10 @@ test('the settings page shows no English left in Vietnamese, with every section 
 
   // Product names and platform names that are not translated on purpose, and demo/sample data the config carries.
   const leftoversKept = englishLeftovers(texts, [
-    'Control Deck', 'PhoneBox', 'Spotify', 'Claude', 'Codex', 'GitHub', 'OBS Studio', 'Home Assistant',
+    'PhoneBox', 'Spotify', 'Claude', 'Codex', 'GitHub', 'OBS Studio', 'Home Assistant',
     'Discord', 'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView',
     'Windows Terminal', 'File Explorer (args: folder)', 'Task Manager', 'AppID', 'PowerShell',
-    'JSON', 'HTTPS', 'USB', 'Wi-Fi', 'MIDI', 'OSC', 'SPA', 'CodexBar', 'radio-browser.info',
+    'JSON', 'HTTPS', 'USB', 'Wi-Fi', 'SPA', 'CodexBar',
     'SoundVolumeView', 'xdotool', 'wtype', 'soffice', 'POWERPNT', 'VS Code', 'Strip[0].Gain',
     // Wi-Fi and Tailscale are product names, so the section title stays the same in every language
     'Wi-Fi & Tailscale',
@@ -204,7 +200,6 @@ test('settings.html keeps no English literal in a position that reaches the scre
     'a pushed value', 'an AI quota is above', 'a GitHub review is requested', 'CI fails on my pull request',
     'a device battery is below', 'the network is slow', 'always (use the days and hours below)',
     'show the page', 'show a notification', 'push a value', 'run a shortcut',
-    'Control Deck',
   ]);
   const left = [...new Set(hits)].filter((s) => !LOOKED_UP_BY_TEXT.has(s));
 

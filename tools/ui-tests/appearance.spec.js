@@ -7,7 +7,7 @@ async function show(page, config={}) {
     localStorage.setItem('pb-demo-config',JSON.stringify({night:{enabled:false},shortcuts:[],display:{idleReturnSec:0},
       pages:[{id:'appearance',title:'Appearance',widgets:[
         {id:'note',type:'note',x:0,y:0,w:6,h:6,options:{text:'Appearance sample'}},
-        {id:'audio',type:'audio-mixer',x:6,y:0,w:6,h:6,options:{}}
+        {id:'docker',type:'docker',x:6,y:0,w:6,h:6,options:{}}
       ]}],...config}));
   },config);
   await page.goto('/panel/');
@@ -129,7 +129,7 @@ test('page and widget appearance editors preserve their own saved overrides',asy
   await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('0px');
   expect(await css(page.locator('.w-note'),'borderTopLeftRadius')).toBe('32px');
   expect(await css(page.locator('.w-note'),'borderTopWidth')).toBe('0px');
-  expect(await css(page.locator('.w-audio-mixer'),'borderTopLeftRadius')).toBe('0px');
+  expect(await css(page.locator('.w-docker'),'borderTopLeftRadius')).toBe('0px');
 });
 
 for(const width of [780,360])test('appearance fits the panel at '+width+'px',async({page})=>{
@@ -145,7 +145,7 @@ test('global font and font scale affect widgets proportionally without compoundi
   const basePages=[{id:'p',title:'P',widgets:[
     {id:'clk',type:'clock',x:0,y:0,w:6,h:4,options:{}},
     {id:'note',type:'note',x:6,y:0,w:6,h:4,options:{text:'Tablet scale'}},
-    {id:'audio',type:'audio-mixer',x:0,y:4,w:12,h:2,options:{}}
+    {id:'docker',type:'docker',x:0,y:4,w:12,h:2,options:{}}
   ]}];
   await show(page,{display:{showSeconds:true,idleReturnSec:0},pages:basePages});
   await expect.poll(()=>page.locator('.w-clock .clock').count()).toBe(1);
@@ -153,18 +153,18 @@ test('global font and font scale affect widgets proportionally without compoundi
   const baseSec=parseFloat(await css(page.locator('.w-clock .sec'),'fontSize'));
   const baseDate=parseFloat(await css(page.locator('.w-clock .date'),'fontSize'));
   const baseNote=parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'));
-  const baseAudioTitle=parseFloat(await css(page.locator('.w-audio-mixer .w-title'),'fontSize'));
+  const baseDockerTitle=parseFloat(await css(page.locator('.w-docker .w-title'),'fontSize'));
 
   await show(page,{display:{showSeconds:true,idleReturnSec:0,appearance:{font:'mono',fontScale:150}},pages:basePages});
   await expect.poll(async()=>parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'))).toBeCloseTo(baseNote*1.5,0);
   const scaledClock=parseFloat(await css(page.locator('.w-clock .clock'),'fontSize'));
   const scaledSec=parseFloat(await css(page.locator('.w-clock .sec'),'fontSize'));
   const scaledDate=parseFloat(await css(page.locator('.w-clock .date'),'fontSize'));
-  const scaledAudioTitle=parseFloat(await css(page.locator('.w-audio-mixer .w-title'),'fontSize'));
+  const scaledDockerTitle=parseFloat(await css(page.locator('.w-docker .w-title'),'fontSize'));
   expect(scaledClock).toBeCloseTo(baseClock*1.5,0);
   expect(scaledSec).toBeCloseTo(baseSec*1.5,0);
   expect(scaledDate).toBeCloseTo(baseDate*1.5,0);
-  expect(scaledAudioTitle).toBeCloseTo(baseAudioTitle*1.5,0);
+  expect(scaledDockerTitle).toBeCloseTo(baseDockerTitle*1.5,0);
   expect(await css(page.locator('.w-note'),'fontFamily')).toMatch(/Mono|monospace/i);
   expect(await css(page.locator('#offline'),'fontSize')).toBe('11.5px');
 });
@@ -199,7 +199,7 @@ test('desktop settings font and font size controls preview and persist',async({p
   await editor.getByRole('button',{name:'Show live appearance preview',exact:true}).click();
   const frame=page.frameLocator('iframe[title="Live appearance preview"]');
   await expect.poll(()=>css(frame.locator('.w-note'),'fontFamily')).toMatch(/Mono|monospace/i);
-  await expect.poll(async()=>parseFloat(await css(frame.locator('.w-audio-mixer .w-title'),'fontSize'))).toBeCloseTo(22,0);
+  await expect.poll(async()=>parseFloat(await css(frame.locator('.w-docker .w-title'),'fontSize'))).toBeCloseTo(22,0);
   await page.locator('#save').click();await expect(page.locator('#save')).toBeDisabled();
   await page.goto('/settings/#pages');
   await page.locator('.wb').first().click();
@@ -211,8 +211,8 @@ test('desktop settings font and font size controls preview and persist',async({p
   await page.goto('/panel/');
   await expect.poll(()=>css(page.locator('.w-note'),'fontFamily')).toMatch(/Georgia|serif/i);
   expect(parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'))).toBeCloseTo(baseNote*0.8,0);
-  expect(await css(page.locator('.w-audio-mixer'),'fontFamily')).toMatch(/Mono|monospace/i);
-  expect(parseFloat(await css(page.locator('.w-audio-mixer .w-title'),'fontSize'))).toBeCloseTo(22,0);
+  expect(await css(page.locator('.w-docker'),'fontFamily')).toMatch(/Mono|monospace/i);
+  expect(parseFloat(await css(page.locator('.w-docker .w-title'),'fontSize'))).toBeCloseTo(22,0);
 });
 
 test('compact 4-limit quota percentage text scales with widget fontScale',async({page})=>{

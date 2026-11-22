@@ -32,7 +32,7 @@ public sealed partial class ObsMonitor(ConfigStore config, ILogger<ObsMonitor> l
         while (!ct.IsCancellationRequested)
         {
             var obs = config.Get().Obs;
-            if (!obs.Enabled) { _snap = _snap with { Connected = false, Error = null }; InvalidateDeck(); await Task.Delay(2000, ct); continue; }
+            if (!obs.Enabled) { _snap = _snap with { Connected = false, Error = null }; await Task.Delay(2000, ct); continue; }
             try
             {
                 await RunConnection(obs, ct);
@@ -98,7 +98,6 @@ public sealed partial class ObsMonitor(ConfigStore config, ILogger<ObsMonitor> l
             {
                 _ws = null;
                 _snap = _snap with { Connected = false };
-                InvalidateDeck();
             }
             stop.Cancel();
             try { await reader; } catch { }

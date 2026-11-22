@@ -11,7 +11,6 @@ import './widgets/pc.js';
 import './widgets/sky.js';
 import './widgets/web.js';
 import './widgets/photos.js';
-import './widgets/controls.js';
 import './widgets/console.js';
 import './widgets/dictate.js';
 import './widgets/camera.js';
@@ -2488,7 +2487,7 @@ export async function poll() {
 // ticks of 250 ms (N = 2 is a half-second on, a half-second off). It only moves while something that pulses is on screen
 // (every page is mounted, side by side, and a stack keeps its other cards in place at opacity 0, so being in the page is not enough), and the
 // tick above is skipped when the panel is not visible or the night screen is up.
-const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .obs-pill.on, .w-onair.on, .dc-mic.on, .radio-card.is-playing';
+const PULSING = '.sess.busy, .sess.shell, .sess.waiting, .obs-pill.on, .w-onair.on, .dc-mic.on';
 const pulseShown = (el) => { if (el.closest('.stack-item:not(.active)')) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight; };
 let beatN = 0;
 function beat() {
