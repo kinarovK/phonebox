@@ -3,15 +3,8 @@
 // (the start section at the end runs after every module has loaded).
 import { W } from './registry.js';
 import './appearance.js';
-import { cached } from './widgets/helpers.js';
 import './widgets/basic.js';
-import './widgets/stack.js';
-import './widgets/time.js';
 import './widgets/pc.js';
-import './widgets/sky.js';
-import './widgets/web.js';
-import './widgets/photos.js';
-import './widgets/camera.js';
 
 // PhoneBox desk panel. Pages are 12 × 6 grids of widgets, designed in the agent's settings page.
 // The panel talks to the PhoneBox agent through "/agent/*", which the Android shell proxies over USB
@@ -67,12 +60,10 @@ export const FALLBACK_PAGES = [{
 }];
 
 export const DEFAULT_CFG = {
-  weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
   night: { enabled: true, start: '00:30', end: '07:30', brightness: 0.02 },
   display: { showSeconds: true, idleReturnSec: 90, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5 },
   opencode: { alwaysCountdownSec: 10 },
   pages: FALLBACK_PAGES,
-  shortcuts: [],
 };
 
 export const store = {
@@ -85,12 +76,10 @@ export let cfgVersion = null;
 export function setCfgVersion(v) { if (v != null) cfgVersion = v; }
 let configRequest = 0;
 let appliedConfigRequest = 0;
-let writeBarrier = 0; // config reads numbered below this started before the panel's own last write
 export let online = null;
 export let lastTouch = Date.now();
 export let lastUserTouch = 0;     // last real touch or key (rules wait a while after it)
 export let wakeUntil = 0;
-export let rulesPaused = null;    // unix ms until which the agent's rules are paused
 export let nightOn = null;
 export let evSeq = null;          // last event seq the agent reported in a state (notifications, page switches…)
 let evReplay = false;             // the agent restarted: the next poll replays the events it kept (from 0)
@@ -113,30 +102,13 @@ const evOffer = (e) => {          // one event from the stream or a state answer
     if (evQueue.length > 100) evDrop = Math.max(evDrop, evQueue.shift().seq);
   } else { evMark(e.seq); handleEvent(e); }
 };
-export let pushVersion = null;
 
 /** Latest data from the agent and the web; widgets read from here. */
-export const D = { state: null, quotas: null, work: null, procs: null, push: {}, weather: null, calendar: null, notes: store.get('notes', []) };
+export const D = { state: null, quotas: null, work: null, procs: null };
 
 export const HIST = 90;
 export const hist = { cpu: [], gpu: [], ram: [], vram: [], down: [], up: [], ping: [], gputemp: [], cputemp: [], hotspot: [], gpupower: [], gpuclock: [] };
 export const pushHist = (k, v) => { const a = hist[k]; a.push(v ?? 0); if (a.length > HIST) a.shift(); };
-
-// ---------------------------------------------------------------- helpers
-/** fetch() to the panel's local/USB feed proxy when the phone cannot reach an allowed public HTTPS feed directly. */
-export async function safeFetch(url, opts = {}) {
-  try {
-    return await fetch(url, opts);
-  } catch (e) {
-    if (!opts.signal?.aborted && typeof url === 'string' && url.startsWith('https://')) {
-      return await fetch(`${API}/proxy?url=${encodeURIComponent(url)}`, {
-        ...opts,
-        headers: { ...(opts.headers || {}), ...PANEL_HEADERS },
-      });
-    }
-    throw e;
-  }
-}
 
 export async function api(path, method = 'GET', timeout = 2500) {
   const ctl = new AbortController();
@@ -599,106 +571,6 @@ export function metricText(m, s) {
   return [m.fmt ? m.fmt(v) : String(Math.round(v)), unit];
 }
 
-// ---------------------------------------------------------------- weather (Open-Meteo, straight from the phone)
-// The condition names are i18n keys: they are translated when the line is drawn, not when this table is built, so a
-// language change applies without reloading the panel.
-export const WX = {
-  0: ['wx.clear', '☀️', '🌙'], 1: ['wx.mostlyClear', '🌤️', '🌙'], 2: ['wx.partlyCloudy', '⛅', '☁️'], 3: ['wx.overcast', '☁️', '☁️'],
-  45: ['wx.fog', '🌫️'], 48: ['wx.rimeFog', '🌫️'],
-  51: ['wx.lightDrizzle', '🌦️'], 53: ['wx.drizzle', '🌦️'], 55: ['wx.heavyDrizzle', '🌧️'], 56: ['wx.freezingDrizzle', '🌧️'], 57: ['wx.freezingDrizzle', '🌧️'],
-  61: ['wx.lightRain', '🌦️'], 63: ['wx.rain', '🌧️'], 65: ['wx.heavyRain', '🌧️'], 66: ['wx.freezingRain', '🌧️'], 67: ['wx.freezingRain', '🌧️'],
-  71: ['wx.lightSnow', '🌨️'], 73: ['wx.snow', '🌨️'], 75: ['wx.heavySnow', '❄️'], 77: ['wx.snowGrains', '🌨️'],
-  80: ['wx.lightShowers', '🌦️'], 81: ['wx.showers', '🌧️'], 82: ['wx.heavyShowers', '⛈️'], 85: ['wx.snowShowers', '🌨️'], 86: ['wx.heavySnowShowers', '❄️'],
-  95: ['wx.thunderstorm', '⛈️'], 96: ['wx.thunderstormHail', '⛈️'], 99: ['wx.severeHail', '⛈️'],
-};
-export const wxIcon = (code, day = 1) => { const x = WX[code] || [null, '🌡️']; return day === 0 && x[2] ? x[2] : x[1]; };
-/** The condition in the panel's language, or an em dash for a code Open-Meteo does not list. */
-export const wxText = (code) => { const x = WX[code]; return x ? t(x[0]) : '—'; };
-/** A temperature from Open-Meteo (always °C) rounded in the configured unit; the raw forecast stays in °C. */
-export const wxDeg = (c) => Math.round(cfg.weather?.unit === 'fahrenheit' ? c * 9 / 5 + 32 : c);
-
-let weatherRetry = 0;
-let weatherFor = ''; // the location the forecast in D.weather belongs to
-let unitShown = ''; // the unit the widgets last drew: a settings change redraws the cached forecast, no new request
-// the model is part of the key: another model is another forecast, fetched now rather than in up to 14 minutes
-const weatherKey = () => { const { lat, lon } = cfg.weather || DEFAULT_CFG.weather; const model = wxModel(); return `v3:${lat},${lon}${model ? ':' + model : ''}`; };
-// the agent passes only known model names; this guard keeps a hand-edited cached config out of the URL as well
-const wxModel = () => (/^[a-z0-9_]{1,40}$/.test(cfg.weather?.model || '') ? cfg.weather.model : '');
-export async function loadWeather(force = false) {
-  const { lat, lon, unit } = cfg.weather || DEFAULT_CFG.weather;
-  const key = weatherKey();
-  const cached = store.get('wx', null);
-  // a new place starts from its own cache or from "Loading…", never from the previous place's forecast
-  if (D.weather && weatherFor !== key) { D.weather = null; emit('weather'); }
-  if (cached && cached.key === key && !D.weather) { D.weather = cached.data; weatherFor = key; emit('weather'); }
-  // buildLayout keeps the widgets when the pages did not change, so a new unit must be drawn from here
-  else if (D.weather && unit !== unitShown) emit('weather');
-  unitShown = unit;
-  if (!force && cached && cached.key === key && Date.now() - cached.at < 14 * 60_000) return;
-  // only while a page shows the weather (PRIVACY.md): no widget, no request with the location;
-  // also wait for the first agent config when no cached config exists, so FALLBACK_PAGES never leaks default coordinates
-  if (!anyNeeds('weather') || (!PREVIEW && cfgVersion === null && !store.get('cfg', null))) return;
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-      '&current=temperature_2m,apparent_temperature,weather_code,is_day' +
-      '&hourly=temperature_2m,weather_code,precipitation_probability,is_day' +
-      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,daylight_duration,uv_index_max' +
-      '&timezone=auto&forecast_days=7' + (wxModel() ? '&models=' + wxModel() : '');
-    const ctl = new AbortController();
-    setTimeout(() => ctl.abort(), 8000);
-    const r = await safeFetch(url, { signal: ctl.signal });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    // an error answer (from Open-Meteo or the agent's fallback) must not be kept as the forecast for 14 minutes
-    if (!data || !data.current) throw new Error('no forecast');
-    if (weatherKey() !== key) return; // the place changed while this was on its way
-    store.set('wx', { key, at: Date.now(), data });
-    D.weather = data;
-    weatherFor = key;
-    emit('weather');
-  } catch (_) {
-    // false, not null: the widgets say "Weather unavailable" instead of "Loading…" for good, and try again soon
-    if (!D.weather) { D.weather = false; emit('weather'); }
-    if (!weatherRetry) weatherRetry = setTimeout(() => { weatherRetry = 0; loadWeather(); }, 2 * 60_000);
-  }
-}
-
-export function wxLines() {
-  const w = D.weather;
-  if (!w || !w.current) return null;
-  const c = w.current, d = w.daily || {};
-  const desc = wxText(c.weather_code);
-  const hi = d.temperature_2m_max ? wxDeg(d.temperature_2m_max[0]) : null;
-  const lo = d.temperature_2m_min ? wxDeg(d.temperature_2m_min[0]) : null;
-  return {
-    icon: wxIcon(c.weather_code, c.is_day),
-    temp: wxDeg(c.temperature_2m) + '°',
-    desc: `${desc} · ${cfg.weather?.city || ''}`,
-    range: (hi != null ? `↑${hi}° ↓${lo}° · ` : '') + t('wx.feelsLike', { deg: wxDeg(c.apparent_temperature) }),
-  };
-}
-
-export function wxBlock() {
-  const e = h('div', 'wx', h('span', 'wx-icon', '·'), h('span', 'wx-temp', '--°'),
-    h('div', 'wx-meta', h('span', 'wx-desc', t('w.loading')), h('span', 'wx-range muted')));
-  e.update = () => {
-    const l = wxLines();
-    if (!l) {
-      // no forecast: clear the last one too, so an old temperature never sits next to the new message
-      e.querySelector('.wx-icon').textContent = '·';
-      e.querySelector('.wx-temp').textContent = '--°';
-      e.querySelector('.wx-range').textContent = '';
-      e.querySelector('.wx-desc').textContent = D.weather === null ? t('w.loading') : t('w.weatherUnavailable');
-      return;
-    }
-    e.querySelector('.wx-icon').replaceChildren(emo(l.icon));
-    e.querySelector('.wx-temp').textContent = l.temp;
-    e.querySelector('.wx-desc').textContent = l.desc;
-    e.querySelector('.wx-range').textContent = l.range;
-  };
-  return e;
-}
-
 // ---------------------------------------------------------------- status line (clock widget)
 export function phoneBattery() {
   if (!bridge) return '';
@@ -945,56 +817,6 @@ armButton($('psAll'), t('panel.tapToConfirm'), async () => {
 });
 $('psClose').addEventListener('click', () => { haptic(); closeSheet(); });
 
-// ---------------------------------------------------------------- pushed data (webhook API)
-/** Normalises whatever was pushed into { value, title, sub, unit, color, icon, progress, items, level }. */
-export function pushView(item) {
-  const d = item.data;
-  const v = { at: item.at };
-  if (Array.isArray(d)) v.items = d;
-  else if (d !== null && typeof d === 'object') {
-    v.value = d.value ?? d.state ?? d.status;
-    v.title = d.title ?? d.label ?? d.name;
-    v.sub = d.sub ?? d.subtitle ?? d.text ?? d.message;
-    v.unit = d.unit;
-    v.color = d.color;
-    v.icon = d.icon;
-    v.items = Array.isArray(d.items) ? d.items : undefined;
-    v.level = d.level;
-    if (typeof d.progress === 'number') v.progress = d.progress > 1 ? d.progress / 100 : d.progress;
-    if (typeof d.min === 'number') v.min = d.min;
-    if (typeof d.max === 'number') v.max = d.max;
-    if (v.value === undefined && !v.items && v.sub === undefined) v.value = JSON.stringify(d);
-  } else v.value = d;
-  return v;
-}
-
-export function fmtValue(x) {
-  if (typeof x === 'number') return Math.abs(x) >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10);
-  if (typeof x === 'boolean') return x ? tp('On') : tp('Off');
-  return x == null ? '—' : String(x);
-}
-export const LEVEL_COLOR = { ok: '#22c55e', success: '#22c55e', warn: '#f59e0b', warning: '#f59e0b', error: '#ef4444', fail: '#ef4444', failure: '#ef4444', info: '#60a5fa' };
-export const levelOf = (v) => v.level || (typeof v.value === 'string' ? (/^(ok|pass(ed)?|success|green|up|online)$/i.test(v.value) ? 'ok'
-  : /^(fail(ed|ure)?|error|red|down|offline|broken)$/i.test(v.value) ? 'error' : /^(running|pending|building|warn(ing)?|yellow)$/i.test(v.value) ? 'warn' : '') : '');
-
-// ---------------------------------------------------------------- notifications (POST /api/notify)
-export function handleNotify(d) {
-  const level = d.level === 'error' ? 'err' : d.level === 'ok' || d.level === 'success' ? 'ok' : d.level === 'warn' ? 'warn' : '';
-  if (d.wake && nightOn) { wakeUntil = Date.now() + 30_000; setNight(false); }
-  undim();
-  toast(d.text || '', level, d.title || '', d.seconds || 5);
-  if (d.vibrate !== false) buzz(level === 'err' ? '0,90,90,90,90,160' : '0,70,110,70');
-  D.notes.unshift({ title: d.title || '', text: d.text || '', level: d.level || 'info', at: Date.now() });
-  D.notes = D.notes.slice(0, 30);
-  store.set('notes', D.notes);
-  emit('notes');
-  // the webhook body is passed through as sent; like every other countdown, this one is 0-30 s (or the default)
-  // only a number or a numeric string: Number() of an object such as {"toString":null} throws, which would stop the
-  // events after this one from being handled
-  const raw = d.countdown;
-  const countdown = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
-  if (d.page != null) requestPage({ page: d.page, name: d.title || null, countdown: Number.isFinite(countdown) ? Math.min(30, Math.max(0, countdown)) : undefined });
-}
 
 // ---------------------------------------------------------------- permission prompts (AI coding-agent hook → phone)
 export let approvals = [];
@@ -1209,19 +1031,13 @@ $('apCustomSend').addEventListener('click', sendCustomAnswer);
 $('apCustomText').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendCustomAnswer(); } });
 
 export function handleEvent(e) {
-  if (PREVIEW && (e.kind === 'goto' || e.kind === 'back' || e.kind === 'reload')) return; // the editor picks the page
+  if (PREVIEW && e.kind === 'goto') return; // the editor picks the page
   if (e.kind === 'approval' || e.kind === 'approval-done') loadApprovals();
-  else if (e.kind === 'notify' && e.data) handleNotify(e.data);
   else if (e.kind === 'goto' && e.data) requestPage(e.data);
-  else if (e.kind === 'back' && e.data) requestBack(e.data.rule);
-  else if (e.kind === 'refresh') { loadConfig(); loadQuotas(); loadWork(); loadPush(); loadWeather(true); loadCalendar(); }
-  else if (e.kind === 'reload') location.reload();
 }
 
-export const WIDGET_ICONS = { camera: '📹', rules: '⚡', chargecare: '🔋', nextup: '⏭️', moon: '🌙', wordclock: '🔤', clock: '🕒', weather: '⛅', forecast: '🌦️', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️', sessions: '🤖',
-  github: '🐙', processes: '⚙️', worldclock: '🌍', calendar: '📅', pomodoro: '🍅', countdown: '⏳', note: '📝', 
-  push: '📡', inbox: '📬', label: '🔤', analog: '🕰️', progress: '📆', stopwatch: '⏱️', timer: '⏲️', counter: '🔢', breathe: '🫁', quote: '💬',
-  checklist: '✅', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', sun: '🌅', air: '🍃', hackernews: '📰', feeds: '🗞️', photos: '🖼️', exchange: '💱', crypto: '🪙', image: '🖼️', pcswitch: '🖥️' };
+export const WIDGET_ICONS = { chargecare: '🔋', clock: '🕒', stat: '📈', gauge: '⏲️', chart: '📊', meters: '💾', gpu: '🎮', quotas: '✳️',
+  sessions: '🤖', github: '🐙', processes: '⚙️', battery: '🔋', topprocs: '🔥', quotaring: '🎯', volume: '🔊', pcswitch: '🖥️' };
 
 // ================================================================= pages
 export const pager = $('pager');
@@ -1479,14 +1295,10 @@ export const resolvePage = (ref) => {
 export const homeIndex = () => { const id = cfg.display?.homePage; const i = id ? pages.findIndex((p) => p.id === id) : -1; return i >= 0 ? i : 0; };
 
 // ================================================================= calm page switching
-// Rules, webhooks and the idle return ask for a page instead of jumping to it. A request waits while you are using the
-// panel and while the last automatic switch is recent, then counts down on screen ("Switching to AI in 3…") so it can be
-// stopped, and fades over. Requests that come one after another are merged: the highest priority goes first, a rule
-// that ends before its turn is dropped, and a page that a rule holds is not taken over by a lower rule while it lasts.
-// A rule that holds its page "while active" keeps it (no idle return, up to display.holdMaxMin); when the rule ends the
-// panel goes back to the page it came from, unless you moved on yourself in the meantime.
-export let ruleHold = null;   // { rule, name, page, from, at, priority }
-export let navQueue = [];     // { kind: 'goto' | 'back' | 'home', rule, name, detail, page, hold, priority, countdown, at }
+// The settings page ("Open on the phone") and the idle return ask for a page instead of jumping to it. A request waits
+// while you are using the panel and while the last automatic switch is recent, then counts down on screen
+// ("Switching to AI in 3…") so it can be stopped, and fades over. A page the settings page asks for goes before going home.
+export let navQueue = [];     // { kind: 'goto' | 'home', name, page, countdown, at }
 let navCount = null;          // { req, until, total }
 let navTimer = 0;
 let lastAutoSwitch = 0;
@@ -1498,29 +1310,9 @@ export function requestPage(d) {
   if (PREVIEW) return;
   const page = resolvePage(d.page);
   if (page < 0) return;
-  const rule = d.rule || null;
-  if (rule) {
-    // the rule ended and came back before its "back" ran: just stay
-    const back = navQueue.find((r) => r.kind === 'back' && r.rule === rule);
-    navQueue = navQueue.filter((r) => r.rule !== rule);
-    if (back && ruleHold?.rule === rule && curPage === ruleHold.page) { ruleHold.at = Date.now(); return pump(); }
-  }
-  navQueue.push({ kind: 'goto', rule, name: d.name || null, detail: d.detail || '', page, hold: !!(d.hold && rule),
-    priority: d.priority ?? 5, countdown: d.countdown, at: Date.now() });
-  soon();
-}
-
-// events that arrive together (several rules at once) are looked at together, a moment later
-function soon() { if (!navTimer) navTimer = setInterval(pump, 250); }
-
-export function requestBack(rule) {
-  if (PREVIEW || !rule) return;
-  // the rule ended before its turn: nothing to undo
-  const queued = navQueue.findIndex((r) => r.kind === 'goto' && r.rule === rule);
-  if (queued >= 0) { navQueue.splice(queued, 1); return pump(); }
-  if (!ruleHold || ruleHold.rule !== rule || navQueue.some((r) => r.kind === 'back' && r.rule === rule)) return;
-  navQueue.push({ kind: 'back', rule, name: ruleHold.name, page: ruleHold.from, priority: ruleHold.priority, at: Date.now() });
-  soon();
+  navQueue = navQueue.filter((r) => r.kind !== 'goto'); // the newest choice replaces an older one still waiting
+  navQueue.push({ kind: 'goto', name: d.name || null, page, countdown: d.countdown, at: Date.now() });
+  if (!navTimer) navTimer = setInterval(pump, 250);
 }
 
 /** Seconds of no touch after which this page goes home (0 = stay). */
@@ -1529,9 +1321,7 @@ function idleDue() {
   if (pagePaused) return false;
   const idle = idleLimit();
   if (!(idle > 0)) return false;
-  const maxHold = (dsp().holdMaxMin ?? 30) * 60_000;
-  const held = ruleHold && curPage === ruleHold.page && (!maxHold || Date.now() - ruleHold.at < maxHold);
-  return !held && Date.now() - Math.max(lastTouch, lastNav) > idle * 1000
+  return Date.now() - Math.max(lastTouch, lastNav) > idle * 1000
     && (curPage !== homeIndex() || !!sheet || !$('overview').hidden);
 }
 
@@ -1550,19 +1340,8 @@ function softGo(i) {
 function perform(req) {
   navQueue = navQueue.filter((r) => r !== req);
   navCount = null;
-  if (req.kind === 'goto') {
-    // a rule taking over another rule's page inherits where that one came from
-    const from = ruleHold && curPage === ruleHold.page ? ruleHold.from : curPage;
-    navQueue = navQueue.filter((r) => r.kind !== 'back'); // whatever was going back is replaced by this
-    if (req.hold) ruleHold = { rule: req.rule, name: req.name, page: req.page, from, at: Date.now(), priority: req.priority };
-    else if (ruleHold && req.page !== ruleHold.page) ruleHold = null;
-    softGo(req.page);
-  } else if (req.kind === 'back') {
-    const h = ruleHold;
-    ruleHold = null;
-    if (h && curPage === h.page && h.from !== h.page) softGo(h.from);
-  } else {
-    ruleHold = null;
+  if (req.kind === 'goto') softGo(req.page);
+  else {
     closeSheet(); closeOverview();
     softGo(homeIndex());
   }
@@ -1572,31 +1351,18 @@ function perform(req) {
   if (navQueue.length) setTimeout(pump, 0);
 }
 
-/** Drops a request (the Stay button). A dropped rule page also gives up its "back". */
+/** Drops a request (the Stay button). */
 function dismiss(req) {
   haptic();
   navQueue = navQueue.filter((r) => r !== req);
   if (req.kind === 'home') lastTouch = Date.now();
-  // staying after a rule ended ends its hold, or the list of active rules (applyState) would ask to go back again
-  if (req.kind === 'back' && ruleHold?.rule === req.rule) ruleHold = null;
   navCount = null;
   pump();
 }
 
 function nextRequest() {
-  const hold = ruleHold && curPage === ruleHold.page ? ruleHold : null;
-  // the rule ended after you moved on: its hold is over, so coming back to that page later does not undo it
-  if (ruleHold && !hold && navQueue.some((r) => r.kind === 'back' && r.rule === ruleHold.rule)) ruleHold = null;
-  navQueue = navQueue.filter((r) => (r.kind === 'back' ? hold && hold.rule === r.rule : r.kind === 'home' ? idleDue() : true));
-  // already there: a rule just takes the page over
-  for (const r of navQueue.filter((r) => r.kind === 'goto' && r.page === curPage)) {
-    if (r.hold && (!hold || r.priority >= hold.priority)) ruleHold = { rule: r.rule, name: r.name, page: r.page, from: hold ? hold.from : curPage, at: Date.now(), priority: r.priority };
-    navQueue = navQueue.filter((x) => x !== r);
-  }
-  const ending = hold && navQueue.some((r) => r.kind === 'back' && r.rule === hold.rule);
-  const blocked = (r) => r.kind === 'goto' && hold && !ending && r.priority < hold.priority;
-  const order = { goto: 0, back: 1, home: 2 };
-  return navQueue.filter((r) => !blocked(r)).sort((a, b) => order[a.kind] - order[b.kind] || b.priority - a.priority || a.at - b.at)[0] || null;
+  navQueue = navQueue.filter((r) => r.kind !== 'home' || idleDue());
+  return navQueue.find((r) => r.kind === 'goto') || navQueue[0] || null;
 }
 
 /** Why a request has to wait, or '' when it may go. */
@@ -1637,7 +1403,7 @@ function renderNav(req = null, why = '') {
   // waits, so only its first appearance counts, or the panel would never dim behind a request that keeps waiting
   const wakeKey = why ? req : navCount;
   if (wakeKey !== navWoken) { navWoken = wakeKey; undim(); }
-  const name = req.name || (req.kind === 'home' ? t('panel.nobodyAround') : req.kind === 'back' ? t('panel.done') : t('panel.pageSwitch'));
+  const name = req.name || (req.kind === 'home' ? t('panel.nobodyAround') : t('panel.pageSwitch'));
   const target = req.kind === 'home' ? pageLabel(homeIndex()) : pageLabel(req.page);
   const more = navQueue.length > 1 ? ` +${navQueue.length - 1}` : '';
   if (why) {
@@ -1655,7 +1421,7 @@ function renderNav(req = null, why = '') {
     navShown = navCount;
     $('nvName').textContent = name;
     $('nvLine').replaceChildren(rich(req.kind === 'goto' ? t('panel.switchingTo', { target }) : t('panel.backTo', { target })));
-    $('nvDetail').textContent = req.detail && req.detail !== 'test' ? req.detail : more ? t('panel.moreWaiting', { n: navQueue.length - 1 }) : '';
+    $('nvDetail').textContent = more ? t('panel.moreWaiting', { n: navQueue.length - 1 }) : '';
     const ring = $('nvRing');
     ring.style.animation = 'none';
     void ring.getBoundingClientRect();
@@ -1665,27 +1431,6 @@ function renderNav(req = null, why = '') {
     card.classList.add('on');
   }
   $('nvNum').textContent = Math.max(1, Math.ceil((navCount.until - Date.now()) / 1000));
-}
-
-/** Overview: pause the agent's rules for an hour, or resume them. */
-export async function toggleRulesPause() {
-  haptic();
-  const paused = rulesPaused && rulesPaused > Date.now();
-  try {
-    const r = await api(`/rules/pause?minutes=${paused ? 0 : 60}`, 'POST', 4000);
-    rulesPaused = r.pausedUntil || null;
-    if (rulesPaused) navQueue = navQueue.filter((x) => x.kind !== 'goto' || !x.rule);
-    toast(rulesPaused ? t('panel.rulesPausedToast') : t('panel.rulesResumedToast'), 'ok');
-  } catch (_) { toast(t('panel.pcNoAnswer'), 'warn'); }
-  renderRulesBtn();
-}
-export function renderRulesBtn() {
-  const b = $('ovRules');
-  if (!b) return;
-  const paused = rulesPaused && rulesPaused > Date.now();
-  b.hidden = PREVIEW || !online;
-  b.classList.toggle('on', !!paused);
-  b.replaceChildren(icon(paused ? 'play' : 'pause', 'm'), paused ? t('panel.rulesPausedUntil', { time: fmtHM(new Date(rulesPaused)) }) : t('panel.pauseRules1h'));
 }
 
 export let titleTimer = 0;
@@ -1727,7 +1472,6 @@ export function openOverview() {
     return t;
   };
   $('ovGrid').replaceChildren(...pages.map(tile));
-  renderRulesBtn();
   // several paired computers: switch between them here (a USB cable always wins)
   const pcs = pairedPcs();
   $('ovPcs').replaceChildren(...(pcs.length > 1 ? pcs.map((pc) => {
@@ -1752,7 +1496,6 @@ export function switchPc(pc) {
 }
 export function closeOverview() { $('overview').hidden = true; }
 $('overview').addEventListener('click', closeOverview);
-$('ovRules').addEventListener('click', (e) => { e.stopPropagation(); toggleRulesPause(); });
 
 let dotsHoldTimer = 0, dotsHoldStart = null, heldDots = false;
 /** Cancels any pending long-press hold timer on the #dots bar. */
@@ -1856,23 +1599,19 @@ window.onAndroidKey = (k) => {
 };
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    const noteEdit = document.querySelector('.note-edit');
-    if (noteEdit) { e.preventDefault(); noteEdit.remove(); return; }
     if (closeSessionDetails()) { e.preventDefault(); return; }
     if (sheet) { e.preventDefault(); closeSheet(); return; }
     $('overview').hidden ? openOverview() : closeOverview();
     return;
   }
   if (e.altKey || e.ctrlKey || e.metaKey) return;
-  if (e.target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]') || document.querySelector('.note-edit')) return;
+  if (e.target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
   if (e.key === 'ArrowRight') window.onAndroidKey('next');
   else if (e.key === 'ArrowLeft') window.onAndroidKey('prev');
   else if (e.key === 'o') ($('overview').hidden ? openOverview() : closeOverview());
 });
 window.onAndroidBack = () => {
   if (!$('approval').hidden) return; // answer it (or let it time out); Back must not dismiss a permission prompt
-  const noteEdit = document.querySelector('.note-edit');
-  if (noteEdit) { noteEdit.remove(); return; }
   if (closeSessionDetails()) return;
   if (!$('overview').hidden) closeOverview();
   else if (sheet) closeSheet();
@@ -2021,7 +1760,7 @@ export function applyBurnIn() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) undim(); }); // woken on plug-in, back from another app
 
 export function tick() {
-  if (lastHour12 !== null && hour12() !== lastHour12) { buildLayout(); renderRulesBtn(); }
+  if (lastHour12 !== null && hour12() !== lastHour12) buildLayout();
   const now = new Date();
   $('nClock').textContent = fmtHM(now);
   $('nDate').textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -2029,7 +1768,7 @@ export function tick() {
   reconcileUnreachableNight(now);
   if (!PREVIEW && idleDue() && !navQueue.some((r) => r.kind === 'home')) {
     if (curPage === homeIndex()) { closeSheet(); closeOverview(); lastNav = Date.now(); } // only a sheet to close
-    else { navQueue.push({ kind: 'home', at: Date.now(), priority: -1 }); pump(); }
+    else { navQueue.push({ kind: 'home', at: Date.now() }); pump(); }
   }
   applyBurnIn();
   document.body.classList.toggle('controls-top', cfg.display?.controlsTop === true);
@@ -2051,7 +1790,6 @@ export function applyDisplay() {
   document.documentElement.style.setProperty('--accent', `rgb(${DEFAULT_AMBIENT})`);
   if (before !== DEFAULT_AMBIENT) setAmbient();
   if (langChanged) { buildLayout(); renderApproval(); }
-  renderRulesBtn();
   if (PREVIEW || !bridge) return;
   try { bridge.setLanguage?.(I18n?.getPref() || 'auto'); } catch (_) {}
   try { bridge.setVolumeKeys && bridge.setVolumeKeys(d.volumeKeys !== false); } catch (_) {}
@@ -2061,22 +1799,12 @@ export function applyDisplay() {
   applyBrightness(true);
 }
 
-/** A mark taken before the panel writes the config itself (a note save). */
-export function configMark() { return configRequest; }
-/** Whether a config read that started after `mark` has been applied: it already shows the write, or a later one. */
-export function configReadSince(mark) { return appliedConfigRequest > mark; }
-/** The panel's own write was stored as version `v`: a config read that started before it must not apply over it. */
-export function localWriteStored(v) {
-  if (v != null) cfgVersion = v;
-  writeBarrier = configRequest + 1;
-}
-
 export async function loadConfig() {
   if (PREVIEW) return;
   const request = ++configRequest;
   try {
     const r = await api('/config');
-    if (request < appliedConfigRequest || request < writeBarrier) return;
+    if (request < appliedConfigRequest) return;
     const before = JSON.stringify(cfg);
     const first = cfgVersion === null;
     cfg = { ...DEFAULT_CFG, ...r.config };
@@ -2089,20 +1817,7 @@ export async function loadConfig() {
         buildLayout();
         applyDisplay();
       }
-      loadWeather();
     }
-  } catch (_) {}
-}
-
-// All-day events have a date but no time zone: the agent sends the UTC midnight of that date. Show them on that date in
-// the phone's own zone (west of UTC they would land a day early, east of UTC run into the next day).
-const localDay = (ms) => { const d = new Date(ms); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()).getTime(); };
-export async function loadCalendar() {
-  try {
-    const cal = await api('/calendar');
-    cal.events = (cal.events || []).map((e) => (e.allDay ? { ...e, start: localDay(e.start), end: localDay(e.end) } : e)).sort((a, b) => a.start - b.start);
-    D.calendar = cal;
-    emit('calendar');
   } catch (_) {}
 }
 
@@ -2133,22 +1848,9 @@ export async function loadProcs() {
   try { D.procs = await api('/procs?top=150'); emit('procs'); } catch (_) {}
 }
 
-let pushRequest = 0, appliedPushRequest = 0;
-export async function loadPush() {
-  const req = ++pushRequest;
-  try {
-    const r = await api('/push');
-    if (req < appliedPushRequest) return;
-    appliedPushRequest = req;
-    D.push = r.items || {};
-    pushVersion = r.version;
-    emit('push');
-  } catch (_) {}
-}
-
 export function setOnline(on) {
   document.body.classList.toggle('offline', !on);
-  if (on && online !== true) { loadConfig(); loadQuotas(); loadWork(); loadPush(); loadApprovals(); loadCalendar(); }
+  if (on && online !== true) { loadConfig(); loadQuotas(); loadWork(); loadApprovals(); }
   const changed = online !== on;
   if (!on && changed) unreachableSince = unreachableSince || Date.now();
   if (on && changed) unreachableSince = 0;
@@ -2170,7 +1872,6 @@ export function applyState(s, replayGen = null) {
   D.state = s;
   setOnline(true);
   if (s.cfgVersion !== undefined && cfgVersion !== null && s.cfgVersion !== cfgVersion) loadConfig();
-  if (s.pushVersion !== undefined && s.pushVersion !== pushVersion) loadPush();
   if (fresh) {
     stateTs = s.ts ?? stateTs;
     // the agent restarted: it counts events from 0 again — forget what was handled and replay its backlog once
@@ -2178,9 +1879,6 @@ export function applyState(s, replayGen = null) {
     evSeq = Math.max(evSeq ?? 0, s.evSeq ?? 0);
   }
   // the "back" event can be missed while offline; the list of active rules settles it
-  if (ruleHold && Array.isArray(s.rules) && !s.rules.includes(ruleHold.rule) && Date.now() - ruleHold.at > 8000) requestBack(ruleHold.rule);
-  rulesPaused = s.rulesPaused || null;
-  if (!$('overview').hidden) renderRulesBtn();
   {
     const pc = s.pc;
     if (pc) {
@@ -2233,9 +1931,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !a
 // what the paused panel skipped is fetched at once, not at the next interval
 function wokeUp() {
   if (!online) return;
-  loadConfig(); loadPush(); loadApprovals();
+  loadConfig(); loadApprovals();
   if (anyNeeds('quotas')) loadQuotas();
-  if (anyNeeds('calendar')) loadCalendar();
   if (anyNeeds('work') && !streaming()) loadWork();
 }
 
@@ -2277,25 +1974,20 @@ nightBeforeBuild();
 buildLayout();
 applyDisplay();
 tick();
-loadWeather();
-setInterval(loadWeather, 15 * 60_000);
 setInterval(() => { if (!nightOn && !idle()) { emit('fast'); beat(); } }, 250);
 setInterval(() => { if (online && !idle() && anyNeeds('quotas')) loadQuotas(); }, 30_000);
-setInterval(() => { if (online && !idle() && anyNeeds('calendar')) loadCalendar(); }, 120_000);
 setInterval(() => { if (online && !idle() && anyNeeds('work') && !streaming()) loadWork(); }, 3000);
 setInterval(() => { if (idle()) return; if (online && pageOf('procs')) loadProcs(); if (online && sheet) loadSheet(); }, 2000);
 setInterval(() => { if (online && !idle()) loadConfig(); }, 60_000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && lastHour12 !== null && hour12() !== lastHour12) {
     buildLayout();
-    renderRulesBtn();
     $('nClock').textContent = fmtHM(new Date());
   }
 });
 poll();
 
 if (PREVIEW) {
-  let weatherKey = '';
   window.addEventListener('message', (e) => {
     if (e.origin !== location.origin || e.data?.type !== 'phonebox-preview') return;
     const c = e.data.config || {};
@@ -2303,8 +1995,6 @@ if (PREVIEW) {
     cfg = { ...DEFAULT_CFG, ...c, night: { ...(c.night || {}), enabled: false }, display: { ...(c.display || {}), idleReturnSec: 0 } };
     buildLayout();
     applyDisplay();
-    const wk = JSON.stringify(cfg.weather);
-    if (wk !== weatherKey) { weatherKey = wk; loadWeather(); }
     // the editor's page index counts hidden pages too; the panel only has the shown ones
     const list = cfg.pages || [], sel = list[e.data.page];
     const shown = (p) => p.enabled !== false && Array.isArray(p.widgets);

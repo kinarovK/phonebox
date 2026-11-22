@@ -15,51 +15,6 @@ async function show(page, widgets, display = { language: 'de' }) {
   await page.reload();
 }
 
-test('a small agenda shows relative times in the panel language', async ({ page }) => {
-  await page.addInitScript(() => {
-    // pin the run to local noon so "today" cannot roll over mid-test, and answer /api/calendar
-    // with the fixture before the demo installs its own fetch mock (the setter keeps it as fallback)
-    const noon = new Date(); noon.setHours(12, 0, 0, 0);
-    const FIXED = noon.getTime();
-    const RealDate = Date;
-    window.Date = class extends RealDate {
-      constructor(...args) { super(...(args.length ? args : [FIXED])); }
-      static now() { return FIXED; }
-    };
-    const cal = JSON.stringify({
-      updated: FIXED, errors: [],
-      events: [{ title: 'Review', start: FIXED + 35 * 60e3, end: FIXED + 65 * 60e3, allDay: false, calendar: 'Work', color: '#60a5fa' }],
-    });
-    let inner = window.fetch;
-    Object.defineProperty(window, 'fetch', {
-      configurable: true,
-      // the fallback is fixed when the wrapper is handed out: demo.js keeps the first one as its "real" fetch, and a
-      // wrapper that looked up the live mock would send the demo's pass-through requests back to the demo forever
-      get: () => {
-        const fallback = inner;
-        return (input, init) => {
-          const url = typeof input === 'string' ? input : input.url;
-          if (url.includes('/api/calendar')) {
-            return Promise.resolve(new Response(cal, { status: 200, headers: { 'Content-Type': 'application/json' } }));
-          }
-          return fallback(input, init);
-        };
-      },
-      set: (v) => { inner = v; },
-    });
-  });
-  await show(page, [{ id: 'ag', type: 'agenda', x: 0, y: 0, w: 12, h: 1, options: {} }]);
-  await page.evaluate(() => window.PhoneBoxDemo.emit('refresh'));
-  const sub = page.locator('.ag-big-s').first();
-  await expect(sub).toHaveText(/^in \d+ Min/); // German "in 35 Min · 12:35", not "Heute · 12:35"
-  await expect(sub).not.toHaveText(/Heute/);
-});
-
-test('the breathe widget greets in the panel language before the first tap', async ({ page }) => {
-  await show(page, [{ id: 'br', type: 'breathe', x: 0, y: 0, w: 4, h: 2, options: {} }]);
-  await expect(page.locator('.br-w')).toHaveText('Tippen zum Starten');
-});
-
 // A copied English label can pass a key-coverage check, so check the translations and their placeholders too.
 test('every translated key is really translated, and the rest fall back to English', async ({ page }) => {
   await page.goto('/panel/');
@@ -242,20 +197,18 @@ test('a widget title typed in Turkish uses Turkish capitals', async ({ page }) =
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem('pb-demo-config', JSON.stringify({
-      night: { enabled: false }, rules: [], shortcuts: [],
+      night: { enabled: false },
       display: { language: 'tr' },
       pages: [{ id: 'one', title: 'One', widgets: [
-        { id: 'inbox', type: 'inbox', x: 0, y: 0, w: 6, h: 4 },
-        { id: 'sw', type: 'stopwatch', x: 6, y: 0, w: 3, h: 3 },
-        { id: 'tm', type: 'timer', x: 9, y: 0, w: 3, h: 3, options: { label: 'içecek' } },
+        { id: 'dk', type: 'docker', x: 0, y: 0, w: 12, h: 6, options: { title: 'içecek' } },
       ] }],
     }));
   });
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
-  // innerText is the rendered text, so it shows what text-transform made of it; the widgets are laid out in order
-  const title = (i) => page.locator('.w-title').nth(i).evaluate((e) => e.innerText.split('\n')[0].trim());
-  await expect.poll(() => title(2)).toBe('İÇECEK');
+  // innerText is the rendered text, so it shows what text-transform made of it (the title is followed by the container count)
+  const title = () => page.locator('.w-title').first().evaluate((e) => e.innerText.split('\n')[0].trim());
+  await expect.poll(() => title()).toMatch(/^İÇECEK/);
 });
 
 
@@ -363,24 +316,3 @@ test('the Arabic template dialog inserts the saved page title literally', async 
   await page.locator('#peHead').getByRole('button', { name: 'استبدال بقالب…' }).click();
   await expect(page.locator('#modalBody h3')).toHaveText(`استبدال عناصر صفحة «${title}»`);
 });
-
-test('the pushed value delete button is localized in Arabic', async ({ page }) => {
-  await page.goto('/settings/#webhooks');
-  const pushedDelete = page.locator('#whItems button').first();
-  await expect(pushedDelete).toHaveAccessibleName('Delete');
-  await page.locator('#langSel').selectOption('ar');
-  await expect(pushedDelete).toHaveAccessibleName('حذف');
-  await page.locator('#langSel').selectOption('en');
-  await expect(pushedDelete).toHaveAccessibleName('Delete');
-});
-
-for (const language of ['ar', 'de']) {
-  test(`the calendar uses localized Monday-first weekday headings (${language})`, async ({ page }) => {
-    await show(page, [{ id: 'calendar', type: 'calendar', x: 0, y: 0, w: 4, h: 4 }], { language });
-    const headings = await page.evaluate(() => {
-      const formatter = new Intl.DateTimeFormat(window.PhoneBoxI18n.getLocale(), { weekday: 'narrow' });
-      return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2024, 0, i + 1)));
-    });
-    await expect(page.locator('.w-calendar .cal-h')).toHaveText(headings);
-  });
-}

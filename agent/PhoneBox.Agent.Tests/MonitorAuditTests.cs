@@ -22,43 +22,6 @@ public sealed class MonitorAuditTests : IDisposable
     }
 
     // ------------------------------------------------------------------ 1. calendars sharing a name
-    [Fact]
-    public async Task CalendarsWithTheSameNameDoNotMultiplyEventsWhileAFeedFails()
-    {
-        using var server = TestPorts.Listen();
-        var url = server.Prefixes.Single();
-        var healthy = true;
-        var day = DateTime.UtcNow.Date.AddDays(1);
-        string Feed(string title) => "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:" + title + $"\r\nDTSTART:{day:yyyyMMdd}T090000Z\r\nDTEND:{day:yyyyMMdd}T093000Z\r\nSUMMARY:" + title + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
-        var loop = Task.Run(async () =>
-        {
-            while (server.IsListening)
-            {
-                HttpListenerContext ctx;
-                try { ctx = await server.GetContextAsync(); } catch { return; }
-                if (!healthy) ctx.Response.StatusCode = 503;
-                else await ctx.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(Feed(ctx.Request.Url!.AbsolutePath.Trim('/'))));
-                ctx.Response.Close();
-            }
-        });
-
-        // "Add calendar" in the settings creates entries with an empty name, so two unnamed feeds are the normal case
-        var cfg = Config(new { calendars = new[] { new { name = "", url = url + "work" }, new { name = "", url = url + "home" } } });
-        var monitor = new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance);
-        var refresh = typeof(CalendarMonitor).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        Task Refresh() => (Task)refresh.Invoke(monitor, [cfg.Get().Calendars, CancellationToken.None])!;
-
-        await Refresh();
-        Assert.Equal(["home", "work"], monitor.Snapshot().Events.Select(e => e.Title).Order());
-
-        healthy = false;                       // the network drops (laptop asleep, Wi-Fi down) for half an hour
-        for (var i = 0; i < 3; i++) await Refresh();
-        server.Close(); // not Stop(): Stop() then Dispose() re-binds the port on macOS and can hit "Address already in use"
-
-        Assert.Equal(2, monitor.Snapshot().Errors.Count);
-        Assert.Equal(2, monitor.Snapshot().Events.Count);
-        Assert.Equal(["home", "work"], monitor.Snapshot().Events.Select(e => e.Title).Order());
-    }
 
     // ------------------------------------------------------------------ 3. CodexBar texts under a comma-decimal culture
     [Fact]

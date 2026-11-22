@@ -11,7 +11,6 @@ public sealed class AgentConfig
     public CodexBarConfig CodexBar { get; set; } = new();
     public string? DeviceSerial { get; set; }
     public string? AdbPath { get; set; }
-    public WeatherConfig Weather { get; set; } = new();
     public PingConfig Ping { get; set; } = new();
     public NightConfig Night { get; set; } = new();
     public DisplayConfig Display { get; set; } = new();
@@ -26,19 +25,8 @@ public sealed class AgentConfig
     [JsonPropertyName("opencode")]
     public OpenCodeConfig OpenCode { get; set; } = new();
     public List<PageConfig> Pages { get; set; } = [];
-    public List<RuleConfig> Rules { get; set; } = [];
     /// <summary>Per-phone settings when several phones use this agent: a name and which pages each one shows.</summary>
     public List<PhoneConfig> Phones { get; set; } = [];
-    /// <summary>iCalendar feeds for the Agenda widget; the URLs are secrets and never go to the phone.</summary>
-    public List<CalendarSource> Calendars { get; set; } = [];
-    /// <summary>RSS and Atom feeds for the Feeds widget; like the calendars, the addresses never go to the phone.</summary>
-    public List<FeedSource> Feeds { get; set; } = [];
-    /// <summary>The Photo frame widget's folder; like the feeds, it never goes to the phone.</summary>
-    public PhotoFrameConfig Photos { get; set; } = new();
-    /// <summary>IP cameras for the Camera widget; their addresses (with the passwords in them) never go to the phone.</summary>
-    public CameraConfig Cameras { get; set; } = new();
-    /// <summary>Home Assistant address and long-lived access token (the token never goes to the phone).</summary>
-    public HomeAssistantConfig HomeAssistant { get; set; } = new();
 
     /// <summary>The pages a phone shows: its own selection (Settings › Phones), or all of them.</summary>
     public IEnumerable<PageConfig> PagesFor(string? deviceId)
@@ -52,7 +40,6 @@ public sealed class AgentConfig
     /// <summary>The part sent to the phone: secrets (tokens, keys, camera addresses) are never included.</summary>
     public object ToPublic(string? deviceId = null) => new
     {
-        weather = Weather,
         codexBar = CodexBar,
         night = Night,
         display = Display,
@@ -61,31 +48,25 @@ public sealed class AgentConfig
             p.Id, p.Title, p.Icon, p.Enabled, p.IdleSec, p.Appearance,
             widgets = (p.Widgets ?? []).Select(w => new
             {
-                w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance,
-                options = StackWidgets.PublicOptions(w),
+                w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance, w.Options,
             }),
         }),
-        // cameras: only how often the Camera widget may ask for a picture; the addresses and names stay on this computer
-        cameras = Cameras.Sources.Select(c => new { c.Id, c.Fps }),
-        // names only (for the Rules widget); what a rule matches on stays here
-        rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
     };
 
     /// <summary>Ending processes is allowed when an enabled page has a processes widget that allows it.</summary>
     public IEnumerable<WidgetConfig> Widgets(bool enabledPagesOnly = false) => Pages.Where(p => !enabledPagesOnly || p.Enabled)
-        .SelectMany(p => p.Widgets ?? []).SelectMany(w => new[] { w }.Concat(StackWidgets.Children(w).Where(c => c.Enabled)
-            .Select(c => new WidgetConfig { Type = c.Type, Options = c.Options })));
+        .SelectMany(p => p.Widgets ?? []);
 
     public bool AllowKill() => Widgets(enabledPagesOnly: true)
         .Any(w => w.Type == "processes" && w.Bool("allowKill") != false);
 
-    /// <summary>True when an enabled page (including enabled Smart Stack children) shows the quota cost overview card.</summary>
+    /// <summary>True when an enabled page shows the quota cost overview card.</summary>
     public bool ShowQuotaOverview() => Widgets(enabledPagesOnly: true)
         .Any(w => w.Type is "codexbar" or "quotas" && w.Bool("showOverview") == true);
 
-    /// <summary>True when an enabled page (including enabled Smart Stack children) shows a quota or CodexBar widget that includes Codex.</summary>
+    /// <summary>True when an enabled page shows a quota or CodexBar widget that includes Codex.</summary>
     public bool ShowCodexQuota() => Widgets(enabledPagesOnly: true)
         .Any(w => w.Type is "codexbar" or "quotas" && WidgetIncludesProvider(w, "codex"));
 
@@ -96,25 +77,6 @@ public sealed class AgentConfig
             return arr.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.String && e.GetString() == id);
         return CodexBar.Providers.Any(p => p == id);
     }
-}
-
-public sealed class WeatherConfig
-{
-    public string City { get; set; } = "Tallinn";
-    public double Lat { get; set; } = 59.437;
-    public double Lon { get; set; } = 24.745;
-    /// <summary>
-    /// "celsius" or "fahrenheit": how the panel shows temperatures. The forecast is always fetched in °C and converted
-    /// on the phone, so a change applies to the cached forecast too and Custom HTML widgets keep Open-Meteo's values.
-    /// </summary>
-    [JsonConverter(typeof(WeatherUnitJsonConverter))]
-    public string Unit { get; set; } = "celsius";
-    /// <summary>
-    /// The Open-Meteo forecast model the phone asks for ("gfs_seamless", "ecmwf_ifs025"…), or "" for Open-Meteo's own
-    /// best match. Only the models in <see cref="WeatherModelJsonConverter.Models"/> reach the phone.
-    /// </summary>
-    [JsonConverter(typeof(WeatherModelJsonConverter))]
-    public string Model { get; set; } = "";
 }
 
 public sealed class PingConfig
@@ -199,8 +161,6 @@ public sealed class DisplayConfig
     public int TouchGraceSec { get; set; } = 20;
     /// <summary>At least this many seconds between two automatic page switches, so rules firing one after another do not bounce the screen.</summary>
     public int MinDwellSec { get; set; } = 15;
-    /// <summary>A rule keeps its page at most this many minutes, then the idle return may take over; 0 = as long as the rule lasts.</summary>
-    public int HoldMaxMin { get; set; } = 30;
 }
 
 public sealed class LanConfig
@@ -210,8 +170,6 @@ public sealed class LanConfig
     public int Port { get; set; } = 8766;
     /// <summary>Shared secret handed to the phone over USB. Empty = generate a new one (forces re-pairing).</summary>
     public string? Token { get; set; }
-    /// <summary>Separate key for the webhook API from other machines (push/notify/goto/refresh only). May appear in URLs.</summary>
-    public string? WebhookToken { get; set; }
 }
 
 public sealed class UpdateConfig
@@ -314,61 +272,6 @@ public sealed class WidgetConfig
     public WidgetConfig Clone() => new() { Id = Id, Type = Type, X = X, Y = Y, W = W, H = H, Appearance = Appearance?.Clone(), Options = Options?.ToDictionary(kv => kv.Key, kv => kv.Value.Clone()) };
 }
 
-/// <summary>
-/// An automation rule: when something happens on the PC, do something on the panel. With <see cref="WhileActive"/>
-/// the effect lasts only as long as the condition (the phone goes back to its page, a pushed value is removed).
-/// </summary>
-public sealed class RuleConfig
-{
-    public string Id { get; set; } = "";
-    public string Name { get; set; } = "";
-    public bool Enabled { get; set; } = true;
-    /// <summary>session-waiting, session-busy, process-running, app-in-front, calendar-event, cpu-above, idle, time, push.</summary>
-    public string When { get; set; } = "session-waiting";
-    /// <summary>App / process names ("zoom|Teams"), a time window ("22:00-07:00") or a push key, depending on <see cref="When"/>.</summary>
-    public string? Match { get; set; }
-    /// <summary>CPU percent, or idle minutes.</summary>
-    public double? Value { get; set; }
-    /// <summary>goto, notify or push.</summary>
-    public string Then { get; set; } = "goto";
-    public string? Page { get; set; }
-    public string? Text { get; set; }
-    public string? Level { get; set; }
-    public string? Key { get; set; }
-    public string? PushValue { get; set; }
-    public bool WhileActive { get; set; } = true;
-
-    /// <summary>0-9; a page switch of a higher rule wins and is not replaced by a lower one while it lasts.</summary>
-    public int Priority { get; set; } = 5;
-    /// <summary>The condition has to hold this many seconds before the rule acts (0 = at once; the CPU rule defaults to 15).</summary>
-    public int ForSec { get; set; }
-    /// <summary>After acting, the rule waits this many minutes before it may act again.</summary>
-    public int CooldownMin { get; set; }
-    /// <summary>Only on these days ("mon,tue,wed,thu,fri"); null = every day.</summary>
-    public string? Days { get; set; }
-    /// <summary>Only in this time window ("09:00-18:00"); null = all day.</summary>
-    public string? During { get; set; }
-    /// <summary>Seconds the phone counts down before switching pages; null = the phone's setting, 0 = at once.</summary>
-    public int? CountdownSec { get; set; }
-    /// <summary>
-    /// Push trigger: compare the value instead of "is on" (&gt;, &gt;=, &lt;, &lt;=, =, !=) with <see cref="Arg"/>, or
-    /// "stale": the value has not been updated for <see cref="Arg"/> seconds (or is not there at all).
-    /// </summary>
-    public string? Op { get; set; }
-    public string? Arg { get; set; }
-
-    public static readonly string[] Triggers = ["session-waiting", "session-busy", "process-running", "app-in-front", "calendar-event",
-        "cpu-above", "idle", "time", "push", "quota-above", "review-requested", "ci-failed", "battery-low", "ping-high", "always"];
-    public static readonly string[] Actions = ["goto", "notify", "push"];
-}
-
-/// <summary>Charge guard: keep the phone's battery between Min and Max by switching its power supply.</summary>
-public sealed class HomeAssistantConfig
-{
-    public string? Url { get; set; }
-    public string? Token { get; set; }
-}
-
 public sealed class PhoneConfig
 {
     /// <summary>The id the phone sends (X-PhoneBox-Device).</summary>
@@ -376,20 +279,6 @@ public sealed class PhoneConfig
     public string Name { get; set; } = "";
     /// <summary>Page ids this phone shows, in the usual order; empty or null = all pages.</summary>
     public List<string>? Pages { get; set; }
-}
-
-public sealed class FeedSource
-{
-    public string Name { get; set; } = "";
-    public string Url { get; set; } = "";
-    public string Category { get; set; } = "";
-}
-
-public sealed class CalendarSource
-{
-    public string Name { get; set; } = "";
-    public string Url { get; set; } = "";
-    public string? Color { get; set; }
 }
 
 /// <summary>Reads/writes config.json; external edits are picked up on the next request.</summary>
@@ -481,11 +370,6 @@ public sealed partial class ConfigStore(string path)
         catch (JsonException ex) { return "Invalid JSON: " + ex.Message; }
 
         cfg = Normalize(cfg);
-        if (cfg.Cameras.Sources.Count > CameraFeeds.MaxCameras) return $"There are more than {CameraFeeds.MaxCameras} cameras";
-        foreach (var cam in cfg.Cameras.Sources)
-            if (!CameraFeeds.ValidUrl(cam.Url))
-                return $"Camera '{(cam.Name.Length > 0 ? cam.Name : "(no name)")}': the address must start with rtsp:// or rtsps://";
-        if (cfg.Weather.Lat is < -90 or > 90 || cfg.Weather.Lon is < -180 or > 180) return "Invalid weather location";
         if (!HhMm().IsMatch(cfg.Night.Start ?? "") || !HhMm().IsMatch(cfg.Night.End ?? "")) return "Night mode times must be in HH:MM format";
 
         lock (_lock)
@@ -508,9 +392,6 @@ public sealed partial class ConfigStore(string path)
     /// <summary>Fills in defaults: builds pages from templates, migrates old pages, generates unique ids.</summary>
     private static AgentConfig Normalize(AgentConfig c)
     {
-        c.Weather ??= new();
-        c.Weather.Unit = WeatherUnitJsonConverter.Normalize(c.Weather.Unit);
-        c.Weather.Model = WeatherModelJsonConverter.Normalize(c.Weather.Model);
         c.CodexBar ??= new();
         c.CodexBar.Providers = (c.CodexBar.Providers ?? []).Where(p => p is "claude" or "codex" or "antigravity").Distinct().ToArray();
         c.CodexBar.PageSize = Math.Clamp(c.CodexBar.PageSize, 0, 6);
@@ -529,7 +410,6 @@ public sealed partial class ConfigStore(string path)
         c.Display.SwitchCountdownSec = Math.Clamp(c.Display.SwitchCountdownSec, 0, 30);
         c.Display.TouchGraceSec = Math.Clamp(c.Display.TouchGraceSec, 0, 600);
         c.Display.MinDwellSec = Math.Clamp(c.Display.MinDwellSec, 0, 600);
-        c.Display.HoldMaxMin = Math.Clamp(c.Display.HoldMaxMin, 0, 1440);
         c.Lan ??= new();
         c.Updates ??= new();
         c.Ping ??= new();
@@ -545,7 +425,6 @@ public sealed partial class ConfigStore(string path)
         if (string.IsNullOrWhiteSpace(c.Updates.Repo)) c.Updates.Repo = UpdateConfig.DefaultRepo;
         c.Lan.Port = Math.Clamp(c.Lan.Port, 1024, 65535);
         if (string.IsNullOrWhiteSpace(c.Lan.Token)) c.Lan.Token = NewToken();
-        if (string.IsNullOrWhiteSpace(c.Lan.WebhookToken)) c.Lan.WebhookToken = NewToken();
         c.Night.Brightness = Math.Clamp(c.Night.Brightness, 0.01, 1);
 
         c.Pages = NormalizePages(c.Pages, out var originalPageIds);
@@ -565,70 +444,6 @@ public sealed partial class ConfigStore(string path)
         }
         c.Ping ??= new();
         c.Ping.Adapters = (c.Ping.Adapters ?? []).Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(16).ToList();
-        c.HomeAssistant ??= new();
-        c.HomeAssistant.Url = string.IsNullOrWhiteSpace(c.HomeAssistant.Url) ? null : c.HomeAssistant.Url.Trim().TrimEnd('/');
-        c.HomeAssistant.Token = string.IsNullOrWhiteSpace(c.HomeAssistant.Token) ? null : c.HomeAssistant.Token.Trim();
-        c.Calendars = (c.Calendars ?? []).Where(x => x is not null).Take(20).ToList();
-        foreach (var cal in c.Calendars) { cal.Name = cal.Name?.Trim() ?? ""; cal.Url = cal.Url?.Trim() ?? ""; }
-        c.Feeds = (c.Feeds ?? []).Where(x => x is not null).Take(30).ToList();
-        c.Photos ??= new();
-        c.Photos.Folder = (c.Photos.Folder ?? "").Trim() is { Length: > 1024 } longFolder ? longFolder[..1024] : (c.Photos.Folder ?? "").Trim();
-        c.Photos.Source = string.Equals(c.Photos.Source?.Trim(), PhotoFrameConfig.SourceImmich, StringComparison.OrdinalIgnoreCase) ? PhotoFrameConfig.SourceImmich : PhotoFrameConfig.SourceFolder;
-        c.Photos.ImmichUrl = Cap((c.Photos.ImmichUrl ?? "").Trim(), 2048);
-        // a control character (a stray newline from a paste) can't be part of a key, and would break the request header
-        c.Photos.ImmichKey = Cap(new string((c.Photos.ImmichKey ?? "").Where(ch => !char.IsControl(ch)).ToArray()).Trim(), 256);
-        c.Photos.ImmichAlbum = Cap((c.Photos.ImmichAlbum ?? "").Trim(), 64);
-        c.Photos.ImmichAlbumName = Cap((c.Photos.ImmichAlbumName ?? "").Trim(), 200);
-        foreach (var f in c.Feeds)
-        {
-            var n = f.Name?.Trim() ?? "";
-            f.Name = n.Length > 60 ? n[..60] : n;
-            f.Url = f.Url?.Trim() ?? "";
-            var cat = f.Category?.Trim() ?? "";
-            f.Category = cat.Length > 40 ? cat[..40] : cat;
-        }
-        c.Cameras ??= new();
-        c.Cameras.Ffmpeg = (c.Cameras.Ffmpeg ?? "").Trim() is { Length: > 1024 } longFfmpeg ? longFfmpeg[..1024] : (c.Cameras.Ffmpeg ?? "").Trim();
-        // a row left empty in the editor is dropped; ids are random and kept, so widgets keep pointing at the same camera
-        c.Cameras.Sources = (c.Cameras.Sources ?? []).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Url)).Take(100).ToList();
-        var cameraIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var cam in c.Cameras.Sources)
-        {
-            var n = cam.Name?.Trim() ?? "";
-            cam.Name = n.Length > 60 ? n[..60] : n;
-            cam.Url = cam.Url.Trim() is { Length: > 2048 } longUrl ? longUrl[..2048] : cam.Url.Trim();
-            cam.Transport = string.Equals(cam.Transport?.Trim(), "udp", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
-            cam.Fps = cam.Fps is >= 1 and <= CameraFeeds.MaxFps ? cam.Fps : CameraFeeds.DefaultFps;
-            var id = (cam.Id ?? "").Trim().ToLowerInvariant();
-            if (!CameraId().IsMatch(id) || !cameraIds.Add(id)) { id = Guid.NewGuid().ToString("N")[..12]; cameraIds.Add(id); }
-            cam.Id = id;
-        }
-
-        var ruleIds = new HashSet<string>();
-        c.Rules = (c.Rules ?? []).Where(r => r is not null && RuleConfig.Triggers.Contains(r.When) && RuleConfig.Actions.Contains(r.Then)).Take(50).ToList();
-        foreach (var r in c.Rules)
-        {
-            r.Name = r.Name?.Trim() ?? "";
-            var id = Slug(string.IsNullOrWhiteSpace(r.Id) ? (r.Name == "" ? r.When : r.Name) : r.Id);
-            if (id == "") id = "rule";
-            var unique = id;
-            for (var i = 2; !ruleIds.Add(unique); i++) unique = $"{id}-{i}";
-            r.Id = unique;
-            if (r.Value is { } v) r.Value = Math.Clamp(v, 0, r.When switch { "idle" => 1440, "ping-high" => 10000, _ => 100 });
-            r.Level = r.Level is "ok" or "warn" or "error" ? r.Level : "info";
-            r.Priority = Math.Clamp(r.Priority, 0, 9);
-            r.ForSec = Math.Clamp(r.ForSec, 0, 3600);
-            r.CooldownMin = Math.Clamp(r.CooldownMin, 0, 1440);
-            if (r.CountdownSec is { } cd) r.CountdownSec = Math.Clamp(cd, 0, 30);
-            r.Days = RuleEngine.NormalizeDays(r.Days);
-            r.During = string.IsNullOrWhiteSpace(r.During) ? null : r.During.Trim();
-            r.Op = r.Op is ">" or ">=" or "<" or "<=" or "=" or "!=" or "stale" ? r.Op : null;
-            // seconds without an update: 1 s to a day, a minute when the box was left empty or holds text ("Infinity" too)
-            if (r.Op == "stale")
-                r.Arg = (double.TryParse(r.Arg, NumberStyles.Float, CultureInfo.InvariantCulture, out var staleSec) && double.IsFinite(staleSec) && staleSec > 0
-                    ? Math.Clamp(Math.Round(staleSec), 1, 86400) : 60).ToString(CultureInfo.InvariantCulture);
-            if (r.Page is { } page) r.Page = PageId(page);
-        }
         return c;
     }
 
@@ -726,7 +541,6 @@ public sealed partial class ConfigStore(string path)
         {
             case "home":
                 var clock = Find("clock");
-                clock?.Set("weather", On("weather"));
                 var tiles = p.Options?.TryGetValue("tiles", out var t) == true && t.ValueKind == JsonValueKind.Array
                     ? t.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
                     : ["cpu", "gpu", "ram", "net"];
@@ -771,7 +585,7 @@ public sealed partial class ConfigStore(string path)
         {
             var onDisk = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(path), ReadOpts);
             var damagedIcons = (onDisk?.Pages ?? []).Any(p => p is not null && IconText.Repair(p.Icon) != p.Icon);
-            if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token && onDisk?.Lan?.WebhookToken == c.Lan.WebhookToken) return;
+            if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token) return;
         }
         catch { }
         Save(JsonSerializer.Serialize(c, WriteOpts), version);
@@ -789,8 +603,6 @@ public sealed partial class ConfigStore(string path)
     [GeneratedRegex(@"^([01]\d|2[0-3]):[0-5]\d$")]
     private static partial Regex HhMm();
 
-    [GeneratedRegex("^[a-z0-9]{6,32}$")]
-    private static partial Regex CameraId();
 }
 
 public sealed class CodexBarConfig
@@ -801,46 +613,6 @@ public sealed class CodexBarConfig
     public int RotateInterval { get; set; } = 8;
     /// <summary>Opt-in: poll live Codex quotas through the local Codex CLI app-server (off by default).</summary>
     public bool CodexLiveQuota { get; set; }
-}
-
-/// <summary>
-/// weather.unit: "fahrenheit" in any case or padding, anything else "celsius". A hand-edited number or boolean must not
-/// make the whole settings file unreadable, so a non-string token is skipped instead of thrown on.
-/// </summary>
-internal sealed class WeatherUnitJsonConverter : JsonConverter<string>
-{
-    public static string Normalize(string? value) => string.Equals(value?.Trim(), "fahrenheit", StringComparison.OrdinalIgnoreCase) ? "fahrenheit" : "celsius";
-
-    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        if (reader.TokenType == JsonTokenType.String) return Normalize(reader.GetString());
-        reader.Skip();
-        return "celsius";
-    }
-
-    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(Normalize(value));
-}
-
-/// <summary>
-/// weather.model: one of the Open-Meteo models the settings offer, anything else "" (Open-Meteo's best match). The value
-/// goes into the phone's forecast URL, so only known names pass; like the unit, a non-string token is skipped.
-/// </summary>
-internal sealed class WeatherModelJsonConverter : JsonConverter<string>
-{
-    public static readonly string[] Models =
-        ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless", "gem_seamless", "jma_seamless", "meteofrance_seamless", "cma_grapes_global"];
-
-    public static string Normalize(string? value) =>
-        Models.FirstOrDefault(m => string.Equals(m, value?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "";
-
-    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        if (reader.TokenType == JsonTokenType.String) return Normalize(reader.GetString());
-        reader.Skip();
-        return "";
-    }
-
-    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(Normalize(value));
 }
 
 /// <summary>Reads/writes display.hour12 as boolean false/true or "auto" (follow the phone) so boolean configs stay wire-compatible.</summary>

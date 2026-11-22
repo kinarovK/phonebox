@@ -15,72 +15,6 @@ public sealed class StoreFollowUpTests : IDisposable
 
     private static readonly BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
-    // ---- PushStore ----
-
-    // A Set that has to wait for a save in progress must not hold up every other Set behind it.
-    [Fact]
-    public async Task ASetWaitingForASaveDoesNotBlockTheOthers()
-    {
-        using var store = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_dir, "data.json"));
-        var persistLock = (Lock)typeof(PushStore).GetField("_persistLock", Private)!.GetValue(store)!;
-        var pending = typeof(PushStore).GetField("_savePending", Private)!;
-        using var held = new ManualResetEventSlim();
-        using var release = new ManualResetEventSlim();
-        // a save in progress: the timer callback holds the persist lock (a Lock is released by the thread that took it)
-        var saver = new Thread(() => { lock (persistLock) { held.Set(); release.Wait(TimeSpan.FromSeconds(30)); } });
-        saver.Start();
-        Task? first = null;
-        try
-        {
-            Assert.True(held.Wait(TimeSpan.FromSeconds(10)));
-            first = Task.Run(() => store.Set("first", PushStore.ParseValue("1"), null)); // waits for the save to arm its timer
-            var deadline = DateTime.UtcNow.AddSeconds(10);
-            while ((int)pending.GetValue(store)! == 0 && DateTime.UtcNow < deadline) await Task.Delay(5);
-            Assert.Equal(1, (int)pending.GetValue(store)!);
-            var second = Task.Run(() => store.Set("second", PushStore.ParseValue("2"), null));
-            Assert.True(await Task.WhenAny(second, Task.Delay(TimeSpan.FromSeconds(5))) == second, "the second Set waited behind the first one's save");
-            Assert.Null(await second);
-        }
-        finally
-        {
-            release.Set();
-            saver.Join();
-            if (first is not null) await first.WaitAsync(TimeSpan.FromSeconds(10));
-        }
-        Assert.Equal("2", store.Get("second")?.Data.ToString());
-    }
-
-    private sealed class FailingLog : ILogger<PushStore>
-    {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel level) => true;
-        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? ex, Func<TState, Exception?, string> format)
-        {
-            if (level >= LogLevel.Warning) throw new IOException("the log disk is full too");
-        }
-    }
-
-    // On the timer thread an exception ends the process; a logger that fails with the save must not stop the retry.
-    [Fact]
-    public async Task AFailedSaveIsRetriedEvenWhenItsWarningCannotBeWritten()
-    {
-        var path = Path.Combine(_dir, "data.json");
-        var blocked = Directory.CreateDirectory(path); // the save cannot replace a folder
-        using var store = new PushStore(new FailingLog(), path);
-        var pending = typeof(PushStore).GetField("_savePending", Private)!;
-        pending.SetValue(store, 1); // a change waiting to be saved, without arming the timer from a test thread
-        var persist = typeof(PushStore).GetMethod("Persist", Private)!;
-
-        var error = Record.Exception(() => persist.Invoke(store, null)); // the timer callback, run here
-        Assert.Null(error);
-        Assert.Equal(1, (int)pending.GetValue(store)!);
-
-        blocked.Delete();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        while (!File.Exists(path) && !timeout.IsCancellationRequested) await Task.Delay(50);
-        Assert.True(File.Exists(path), "the save was not retried");
-    }
-
     // ---- page references ----
 
     [Fact]
@@ -94,27 +28,14 @@ public sealed class StoreFollowUpTests : IDisposable
             pages = new[] { new { id = "Desk / Live" }, new { id = "Desk + Live" }, new { id = "kitchen" } },
             display = new { homePage = reference },
             phones = new[] { new { id = "desk", pages = new[] { reference } } },
-            rules = new[] { new { when = "time", then = "goto", page = reference } },
         })));
         foreach (var config in new[] { store.Get(), new ConfigStore(path).Get() })
         {
             Assert.Equal(["desk-live", "desk-live-2", "kitchen"], config.Pages.Select(p => p.Id));
             Assert.Equal("desk-live-2", config.Display.HomePage);
             Assert.Equal("desk-live-2", string.Join(",", config.PagesFor("desk").Select(p => p.Id)));
-            Assert.Equal("desk-live-2", Assert.Single(config.Rules).Page);
         }
     }
-
-    // ---- feed proxy addresses ----
-
-    [Theory]
-    [InlineData("3fff::1", false)]            // 3fff::/20 documentation
-    [InlineData("3fff:0fff:ffff::1", false)]
-    [InlineData("3fff:1000::1", true)]       // just past the documentation block
-    [InlineData("2001:db8::1", false)]
-    [InlineData("2606:4700::1111", true)]
-    public void DocumentationAddressesAreNotPublic(string address, bool expected) =>
-        Assert.Equal(expected, WidgetFeedProxy.IsPublicAddress(IPAddress.Parse(address)));
 
     // ---- Claude Code settings file ----
 

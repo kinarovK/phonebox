@@ -38,6 +38,36 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
     }
 
     [Fact]
+    public void ConfigFromBeforeTheWebAndPersonalWidgetsRemovalStillLoads()
+    {
+        // weather, rules, calendars, feeds, the photo frame, cameras, Home Assistant and the webhook key had their own
+        // settings, and the Smart Stack and the personal widgets sat on pages
+        var path = Path.Combine(_dir, "config.json");
+        File.WriteAllText(path, """
+            {"weather":{"city":"Berlin","lat":52.5,"lon":13.4,"unit":"fahrenheit"},
+             "rules":[{"id":"r","when":"always","then":"notify"}],
+             "calendars":[{"name":"Work","url":"https://example.com/secret.ics"}],
+             "feeds":[{"name":"News","url":"https://example.com/feed.xml"}],
+             "photos":{"source":"immich","immichUrl":"https://photos.example","immichKey":"secret-key"},
+             "cameras":{"sources":[{"id":"cam123","url":"rtsp://user:secret@cam.example/live"}]},
+             "homeAssistant":{"url":"http://ha.local:8123","token":"secret-token"},
+             "lan":{"enabled":false,"token":"phone-key","webhookToken":"hook-key"},
+             "display":{"holdMaxMin":45,"idleReturnSec":120},
+             "night":{"start":"01:15"},
+             "pages":[{"id":"p","enabled":true,"widgets":[{"type":"weather","x":0,"y":0,"w":6,"h":3},
+                      {"type":"stack","x":6,"y":0,"w":6,"h":3,"options":{"widgets":[{"type":"note"},{"type":"clock"}]}},
+                      {"type":"clock","x":0,"y":3,"w":12,"h":3,"options":{"weather":true}}]}]}
+            """);
+        var config = new ConfigStore(path).Get();
+        Assert.Equal("01:15", config.Night.Start);
+        Assert.Equal(120, config.Display.IdleReturnSec);
+        Assert.Equal("phone-key", config.Lan.Token);
+        Assert.Equal(["clock"], config.Pages.Single().Widgets!.Select(w => w.Type));
+        Assert.DoesNotContain("secret", JsonSerializer.Serialize(config.ToPublic()));
+        Assert.DoesNotContain("Berlin", JsonSerializer.Serialize(config.ToPublic()));
+    }
+
+    [Fact]
     public void ADisplaySectionWithTheRemovedArtTintStillLoads()
     {
         var store = new ConfigStore(Path.Combine(_dir, "config.json"));
@@ -65,7 +95,6 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
         var config = store.Get();
         Assert.Equal("01:15", config.Night.Start);
         Assert.Equal(["clock"], config.Pages.Single(p => p.Id == "p").Widgets!.Select(w => w.Type));
-        Assert.Equal(["say"], config.Rules.Select(r => r.Id));
         Assert.DoesNotContain("secret", JsonSerializer.Serialize(config.ToPublic()));
     }
 
@@ -88,6 +117,5 @@ public sealed class ConfigLegacyOptionsTests : IDisposable
         var store = new ConfigStore(path);
         Assert.Equal("01:15", store.Get().Night.Start);
         Assert.Equal(["clock"], store.Get().Pages.Single().Widgets!.Select(w => w.Type));
-        Assert.Equal(["c"], store.Get().Rules.Select(r => r.Id));
     }
 }

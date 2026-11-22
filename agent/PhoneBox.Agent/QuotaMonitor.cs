@@ -239,7 +239,6 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
     {
         long next = 0;
         var failures = 0;
-        var wakes = Wake.Count;
         while (!ct.IsCancellationRequested)
         {
             if (!IsCodexLiveEnabled())
@@ -249,9 +248,8 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
                 failures = 0;
                 next = 0;
             }
-            else if (Environment.TickCount64 >= next || Wake.Count != wakes)
+            else if (Environment.TickCount64 >= next)
             {
-                wakes = Wake.Count;
                 var outcome = await RefreshCodexOnceAsync(CodexQuota.Find, CodexQuota.ReadAsync, ct);
                 if (outcome == CodexLiveOutcome.Ok)
                 {
@@ -269,14 +267,13 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
                     next = Environment.TickCount64 + CodexLiveBackoffMs(failures);
                 }
             }
-            await Wake.Delay(TimeSpan.FromSeconds(5), ct);
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
         }
     }
 
     private async Task RunOverviewLoopAsync(CancellationToken ct)
     {
         long next = 0;
-        var wakes = Wake.Count;
         while (!ct.IsCancellationRequested)
         {
             if (!IsOverviewEnabled())
@@ -284,14 +281,13 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
                 _overview = null;
                 next = 0;
             }
-            else if (Environment.TickCount64 >= next || Wake.Count != wakes)
+            else if (Environment.TickCount64 >= next)
             {
-                wakes = Wake.Count;
                 var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 var ok = await RefreshOverviewOnceAsync(() => ToolProcess.Find("codexbar"), CodexBar.ReadCostAsync, now, ct);
                 next = Environment.TickCount64 + (ok ? 1_200_000 : 300_000);
             }
-            await Wake.Delay(TimeSpan.FromSeconds(5), ct);
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
         }
     }
 
@@ -393,7 +389,7 @@ public sealed partial class QuotaMonitor(ConfigStore config, ILogger<QuotaMonito
             try { await ClaudeTickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct); }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
             catch (Exception ex) { log.LogWarning("claude quota: {Msg}", ex.Message); } // never end the loop for Codex and Antigravity
-            await Wake.Delay(TimeSpan.FromSeconds(30), ct);
+            await Task.Delay(TimeSpan.FromSeconds(30), ct);
         }
     }
 

@@ -28,7 +28,7 @@ async function gatedLayout(page, layout, label = 'owned-layout') {
     return typeof value === 'function' ? value.bind(target) : value;
   } });
   try {
-    await layout(wrapped, [{ id: 'note', type: 'note', x: 0, y: 0, w: 12, h: 6, options: { text: label } }]);
+    await layout(wrapped, [{ id: 'docker', type: 'docker', x: 0, y: 0, w: 12, h: 6, options: { title: label } }]);
     return page.evaluate(() => JSON.parse(localStorage.getItem('pb-demo-config')).pages.map(p => p.id));
   } finally { release(); await page.unroute('**/templates.json'); }
 }

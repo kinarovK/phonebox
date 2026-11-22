@@ -2,7 +2,7 @@
 .w.has-widget-radius { border-radius: var(--widget-radius) !important; }
 .w.has-widget-padding { padding: var(--widget-padding) !important; }
 .w.has-widget-font,
-.w.has-widget-font :is(button, input, textarea, select, .qt-mark) {
+.w.has-widget-font :is(button, input, textarea, select) {
   font-family: var(--widget-font) !important;
 }
 .w.has-widget-font-scale {
@@ -21,7 +21,3 @@
   backdrop-filter: none !important;
 }
 .w[data-widget-surface="borderless"] { background: transparent !important; background-image: none !important; }
-/* Keep control surfaces consistent without changing signal meters or round dials. */
-.w.has-widget-radius .chip-btn {
-  border-radius: min(var(--widget-radius), 12px);
-}

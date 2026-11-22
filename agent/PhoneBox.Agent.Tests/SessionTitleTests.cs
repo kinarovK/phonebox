@@ -150,7 +150,7 @@ public sealed class SessionTitleTests : IDisposable
         Directory.CreateDirectory(_root);
         var cfgPath = Path.Combine(_root, "hook-config.json");
         File.WriteAllText(cfgPath, """{"claude":{"phoneApprovals":true,"onlyWhenAway":false,"timeoutSec":30,"shareSessionTitles":true}}""");
-        var push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_root, "push.json"));
+        var push = new PushStore();
         var approvals = new ApprovalStore(push, NullLogger<ApprovalStore>.Instance);
         var cfg = new ConfigStore(cfgPath);
         var sessions = new SessionMonitor(NullLogger<SessionMonitor>.Instance, cfg) { Sessions = [Session(Title)] };

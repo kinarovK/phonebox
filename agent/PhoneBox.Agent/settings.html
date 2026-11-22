@@ -67,8 +67,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; margin-right: 14px; }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; }
-.ha-row { padding: 8px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
-.ha-row input[type=text] { min-width: 0; }
 
 /* switch */
 .switch { position: relative; width: 40px; height: 22px; flex: 0 0 40px; }
@@ -143,154 +141,23 @@ textarea { width: 100%; resize: vertical; }
 .mini span { background: #1f2937; border-radius: 3px; display: grid; place-items: center; font-size: 12px; overflow: hidden; }
 .empty-mini { display: grid; place-items: center; font-size: 28px; color: #64748b; }
 /* webhooks */
-.ex { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 6px; }
-.ex span { color: var(--muted); font-size: 13px; }
-.cmdline { display: block; cursor: copy; white-space: nowrap; overflow-x: auto; padding: 6px 10px; font: 12px/1.5 Consolas, "Cascadia Mono", monospace; }
-table.items { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.items td { border-top: 1px solid var(--line); padding: 6px 8px; vertical-align: middle; }
-table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1100px) { .pages-layout, .ed-cols { grid-template-columns: 1fr; } #pageTabs { position: static; } }
 
 /* rules */
-.rule { display: grid; gap: 10px; }
-.rule .line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rule .line > b { font-size: 13px; color: var(--muted); font-weight: 600; min-width: 44px; }
-.rule select, .rule input[type=text], .rule input[type=number] { width: auto; min-width: 0; }
-.rule input.grow { flex: 1 1 180px; }
-.rule.off { opacity: .55; }
-.rule .live { font-size: 12px; color: var(--accent); font-weight: 600; }
-.rule .ropts { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 8px; }
-.rule .ropts summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
-.rule .ropts[open] summary { margin-bottom: 4px; }
-.rule .days { display: inline-flex; gap: 3px; }
-.rule .day { border: 1px solid var(--line); background: none; color: var(--muted); border-radius: 7px; padding: 3px 7px; font-size: 12px; cursor: pointer; }
-.rule .day.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-.presets { display: flex; flex-wrap: wrap; gap: 8px; }
 .phone-row { border-top: 1px solid var(--line); padding: 10px 0; }
 .phone-row:first-child { border-top: 0; padding-top: 0; }
 .phone-row .row { gap: 10px; }
 .phone-pages { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; }
-.cal-row { display: grid; grid-template-columns: 160px minmax(0, 1fr) 44px auto; gap: 8px; align-items: center; margin-bottom: 8px; }
-.feed-row { grid-template-columns: 140px 150px minmax(0, 1fr) auto; }
-.cam-row { grid-template-columns: 160px minmax(0, 1fr) 80px 80px auto; }
-.cal-row input[type=color] { width: 44px; height: 34px; padding: 2px; }
-@media (max-width: 700px) { .cal-row { grid-template-columns: 1fr 44px auto; } .feed-row { grid-template-columns: 1fr 1fr auto; } .cam-row { grid-template-columns: 1fr 80px 80px auto; } .cal-row .cal-url { grid-column: 1 / -1; grid-row: 2; } }
 
-.swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-.swatches button { width: 22px; height: 22px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; }
-.swatches button.on { border-color: var(--text); }
-.emojis { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 4px; }
-.emojis button { border: 0; background: none; font-size: 18px; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: inherit; display: inline-grid; place-items: center; }
-.emojis button:hover { background: var(--panel-2); }
 input[type=color] { width: 42px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 2px; }
 .icon-input { width: 70px; text-align: center; font-size: 20px; }
 .custom-icon-preview { width: 30px; height: 30px; object-fit: contain; border-radius: 6px; background: var(--panel-2); }
 
 /* smart stack builder in inspector */
-.stack-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
-.stack-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  user-select: none;
-  cursor: pointer;
-  transition: border-color .15s ease, background .15s ease, opacity .15s ease;
-}
-.stack-row:hover { background: color-mix(in srgb, var(--panel-2) 80%, var(--line)); }
-.stack-row.off { opacity: .5; }
-.stack-row.off .stack-row-name { text-decoration: line-through; }
-.stack-row.dragging { opacity: .35; }
-.stack-row.over { outline: 2px dashed var(--accent); outline-offset: 1px; }
-.stack-row.has-config-open {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--panel-2));
-}
-.stack-row-handle {
-  cursor: grab;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1;
-  padding: 2px 4px;
-}
-.stack-row-handle:active { cursor: grabbing; }
-.stack-row-check { cursor: pointer; }
-.stack-row-ico { font-size: 17px; width: 22px; text-align: center; }
-.stack-row-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stack-row-chevron { font-size: 11px; color: var(--muted); padding: 0 4px; }
-.stack-row:hover .stack-row-chevron { color: var(--text); }
-.stack-row-actions { display: flex; align-items: center; gap: 4px; }
-.stack-btn-sm {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 5px;
-  font-size: 11px;
-  line-height: 1;
-}
-.stack-btn-sm:hover:not(:disabled) { background: var(--line); color: var(--text); }
-.stack-btn-sm:disabled { opacity: 0.3; cursor: default; }
-.stack-btn-del:hover { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-.stack-sub-config {
-  margin: -6px 0 4px;
-  padding: 10px 12px;
-  background: var(--panel);
-  border: 1px solid var(--accent);
-  border-top: none;
-  border-bottom-left-radius: 9px;
-  border-bottom-right-radius: 9px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-}
-.stack-sub-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--line);
-}
-.stack-dropzone {
-  border: 2px dashed var(--line);
-  border-radius: 10px;
-  padding: 12px 10px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 12.5px;
-  cursor: default;
-  transition: all .2s ease;
-  background: rgba(255, 255, 255, 0.015);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.stack-dropzone.over {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
-}
 .pal[draggable="true"] { cursor: grab; }
 .pal[draggable="true"]:active { cursor: grabbing; }
-.wb.stack-canvas-over {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 50%, transparent) !important;
-}
 
 /* city search */
-.results { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: 6px; }
-.results button { text-align: start; border: 0; background: var(--panel); padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
-.results button:last-child { border-bottom: 0; }
-.results button:hover { background: var(--panel-2); }
-.results small { color: var(--muted); }
 
 textarea.json { width: 100%; min-height: 420px; font: 12.5px/1.5 Consolas, "Cascadia Mono", monospace; resize: vertical; }
 code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
@@ -325,7 +192,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .seg button:focus-visible { outline-offset: -3px; }
 
-.btn, .icon-btn, .ptab, nav a, .seg button, .pal, .tpl, .key, .wb, .day, .results button, .emojis button, .stack-btn-sm, .swatches button,
+.btn, .icon-btn, .ptab, nav a, .seg button, .pal, .tpl, .wb,
 input, select, textarea {
   transition: background-color .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease, opacity .12s ease, transform .12s ease;
 }
@@ -334,7 +201,7 @@ input, select, textarea {
 .btn:hover:not(:disabled) { background: var(--panel-2); }
 .btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, #000); }
 .btn:disabled { cursor: not-allowed; }
-.btn:active:not(:disabled), .icon-btn:active:not(:disabled), .seg button:active, .day:active { transform: scale(.97); }
+.btn:active:not(:disabled), .icon-btn:active:not(:disabled), .seg button:active { transform: scale(.97); }
 .icon-btn { width: 36px; height: 36px; }
 .icon-btn:hover:not(:disabled) { background: var(--panel-2); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
 .seg button { min-height: 34px; }
@@ -343,14 +210,8 @@ nav a { border: 1px solid transparent; padding: 10px 12px; }
 .ptab { min-height: 40px; }
 .ptab:active { background: var(--panel-2); }
 .wb:hover:not(.sel) { border-color: color-mix(in srgb, var(--accent) 55%, #2c3647); }
-.key:hover:not(.sel):not(.add) { border-color: color-mix(in srgb, var(--k) 75%, transparent); }
-.key.add:hover { color: var(--text); border-color: var(--accent); }
 .rz { width: 20px; height: 20px; }
-.rule .day { min-height: 28px; padding: 3px 8px; }
-.emojis button { width: 32px; height: 32px; }
-.stack-btn-sm { min-width: 28px; min-height: 28px; font-size: 12px; }
 .pal { min-height: 40px; }
-.results button { min-height: 38px; }
 /* the 22px switch gets a larger hit area without changing how it looks */
 .switch::before { content: ""; position: absolute; inset: -8px -4px; }
 .switch span { transition: background-color .15s ease; }
@@ -385,8 +246,6 @@ summary:focus-visible { outline-offset: 0; border-radius: 6px; }
 
 /* nav icons: Lucide, as masks so they take the text colour */
 nav a[href="#pages"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='14'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='14'%20rx='1'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='14'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='14'%20rx='1'/%3E%3C/svg%3E"); }
-nav a[href="#rules"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolygon%20points='13%202%203%2014%2012%2014%2011%2022%2021%2010%2012%2010%2013%202'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolygon%20points='13%202%203%2014%2012%2014%2011%2022%2021%2010%2012%2010%2013%202'/%3E%3C/svg%3E"); }
-nav a[href="#webhooks"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M9%2017H7A5%205%200%200%201%207%207h2'/%3E%3Cpath%20d='M15%207h2a5%205%200%201%201%200%2010h-2'/%3E%3Cline%20x1='8'%20x2='16'%20y1='12'%20y2='12'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M9%2017H7A5%205%200%200%201%207%207h2'/%3E%3Cpath%20d='M15%207h2a5%205%200%201%201%200%2010h-2'/%3E%3Cline%20x1='8'%20x2='16'%20y1='12'%20y2='12'/%3E%3C/svg%3E"); }
 nav a[href="#general"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cline%20x1='21'%20x2='14'%20y1='4'%20y2='4'/%3E%3Cline%20x1='10'%20x2='3'%20y1='4'%20y2='4'/%3E%3Cline%20x1='21'%20x2='12'%20y1='12'%20y2='12'/%3E%3Cline%20x1='8'%20x2='3'%20y1='12'%20y2='12'/%3E%3Cline%20x1='21'%20x2='16'%20y1='20'%20y2='20'/%3E%3Cline%20x1='12'%20x2='3'%20y1='20'%20y2='20'/%3E%3Cline%20x1='14'%20x2='14'%20y1='2'%20y2='6'/%3E%3Cline%20x1='8'%20x2='8'%20y1='10'%20y2='14'/%3E%3Cline%20x1='16'%20x2='16'%20y1='18'%20y2='22'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cline%20x1='21'%20x2='14'%20y1='4'%20y2='4'/%3E%3Cline%20x1='10'%20x2='3'%20y1='4'%20y2='4'/%3E%3Cline%20x1='21'%20x2='12'%20y1='12'%20y2='12'/%3E%3Cline%20x1='8'%20x2='3'%20y1='12'%20y2='12'/%3E%3Cline%20x1='21'%20x2='16'%20y1='20'%20y2='20'/%3E%3Cline%20x1='12'%20x2='3'%20y1='20'%20y2='20'/%3E%3Cline%20x1='14'%20x2='14'%20y1='2'%20y2='6'/%3E%3Cline%20x1='8'%20x2='8'%20y1='10'%20y2='14'/%3E%3Cline%20x1='16'%20x2='16'%20y1='18'%20y2='22'/%3E%3C/svg%3E"); }
 nav a[href="#advanced"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolyline%20points='4%2017%2010%2011%204%205'/%3E%3Cline%20x1='12'%20x2='20'%20y1='19'%20y2='19'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolyline%20points='4%2017%2010%2011%204%205'/%3E%3Cline%20x1='12'%20x2='20'%20y1='19'%20y2='19'/%3E%3C/svg%3E"); }
 
@@ -426,8 +285,8 @@ nav a.on::before { color: var(--accent); }
 @keyframes pb-ring { from { transform: scale(1); opacity: .9; } to { transform: scale(1.22, 1.5); opacity: 0; } }
 @media (pointer: coarse) {
   .btn { min-height: 44px; } .btn.sm { min-height: 40px; } .icon-btn { width: 44px; height: 44px; }
-  .seg button { min-height: 40px; } .ptab { min-height: 44px; } .rule .day { min-height: 36px; padding: 4px 10px; }
-  .emojis button { width: 40px; height: 40px; } .stack-btn-sm { min-width: 36px; min-height: 36px; }
+  .seg button { min-height: 40px; } .ptab { min-height: 44px; } 
+  
 }
 @media (max-width: 800px) {
   nav a { flex: none; min-height: 44px; display: flex; align-items: center; white-space: nowrap; }
@@ -465,8 +324,6 @@ nav a.on::before { color: var(--accent); }
 <div class="layout">
   <nav id="nav">
     <a href="#pages" class="on" data-i18n="s.nav.pages">Pages</a>
-    <a href="#rules" data-i18n="s.nav.rules">Rules</a>
-    <a href="#webhooks" data-i18n="s.nav.webhooks">Webhooks</a>
     <a href="#general" data-i18n="s.nav.general">General</a>
     <a href="#advanced" data-i18n="s.nav.advanced">Advanced</a>
   </nav>
@@ -493,58 +350,10 @@ nav a.on::before { color: var(--accent); }
       </div>
     </section>
 
-    <section id="rules">
-      <h2 data-i18n="s.nav.rules">Rules</h2>
-      <p class="lead" data-i18n="s.rules.lead">Let the panel react to what happens on this computer: show the AI page when Claude needs you, the music page when
-        something plays, an "on air" sign during calls. A rule fires when its condition starts; with <b>only while it lasts</b> the phone
-        goes back to where it was (and a pushed value is removed) when the condition ends.</p>
-      <div class="card">
-        <h3 data-i18n="s.rules.add">Add a rule</h3>
-        <div class="presets" id="rulePresets"></div>
-      </div>
-      <div class="card row" style="gap:10px;align-items:center">
-        <span id="rulesPausedState" class="hint" style="flex:1" data-i18n="s.rules.countdown">Page switches count down on the phone and wait while you use it (General › Page switching).</span>
-        <button class="btn sm" id="rulesPauseBtn" data-i18n="s.rules.pause1h">Pause all rules for 1 hour</button>
-      </div>
-      <div id="ruleList"></div>
-    </section>
-
     <section id="general">
       <h2 data-i18n="s.nav.general">General</h2>
       <div class="card" id="appearanceSettings"></div>
       <p class="lead" data-i18n="s.general.lead">Weather, night mode, display behaviour and the phone connection.</p>
-
-      <div class="card">
-        <h3 data-i18n="s.weather.title">Weather</h3>
-        <div class="field">
-          <label data-i18n="s.weather.searchCity">Search for a city</label>
-          <div class="row"><input type="text" id="citySearch" data-i18n-placeholder="s.weather.searchPlaceholder" placeholder="e.g. Tallinn, Berlin…" style="flex:1"><button class="btn" id="cityBtn" data-i18n="s.weather.searchBtn">Search</button></div>
-          <div class="results" id="cityResults" hidden></div>
-        </div>
-        <div class="grid2">
-          <div class="field"><label data-i18n="s.weather.displayName">Display name</label><input type="text" data-bind="weather.city"></div>
-          <div class="row" style="gap:10px">
-            <div class="field" style="flex:1"><label data-i18n="s.weather.lat">Latitude</label><input type="number" step="0.001" data-bind="weather.lat" data-type="num"></div>
-            <div class="field" style="flex:1"><label data-i18n="s.weather.lon">Longitude</label><input type="number" step="0.001" data-bind="weather.lon" data-type="num"></div>
-          </div>
-          <div class="field"><label for="weatherUnit" data-i18n="s.weather.unit">Temperature unit</label>
-            <select id="weatherUnit" data-bind="weather.unit"><option value="celsius" data-i18n="s.weather.unitC">Celsius (°C)</option><option value="fahrenheit" data-i18n="s.weather.unitF">Fahrenheit (°F)</option></select></div>
-          <div class="field"><label for="weatherModel" data-i18n="s.weather.model">Forecast model</label>
-            <select id="weatherModel" data-bind="weather.model">
-              <option value="" data-i18n="s.weather.modelAuto">Automatic (Open-Meteo best match)</option>
-              <option value="gfs_seamless">GFS (NOAA)</option>
-              <option value="ecmwf_ifs025">ECMWF IFS</option>
-              <option value="icon_seamless">ICON (DWD)</option>
-              <option value="ukmo_seamless">UKMO (Met Office)</option>
-              <option value="gem_seamless">GEM (ECCC)</option>
-              <option value="jma_seamless">JMA</option>
-              <option value="meteofrance_seamless">Météo-France</option>
-              <option value="cma_grapes_global">CMA GRAPES</option>
-            </select></div>
-        </div>
-        <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.modelHint">Apps and models disagree by a degree or two. Only Automatic and GFS supply every value: with another model the UV index, and with some also the chance of rain, may be missing.</p>
-        <p class="hint" style="margin:8px 0 0" data-i18n="s.weather.openMeteoHint">The phone asks Open-Meteo for this location only while a page has a widget that uses the weather (weather, forecast, sun &amp; moon, a clock with its weather line, Custom HTML).</p>
-      </div>
 
       <div class="card">
         <h3 data-i18n="s.ping.title">Ping</h3>
@@ -553,66 +362,6 @@ nav a.on::before { color: var(--accent); }
         <div class="field" style="margin-top:10px"><label data-i18n="s.net.adapters">Network adapters counted by the network meters</label>
           <div id="netAdapters" class="hint"></div>
           <span class="hint" data-i18n="s.net.hint">None ticked = automatic (the connected Ethernet and Wi-Fi adapters). With a VPN that carries the same traffic, or a reading that looks too high, tick only the adapter you use.</span></div>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.calendars.title">Calendars</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.cal.hint">For the <b>Agenda</b> widget and calendar rules. Paste an iCalendar (ICS) address:
-          Google Calendar › Settings › your calendar › <i>Secret address in iCal format</i>; Outlook › Settings › Calendar › Shared calendars ›
-          <i>Publish a calendar</i> (ICS link); iCloud › share as a public calendar (<code>webcal://</code> works). The addresses stay on this computer.</p>
-        <div id="calList"></div>
-        <button class="btn sm" id="calAdd" data-i18n="s.calendars.add">＋ Add a calendar</button>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.photos.title">Photo frame</h3>
-        <div class="field"><label data-i18n="s.photos.source">Photos from</label>
-          <select id="photosSource" data-bind="photos.source"><option value="folder" data-i18n="s.photos.sourceFolder">A folder on this computer</option><option value="immich" data-i18n="s.photos.sourceImmich">An Immich album</option></select></div>
-        <div id="photosFolderBox">
-          <p class="hint" style="margin:0 0 12px" data-i18n="s.photos.hint">For the Photo frame widget: a folder of photos on this computer. A synced OneDrive, Dropbox or iCloud folder works too; photos that are only in the cloud are skipped. Large photos are scaled down here before they go to the phone, and the path stays on this computer.</p>
-          <div class="field"><label data-i18n="s.photos.folder">Photo folder (full path)</label>
-            <input type="text" data-bind="photos.folder" placeholder="C:\Users\you\Pictures\Frame" spellcheck="false" autocomplete="off"></div>
-          <label class="check"><input type="checkbox" data-bind="photos.subfolders"> <span data-i18n="s.photos.subfolders">Include subfolders</span></label>
-        </div>
-        <div id="photosImmichBox" hidden>
-          <p class="hint" style="margin:0 0 12px" data-i18n="s.photos.immichHint">PhoneBox reads the album from your Immich server and shows the preview-size pictures Immich makes. A read-only API key is enough: it needs the album.read, asset.read and asset.view permissions (Immich › Account Settings › API Keys). The address and key stay on this computer; only this server is contacted.</p>
-          <div class="field"><label data-i18n="s.photos.immichUrl">Immich address</label>
-            <input type="text" data-bind="photos.immichUrl" placeholder="http://192.168.1.10:2283" spellcheck="false" autocomplete="off"></div>
-          <div class="field"><label data-i18n="s.photos.immichKey">API key</label>
-            <input type="password" data-bind="photos.immichKey" autocomplete="off"></div>
-          <div class="field"><label data-i18n="s.photos.immichAlbum">Album</label>
-            <select id="photosImmichAlbum"></select></div>
-          <div class="row"><button class="btn sm" id="photosImmichLoad" data-i18n="s.photos.immichLoad">Load albums</button><span class="hint" id="photosImmichState"></span></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.feeds.title">News feeds</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.feeds.hint">RSS or Atom feeds for the News feeds widget. This computer fetches each one at most every 15 minutes, only while a page shows a News feeds widget; the addresses stay here.</p>
-        <div id="feedList"></div>
-        <button class="btn sm" id="feedAdd" data-i18n="s.feeds.add">＋ Add a feed</button>
-        <button class="btn sm" id="feedImport" style="margin-left:6px" data-i18n="s.feeds.import">＋ Import feeds (OPML / bulk)</button>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.camera.title">Cameras</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.camera.hint">IP cameras for the Camera widget: a name and the camera’s RTSP address (rtsp://user:password@address:554/…, from its manual or app). This computer pulls a camera with ffmpeg only while a Camera widget shows it, and sends the phone a few pictures a second (set next to each camera). The addresses stay on this computer, but while a camera runs they are visible in its process list.</p>
-        <div class="field"><label data-i18n="s.camera.ffmpeg">ffmpeg (full path; empty = find it in PATH)</label>
-          <input type="text" data-bind="cameras.ffmpeg" placeholder="C:\ffmpeg\bin\ffmpeg.exe" spellcheck="false" autocomplete="off"></div>
-        <div id="cameraList"></div>
-        <button class="btn sm" id="cameraAdd" data-i18n="s.camera.add">＋ Add a camera</button>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.ha.title">Home Assistant</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n-html="s.ha.tokenHint">For the <b>Home Assistant</b> widget. Create a token in Home Assistant › your profile › Security ›
-          <i>Long-lived access tokens</i>. The token stays on this computer; the phone only sees the entities its widgets list.
-          (Home Assistant can also push values and notifications to the panel, see Webhooks.)</p>
-        <div class="grid2">
-          <div class="field"><label data-i18n="s.ha.address">Address</label><input type="text" data-bind="homeAssistant.url" placeholder="http://homeassistant.local:8123" spellcheck="false"></div>
-          <div class="field"><label data-i18n="s.ha.token">Long-lived access token</label><input type="password" data-bind="homeAssistant.token" autocomplete="off"></div>
-        </div>
-        <div class="row"><button class="btn sm" id="haTest" data-i18n="s.test">Test</button><span class="hint" id="haState"></span></div>
       </div>
 
       <div class="card">
@@ -672,8 +421,6 @@ nav a.on::before { color: var(--accent); }
           <div class="field"><label data-i18n="s.pageSwitch.countdown">Countdown before switching (seconds, 0 = at once)</label><input type="number" min="0" max="30" data-bind="display.switchCountdownSec" data-type="int"></div>
           <div class="field"><label data-i18n="s.pageSwitch.grace">Don't interrupt for (seconds after I touch the panel)</label><input type="number" min="0" max="600" data-bind="display.touchGraceSec" data-type="int"></div>
           <div class="field"><label data-i18n="s.pageSwitch.minDwell">At least (seconds between two automatic switches)</label><input type="number" min="0" max="600" data-bind="display.minDwellSec" data-type="int"></div>
-          <div class="field"><label data-i18n="s.pageSwitch.holdMax">A rule keeps its page at most (minutes, 0 = while it lasts)</label><input type="number" min="0" max="1440" data-bind="display.holdMaxMin" data-type="int">
-            <span class="hint" data-i18n="s.pageSwitch.holdMaxHint">After that the panel goes home when nobody touches it.</span></div>
         </div>
       </div>
 
@@ -779,34 +526,6 @@ nav a.on::before { color: var(--accent); }
         <p class="hint" style="margin:0 0 12px"><span data-i18n="s.upd.checksBefore">Checks</span> <span id="updRepo"></span> <span data-i18n="s.upd.checksAfter">on GitHub every 6 hours. The phone app is installed over USB without a prompt on the phone; the agent replaces its own files and restarts.</span></p>
         <dl id="updInfo"></dl>
         <div class="row" style="margin-top:12px"><button class="btn" id="updCheck" data-i18n="s.updates.check">Check now</button><button class="btn primary" id="updApply" hidden data-i18n="s.updates.apply">Update now</button><span class="hint" id="updState"></span></div>
-      </div>
-    </section>
-
-    <section id="webhooks">
-      <h2 data-i18n="s.nav.webhooks">Webhooks</h2>
-      <p class="lead" data-i18n="s.webhooks.lead">Push data into the panel from scripts, CI jobs, Home Assistant, cron &hellip; Values show up in <b>Pushed value</b> widgets
-        (key = the last part of the URL), notifications in a toast on the phone and in the <b>Notifications</b> widget. Values survive restarts.</p>
-      <div class="card">
-        <h3 data-i18n="s.webhooks.tryIt">Try it</h3>
-        <div class="row" style="gap:8px">
-          <button class="btn" id="whNotify" data-i18n="s.webhooks.testNotify">Send a test notification</button>
-          <button class="btn" id="whPush" data-i18n="s.webhooks.testPush">Push a test value (key "demo")</button>
-          <button class="btn" id="whRefresh" data-i18n="s.webhooks.refresh">Refresh the panel</button>
-          <button class="btn" id="whReload" data-i18n="s.webhooks.reload">Reload the panel</button>
-        </div>
-      </div>
-      <div class="card">
-        <h3 data-i18n="s.webhooks.examples">Examples</h3>
-        <div id="whExamples"></div>
-        <p class="hint" data-i18n-html="s.wh.payloadHintFull">JSON payloads may carry <code>value</code>, <code>title</code>, <code>sub</code>, <code>unit</code>, <code>icon</code>, <code>color</code>,
-          <code>level</code> (ok / warn / error), <code>progress</code> (0&ndash;1 or 0&ndash;100), <code>items</code> (a list) and <code>ttl</code> (seconds).
-          Plain text or a number works too. Notifications take <code>title</code>, <code>text</code>, <code>level</code>, <code>vibrate</code>,
-          <code>seconds</code>, <code>wake</code> (light up the night screen) and <code>page</code> (switch to it).</p>
-      </div>
-      <div class="card"><h3 data-i18n="s.webhooks.otherMachines">From other machines</h3><div id="whLan"></div></div>
-      <div class="card">
-        <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3 style="margin:0" data-i18n="s.webhooks.currentValues">Current values</h3><button class="btn sm danger" id="whClear" data-i18n="s.webhooks.deleteAll">Delete all</button></div>
-        <table class="items"><tbody id="whItems"></tbody></table>
       </div>
     </section>
 
@@ -1068,7 +787,6 @@ function changed() {
 let catalog = { cols: 12, rows: 6, widgets: [], templates: [] };
 let selPage = 0;
 let selWidget = -1;
-let activeStackSubIdx = -1;
 const widgetDef = (type) => catalog.widgets.find((w) => w.type === type) || { type, name: type, icon: '◻', options: [], minW: 1, minH: 1, w: 2, h: 2 };
 const curPage = () => cfg.pages[selPage];
 
@@ -1088,69 +806,17 @@ function defaultOptions(type) {
 }
 function setWOpt(w, key, val) { w.options = { ...(w.options || {}), [key]: val }; changed(); renderCanvas(); }
 
-function getStackItems(w, o) {
-  const raw = optVal(w, o);
-  let list = [];
-  if (Array.isArray(raw)) {
-    list = raw;
-  } else if (typeof raw === 'string') {
-    const s = raw.trim();
-    if (s.startsWith('[') && s.endsWith(']')) {
-      try { list = JSON.parse(s); } catch (_) { list = s.split('\n'); }
-    } else {
-      list = s.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
-    }
-  }
-  return list.slice(0, 12).map((item, index) => {
-    if (!item) return null;
-    if (typeof item === 'object') {
-      return {
-        id: String(item.id || `card-${index}`),
-        type: String(item.type || '').trim(),
-        enabled: item.enabled !== false && item.active !== false,
-        options: item.options || {}
-      };
-    }
-    const str = String(item).trim();
-    if (str.startsWith('{') && str.endsWith('}')) {
-      try {
-        const obj = JSON.parse(str);
-        if (obj.type) return { id: String(obj.id || `card-${index}`), type: String(obj.type).trim(), enabled: obj.enabled !== false && obj.active !== false, options: obj.options || {} };
-      } catch (_) {}
-    }
-    return { id: `card-${index}`, type: str, enabled: true, options: {} };
-  }).filter((x) => x && x.type && x.type !== 'stack');
-}
-
 /** One-line description of a widget for the canvas. */
 function widgetSummary(w) {
   const o = w.options || {}, d = widgetDef(w.type);
-  const choice = (key) => { const def = d.options.find((x) => x.key === key); const v = optVal(w, def || { key }); return def?.choices?.find((c) => c[0] === v)?.[1] ?? v; };
+  const choice = (key) => { const def = d.options.find((x) => x.key === key); const v = optVal(w, def || { key }); return (def?.choices?.find((c) => c[0] === v) || [, v])[1] || ''; };
   switch (w.type) {
     case 'stat': case 'gauge': return choice('metric');
     case 'chart': return (o.metrics || ['cpu']).join(' + ');
-    case 'forecast': return choice('mode');
-    case 'push': return 'key: ' + (o.key || '?');
-    case 'note': return (o.text || '').split('\n')[0];
-    case 'label': return o.text || '';
-    case 'countdown': return o.label || '';
-    case 'worldclock': return (o.zones || d.options[0]?.default || []).map((z) => z.split('=')[0]).join(' · ');
     case 'quotas': case 'codexbar': return (o.providers || ['claude', 'codex', 'antigravity']).join(' + ');
     case 'quotaring': return `${choice('provider')} · ${choice('limit').split(' (')[0]}`;
-    case 'analog': return o.label || o.zone || '';
-    case 'topprocs': case 'breathe': return choice(w.type === 'topprocs' ? 'sort' : 'pattern');
+    case 'topprocs': return choice('sort');
     case 'gpu': return choice('adapter');
-    case 'timer': case 'counter': return o.label || '';
-    case 'checklist': return `${o.title || t('time.today')} · ${(o.items || d.options[1].default).length} items`;
-    case 'exchange': return `${o.base || 'EUR'} → ${(o.symbols || d.options[1].default).join(', ')}`;
-    case 'crypto': return (o.coins || d.options[0].default).join(', ');
-    case 'image': return o.caption || (o.url || 'no address').replace(/^https?:\/\//, '').slice(0, 40);
-    case 'stack': {
-      const list = getStackItems(w, { key: 'widgets', default: d.options?.find((x) => x.key === 'widgets')?.default });
-      const activeCount = list.filter((item) => item.enabled !== false).length;
-      const names = list.map((item) => widgetDef(item.type)?.name || item.type).filter(Boolean);
-      return `${activeCount}/${list.length} active (${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}) · ${o.interval ?? 10}s`;
-    }
     default: return '';
   }
 }
@@ -1342,32 +1008,6 @@ function renderCanvas() {
     el.style.gridArea = `${w.y + 1} / ${w.x + 1} / span ${w.h} / span ${w.w}`;
     el.addEventListener('pointerdown', (e) => startDrag(e, w, i, e.target.classList.contains('rz') ? 'resize' : 'move'));
 
-    if (w.type === 'stack') {
-      el.addEventListener('dragover', (e) => {
-        if (e.dataTransfer.types.includes('application/phonebox-widget-type') || e.dataTransfer.types.includes('text/plain')) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'copy';
-          el.classList.add('stack-canvas-over');
-        }
-      });
-      el.addEventListener('dragleave', () => el.classList.remove('stack-canvas-over'));
-      el.addEventListener('drop', (e) => {
-        e.preventDefault();
-        el.classList.remove('stack-canvas-over');
-        const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-        if (type && type !== 'stack' && !type.startsWith('stack:') && catalog.widgets.some((cw) => cw.type === type)) {
-          const list = getStackItems(w, { key: 'widgets', default: d.options?.find((x) => x.key === 'widgets')?.default });
-          if (list.length >= 12) { toast(t('s.js.stackFull'), true); return; }
-          list.push({ id: `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, type, enabled: true, options: defaultOptions(type) });
-          setWOpt(w, 'widgets', list);
-          selWidget = i;
-          renderCanvas();
-          renderInspector();
-          toast(t('s.js.addedToStack', { name: widgetDef(type).name }));
-        }
-      });
-    }
-
     canvas.appendChild(el);
   });
 }
@@ -1462,200 +1102,7 @@ function renderInspector() {
       num('w', t('s.js.width'), d.minW, catalog.cols), num('h', t('s.js.height'), d.minH, catalog.rows)));
 }
 
-function renderStackWidgetsOption(w, o) {
-  const items = getStackItems(w, o);
-  // typing in a child's option must not rebuild the inspector: the field would lose its focus after one character
-  const save = (rerender = true) => {
-    setWOpt(w, o.key, items.map((it) => ({ id: it.id, type: it.type, enabled: it.enabled !== false, options: it.options || {} })));
-    if (rerender) renderInspector();
-  };
-
-  const move = (from, to) => {
-    if (from < 0 || from >= items.length || to < 0 || to >= items.length || from === to) return;
-    const [moved] = items.splice(from, 1);
-    items.splice(to, 0, moved);
-    if (activeStackSubIdx === from) activeStackSubIdx = to;
-    else if (activeStackSubIdx > from && activeStackSubIdx <= to) activeStackSubIdx--;
-    else if (activeStackSubIdx < from && activeStackSubIdx >= to) activeStackSubIdx++;
-    save();
-  };
-
-  const remove = (idx) => {
-    items.splice(idx, 1);
-    if (activeStackSubIdx === idx) activeStackSubIdx = -1;
-    else if (activeStackSubIdx > idx) activeStackSubIdx--;
-    save();
-  };
-
-  const add = (type, atIdx = -1) => {
-    if (items.length >= 12) { toast(t('s.js.stackFull'), true); return; }
-    if (!type || type === 'stack' || !catalog.widgets.some((cw) => cw.type === type)) return;
-    const newItem = { id: `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, type, enabled: true, options: defaultOptions(type) };
-    let newIdx;
-    if (atIdx >= 0 && atIdx <= items.length) {
-      items.splice(atIdx, 0, newItem);
-      newIdx = atIdx;
-    } else {
-      items.push(newItem);
-      newIdx = items.length - 1;
-    }
-    activeStackSubIdx = newIdx;
-    save();
-    toast(t('s.js.addedToStack', { name: widgetDef(type).name }));
-  };
-
-  const rowsAndConfigs = [];
-  items.forEach((item, i) => {
-    const d = widgetDef(item.type);
-    const isOpen = activeStackSubIdx === i;
-    const row = h('div', {
-      class: 'stack-row' + (item.enabled ? '' : ' off') + (isOpen ? ' selected has-config-open' : ''),
-      draggable: 'true',
-      'data-idx': i,
-      onclick: (e) => {
-        if (e.target.closest('input, button, .stack-row-handle')) return;
-        activeStackSubIdx = isOpen ? -1 : i;
-        renderInspector();
-      },
-      ondragstart: (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') {
-          e.preventDefault();
-          return;
-        }
-        row.classList.add('dragging');
-        e.dataTransfer.setData('application/phonebox-stack-idx', String(i));
-        e.dataTransfer.setData('text/plain', 'stack:' + i);
-        e.dataTransfer.effectAllowed = 'move';
-      },
-      ondragend: () => {
-        row.classList.remove('dragging');
-        document.querySelectorAll('.stack-row.over, .stack-dropzone.over').forEach((el) => el.classList.remove('over'));
-      },
-      ondragover: (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = e.dataTransfer.types.includes('application/phonebox-stack-idx') ? 'move' : 'copy';
-        row.classList.add('over');
-      },
-      ondragleave: () => row.classList.remove('over'),
-      ondrop: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        row.classList.remove('over');
-        const fromIdxStr = e.dataTransfer.getData('application/phonebox-stack-idx');
-        if (fromIdxStr !== '' && fromIdxStr != null) {
-          const fromIdx = parseInt(fromIdxStr, 10);
-          if (!isNaN(fromIdx) && fromIdx !== i) move(fromIdx, i);
-          return;
-        }
-        const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-        if (type && type !== 'stack' && !type.startsWith('stack:')) {
-          add(type, i);
-        }
-      }
-    },
-      h('span', { class: 'stack-row-handle', title: 'Drag to reorder' }, '⋮⋮'),
-      h('input', {
-        type: 'checkbox',
-        class: 'stack-row-check',
-        title: item.enabled ? 'Enabled (shown in rotation)' : 'Disabled (hidden)',
-        checked: item.enabled,
-        onchange: (e) => { e.stopPropagation(); item.enabled = e.target.checked; save(); }
-      }),
-      h('span', { class: 'stack-row-ico' }, rich(d.icon)),
-      h('span', { class: 'stack-row-name', title: 'Click to edit settings' }, d.name),
-      h('span', { class: 'stack-row-chevron', title: isOpen ? 'Close settings' : 'Open settings' }, icon(isOpen ? 'chevron-down' : 'chevron-right')),
-      h('div', { class: 'stack-row-actions' },
-        h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move up', disabled: i === 0, onclick: (e) => { e.stopPropagation(); move(i, i - 1); } }, icon('chevron-up')),
-        h('button', { type: 'button', class: 'stack-btn-sm', title: 'Move down', disabled: i === items.length - 1, onclick: (e) => { e.stopPropagation(); move(i, i + 1); } }, icon('chevron-down')),
-        h('button', { type: 'button', class: 'stack-btn-sm stack-btn-del', title: t('s.js.remove'), onclick: (e) => { e.stopPropagation(); remove(i); } }, icon('x'))
-      )
-    );
-    rowsAndConfigs.push(row);
-
-    if (isOpen) {
-      const subW = { type: item.type, options: item.options || {} };
-      const subOptions = (d.options || []).filter((opt) => opt.key !== 'widgets');
-      const configBox = h('div', { class: 'stack-sub-config' },
-        h('div', { class: 'stack-sub-header' },
-          h('span', { style: { fontWeight: '600', fontSize: '12px', color: 'var(--accent)' } }, icon('settings', 'm'), rich(`${d.icon} ${d.name} settings`)),
-          h('button', { type: 'button', class: 'stack-btn-sm', title: t('panel.close'), onclick: (e) => { e.stopPropagation(); activeStackSubIdx = -1; renderInspector(); } }, icon('x'))
-        ),
-        ...(subOptions.length > 0
-          ? subOptions.filter((subO) => optionShown(subW, d, subO)).flatMap((subO) => [
-              ...(subO.section ? [h('h4', { class: 'opt-section' }, subO.section)] : []),
-              optionField(subW, subO, (key, val) => {
-                item.options = item.options || {};
-                item.options[key] = val;
-                save(false);
-              }),
-            ])
-          : [h('p', { class: 'hint', style: { margin: '2px 0 0', fontSize: '12px' } }, 'This widget has no additional settings.')])
-      );
-      rowsAndConfigs.push(configBox);
-    }
-  });
-
-  const dropzone = h('div', {
-    class: 'stack-dropzone',
-    ondragover: (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-      dropzone.classList.add('over');
-    },
-    ondragleave: () => dropzone.classList.remove('over'),
-    ondrop: (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropzone.classList.remove('over');
-      const fromIdxStr = e.dataTransfer.getData('application/phonebox-stack-idx');
-      if (fromIdxStr !== '' && fromIdxStr != null) {
-        const fromIdx = parseInt(fromIdxStr, 10);
-        if (!isNaN(fromIdx)) move(fromIdx, items.length - 1);
-        return;
-      }
-      const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-      if (type && type !== 'stack' && !type.startsWith('stack:')) {
-        add(type);
-      }
-    }
-  },
-    h('span', { style: { fontSize: '18px' } }, icon('plus')),
-    h('span', {}, items.length ? 'Drag a widget here from the palette' : 'Stack is empty. Drag a widget here from the palette')
-  );
-
-  const quickSelect = h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
-    h('select', { id: 'stackQuickAdd', style: { flex: '1' } },
-      ...catalog.widgets.filter((cw) => cw.type !== 'stack').map((cw) => h('option', { value: cw.type }, plain(`${cw.icon} ${cw.name}`)))
-    ),
-    h('button', { type: 'button', class: 'btn sm', onclick: () => {
-      const sel = $('stackQuickAdd');
-      if (sel?.value) add(sel.value);
-    } }, '＋ Add')
-  );
-
-  return h('div', { class: 'field' },
-    h('label', {}, o.label || t('s.js.widgetsInStack')),
-    h('span', { class: 'hint', style: { margin: '2px 0 8px', display: 'block' } },
-      'Click a widget row to edit its settings. Drag rows or use the arrows to reorder.'),
-    h('div', {
-      class: 'stack-list',
-      ondragover: (e) => e.preventDefault(),
-      ondrop: (e) => {
-        if (e.target.closest('.stack-row, .stack-sub-config')) return;
-        e.preventDefault();
-        const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-        if (type && type !== 'stack' && !type.startsWith('stack:')) add(type);
-      }
-    }, ...rowsAndConfigs),
-    dropzone,
-    quickSelect
-  );
-}
-
 function optionField(w, o, onValChange) {
-  if (o.type === 'stack-widgets' || (w.type === 'stack' && o.key === 'widgets')) {
-    return renderStackWidgetsOption(w, o);
-  }
   const v = optVal(w, o);
   const set = (key, val) => {
     if (onValChange) { w.options = w.options || {}; w.options[key] = val; onValChange(key, val); }
@@ -1664,13 +1111,8 @@ function optionField(w, o, onValChange) {
   const field = (...kids) => h('div', { class: 'field' }, h('label', {}, o.label), ...kids);
   switch (o.type) {
     case 'bool':
-      {
-        // A Home Assistant widget without the key switches nothing (the agent and the phone read it as off), so show it unchecked;
-        // its rows that follow this box are drawn again when it changes.
-        const haFlag = w.type === 'ha' && o.key === 'control';
-        return h('label', { class: 'check', style: { marginBottom: '10px' } }, h('input', { type: 'checkbox', checked: haFlag ? w.options?.control === true : v !== false,
-          onchange: (e) => { set(o.key, e.target.checked); if (haFlag) renderInspector(); } }), o.label);
-      }
+      return h('label', { class: 'check', style: { marginBottom: '10px' } }, h('input', { type: 'checkbox', checked: v !== false,
+        onchange: (e) => set(o.key, e.target.checked) }), o.label);
     case 'select': {
       // the options that depend on this one are drawn again when it changes
       const drives = widgetDef(w.type)?.options?.some((x) => x.showWhen?.key === o.key);
@@ -1742,91 +1184,9 @@ function optionField(w, o, onValChange) {
     }
     case 'number':
       return field(h('input', { type: 'number', min: o.min, max: o.max, step: o.step, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
-    case 'textarea':
-      return field(h('textarea', { rows: 4, oninput: (e) => set(o.key, e.target.value) }, v ?? ''));
-    case 'lines':
-      return field(h('textarea', { rows: 5, oninput: (e) => set(o.key, e.target.value.split('\n').map((x) => x.trim()).filter(Boolean)) }, (Array.isArray(v) ? v : []).join('\n')));
-    case 'color':
-      return field(h('div', { class: 'row', style: { gap: '8px' } }, h('input', { type: 'color', value: v || '#fbbf24', oninput: (e) => set(o.key, e.target.value) }),
-        h('div', { class: 'swatches' }, ...COLORS.map((c) => h('button', { style: { background: c }, onclick: () => { set(o.key, c); renderInspector(); } })))));
-    case 'camera':
-      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.camera.pick')),
-        ...(cfg.cameras?.sources || []).map((c) => h('option', { value: c.id, selected: c.id === v }, c.name || (c.url || '').replace(/\/\/[^/@]*@/, '//')))));
-    case 'ha-items': return haItemsEditor(w, o, set);
     default:
-      return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
-        w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
+      return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }));
   }
-}
-
-// Home Assistant widget: one row per entity (id, display name, icon, what to show, whether the phone may switch it).
-// A widget saved before this editor keeps its comma-separated "entities" text; the rows start from it and take over on the first edit.
-const HA_EMOJIS = ['💡', '🔌', '🌀', '🪟', '🚪', '🔒', '🔓', '🎵', '📺', '🎬', '📜', '🤖', '🌡️', '💧', '⚡', '🔋', '🏃', '🧍', '🧹', '📷', '🔘', '☀️', '🌙', '⛅', '🔥', '❄️', '🚿', '🛋️', '🛏️', '🍳', '☕', '🌱', '🪴', '🌫️', '🔊', '📶', '🏠', '🚗', '🧺', '🖨️'];
-let haPicker = null; // the entity list for the autocomplete, fetched once per page load
-function haLoadPicker(list) {
-  const fill = (d) => list.replaceChildren(...(d.entities || []).map((e) => h('option', { value: e.id }, e.name)));
-  if (haPicker) { fill(haPicker); return; }
-  // only a successful answer is kept, so reopening the editor retries after Home Assistant comes back
-  fetch('/api/ha/entities').then((r) => r.json()).then((d) => { if (d.error) return; haPicker = d; fill(d); }).catch(() => {});
-}
-function haItemsEditor(w, o, set) {
-  const HA_MAX = 200, MAX_ID = 120, MAX_NAME = 80, MAX_ICON = 16; // the agent and the phone read at most 200 usable rows
-  const legacy = () => String(w.options?.entities || '').split(/[\s,;]+/).filter((x) => x.includes('.')).map((id) => ({ id }));
-  const stored = () => { const x = optVal(w, o); return Array.isArray(x) && x.length ? x : legacy(); };
-  // What a row without a switching flag of its own does: it follows the widget's flag, and the agent reads a missing flag as off.
-  const widgetOn = () => w.options?.control === true;
-  let rows = stored().filter((x) => x && typeof x === 'object').map((x) => ({ ...x }));
-  const list = h('datalist', { id: 'ha-entities-' + Math.random().toString(36).slice(2) });
-  haLoadPicker(list);
-  const box = h('div', { class: 'ha-rows' });
-  // The editor owns the list from the first edit on: the old text must not come back when every row is removed, and every
-  // row is saved with the switching state it shows, so a later change of the widget's flag cannot switch it silently.
-  const save = () => {
-    const out = [], seen = new Set();
-    for (const r of rows) {
-      const id = String(r.id ?? '').trim().slice(0, MAX_ID);
-      // the same rule as the agent: an id needs a dot and counts once; only usable rows count towards the cap
-      if (!id.includes('.') || seen.has(id)) continue;
-      if (seen.size >= HA_MAX) break;
-      seen.add(id);
-      const item = { id };
-      const name = String(r.name ?? '').trim().slice(0, MAX_NAME), icon = String(r.icon ?? '').trim().slice(0, MAX_ICON);
-      if (name) item.name = name;
-      if (icon) item.icon = icon;
-      if (r.showName === false) item.showName = false;
-      if (r.showIcon === false) item.showIcon = false;
-      item.control = typeof r.control === 'boolean' ? r.control : widgetOn();
-      r.control = item.control;
-      out.push(item);
-    }
-    set('entities', '');
-    set(o.key, out);
-  };
-  let picking = -1; // the row whose emoji grid is open
-  const render = () => {
-    box.replaceChildren(...rows.map((r, i) => {
-      const text = (key, ph, flex, max, extra = {}) => h('input', { type: 'text', value: r[key] ?? '', placeholder: ph, maxlength: max, spellcheck: 'false', style: { flex, minWidth: '0' }, oninput: (e) => { r[key] = e.target.value; save(); }, ...extra });
-      const check = (key, label, on) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: on, onchange: (e) => { r[key] = e.target.checked; save(); } }), label);
-      const id = text('id', 'light.desk', '1 1 200px', MAX_ID); id.setAttribute('list', list.id);
-      const icon = text('icon', t('s.ha.iconPh'), '0 0 64px', MAX_ICON);
-      const pick = (em) => { r.icon = em; save(); picking = -1; render(); };
-      return h('div', { class: 'ha-row' },
-        h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, id, text('name', t('s.ha.namePh'), '1 1 200px', MAX_NAME)),
-        h('div', { class: 'row', style: { gap: '6px', marginTop: '6px', flexWrap: 'wrap' } }, icon,
-          h('button', { class: 'btn sm', title: t('s.ha.iconTitle'), onclick: () => { picking = picking === i ? -1 : i; render(); } }, picking === i ? t('s.ha.close') : t('s.ha.pickIcon')),
-          h('button', { class: 'btn sm', title: t('s.ha.up'), disabled: i === 0, onclick: () => { [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; save(); render(); } }, '▲'),
-          h('button', { class: 'btn sm', title: t('s.ha.down'), disabled: i === rows.length - 1, onclick: () => { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; save(); render(); } }, '▼'),
-          h('button', { class: 'btn sm', title: t('s.ha.remove'), onclick: () => { rows.splice(i, 1); picking = -1; save(); render(); } }, '✕')),
-        picking === i ? h('div', { class: 'emojis' }, h('button', { title: t('s.ha.defaultIconTitle'), style: { width: 'auto', padding: '0 8px', fontSize: '12px' }, onclick: () => pick('') }, t('s.ha.defaultIcon')),
-          ...HA_EMOJIS.map((em) => h('button', { 'data-emoji': em, title: em, 'aria-label': em, onclick: () => pick(em) }, rich(em)))) : null,
-        h('div', { class: 'row', style: { gap: '4px', marginTop: '4px' } }, check('showIcon', t('s.ha.showIcon'), r.showIcon !== false), check('showName', t('s.ha.showName'), r.showName !== false),
-          check('control', t('s.ha.allowSwitch'), typeof r.control === 'boolean' ? r.control : widgetOn())));
-    }), ...(rows.length ? [] : [h('div', { class: 'hint' }, t('s.ha.none'))]));
-  };
-  render();
-  return h('div', { class: 'field' }, h('label', {}, o.label), box, list,
-    h('button', { class: 'btn sm', onclick: () => { if (rows.length >= HA_MAX) return; rows.push({ id: '' }); render(); box.querySelector('.ha-row:last-child input')?.focus(); } }, '＋ ' + t('s.ha.add')),
-    h('span', { class: 'hint', style: { display: 'block', marginTop: '6px' } }, t('s.ha.hint')));
 }
 
 // ---- template picker: new page (index null) or replace the widgets of page <index>
@@ -2006,17 +1366,6 @@ $('uploadJson').onclick = async () => {
   $('applyJson').click();
 };
 
-// ---------------------------------------------------------------- calendars
-const CAL_COLORS = ['#60a5fa', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#f87171'];
-function renderCalendars() {
-  cfg.calendars ??= [];
-  $('calList').replaceChildren(...cfg.calendars.map((c, i) => h('div', { class: 'cal-row' },
-    h('input', { type: 'text', value: c.name || '', placeholder: 'Name, e.g. Work', oninput: (e) => { c.name = e.target.value; changed(); } }),
-    h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics', spellcheck: 'false',
-      oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
-    h('input', { type: 'color', value: c.color || CAL_COLORS[i % CAL_COLORS.length], title: 'Colour', oninput: (e) => { c.color = e.target.value; changed(); } }),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.calendars.splice(i, 1); renderCalendars(); changed(); } }, t('s.js.remove')))));
-}
 $('installApp').onclick = async () => {
   $('installApp').disabled = true;
   $('appMissingText').textContent = 'downloading and installing… (allow it on the phone if it asks)';
@@ -2027,66 +1376,6 @@ $('installApp').onclick = async () => {
   } catch (_) { $('appMissingText').textContent = 'Could not install it'; }
   $('installApp').disabled = false;
   setTimeout(loadInfo, 4000);
-};
-// Photo frame: show the fields of the chosen source; the Immich album list is only fetched on request
-let immichAlbums = [];   // the last list the agent sent; the chosen album is shown against it, also after Apply JSON or Revert
-let immichFor = '';      // the address and key that list was loaded with (compared in memory, never put in the page)
-let immichLoadSeq = 0;   // the newest Load albums request: an older answer is dropped
-const immichConnection = () => JSON.stringify([cfg.photos.immichUrl, cfg.photos.immichKey]);
-function renderPhotoSource() {
-  const immich = cfg.photos.source === 'immich';
-  $('photosFolderBox').hidden = immich;
-  $('photosImmichBox').hidden = !immich;
-  // another server (or key) has other albums: the list is kept only for the connection it came from
-  if (immichAlbums.length && immichFor !== immichConnection()) { immichAlbums = []; immichFor = ''; $('photosImmichState').textContent = ''; }
-  fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
-}
-function fillAlbums(albums, current, currentName) {
-  const sel = $('photosImmichAlbum');
-  sel.replaceChildren();
-  const add = (value, label) => { const o = document.createElement('option'); o.value = value; o.textContent = label; sel.appendChild(o); };
-  if (!albums.length) add(current || '', current ? (currentName || t('s.js.immichChosen')) : t('s.js.immichLoadFirst'));
-  else {
-    add('', t('s.js.immichChoose'));
-    if (current && !albums.some((a) => a.id === current)) add(current, currentName || t('s.js.immichChosen'));
-    for (const a of albums) add(a.id, `${a.name || t('s.js.immichUntitled')} (${a.count})`);
-  }
-  sel.value = current || '';
-}
-$('photosImmichAlbum').onchange = () => {
-  const o = $('photosImmichAlbum').selectedOptions[0];
-  cfg.photos.immichAlbum = o ? o.value : '';
-  cfg.photos.immichAlbumName = o && o.value ? o.textContent.replace(/ \(\d+\)$/, '') : '';
-  changed();
-};
-$('photosImmichLoad').onclick = async () => {
-  const state = $('photosImmichState');
-  const conn = immichConnection(), seq = ++immichLoadSeq;
-  state.textContent = t('s.js.immichLoading');
-  // the agent gives up on the server after 30 s; this is a little longer, so a lost agent doesn't leave "Loading…" for good
-  const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), 35000);
-  try {
-    const r = await (await fetch('/api/immich/albums', { method: 'POST', signal: abort.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: cfg.photos.immichUrl, key: cfg.photos.immichKey }) })).json();
-    if (seq !== immichLoadSeq) return; // a newer request is the one that counts
-    if (conn !== immichConnection()) { state.textContent = ''; return; } // the address or key changed while it was out
-    if (r.error) { state.textContent = r.error; return; }
-    immichAlbums = r.albums;
-    immichFor = conn;
-    fillAlbums(immichAlbums, cfg.photos.immichAlbum, cfg.photos.immichAlbumName);
-    state.textContent = r.albums.length ? t('s.js.immichCount', { n: r.albums.length }) : t('s.js.immichNone');
-  } catch (_) {
-    // only the newest request speaks for the status; if the address or key changed meanwhile, there is nothing to report for it
-    if (seq === immichLoadSeq) state.textContent = conn === immichConnection() ? t('s.js.immichFailed') : '';
-  }
-  finally { clearTimeout(timer); }
-};
-$('haTest').onclick = async () => {
-  $('haState').textContent = 'checking…';
-  try {
-    const r = await (await fetch('/api/ha/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.homeAssistant || {}) })).json();
-    $('haState').textContent = r.result;
-  } catch (_) { $('haState').textContent = 'Could not check'; }
 };
 // ---------------------------------------------------------------- network adapters (Settings › General › Ping)
 async function renderNetAdapters() {
@@ -2106,405 +1395,6 @@ async function renderNetAdapters() {
     ' ', h('span', {}, a.name), a.description ? h('small', { style: 'color:var(--muted)' }, ' · ' + a.description) : '',
     a.auto ? h('small', { style: 'color:var(--muted)' }, ' · ' + t('s.net.auto')) : '')));
 }
-// ---------------------------------------------------------------- news feeds
-function parseFeedsInput(text, defaultCategory = '') {
-  const list = [];
-  if (text.includes('<opml') || text.includes('<outline')) {
-    try {
-      const doc = new DOMParser().parseFromString(text, 'text/xml');
-      const outlines = doc.querySelectorAll('outline[xmlUrl], outline[xmlurl]');
-      outlines.forEach((o) => {
-        const url = (o.getAttribute('xmlUrl') || o.getAttribute('xmlurl') || '').trim();
-        if (!url) return;
-        const name = (o.getAttribute('title') || o.getAttribute('text') || '').trim();
-        let cat = '';
-        let p = o.parentElement;
-        while (p && p.tagName.toLowerCase() === 'outline') {
-          const pTitle = (p.getAttribute('title') || p.getAttribute('text') || '').trim();
-          if (pTitle) { cat = pTitle; break; }
-          p = p.parentElement;
-        }
-        list.push({ name, url, category: cat || defaultCategory || '' });
-      });
-      if (list.length > 0) return list;
-    } catch (_) {}
-  }
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
-  for (const line of lines) {
-    let parts;
-    if (line.includes('|')) {
-      parts = line.split('|').map((p) => p.trim());
-    } else if (line.includes('\t')) {
-      parts = line.split('\t').map((p) => p.trim());
-    } else if (line.includes(',')) {
-      parts = line.match(/(?:^|,)("(?:[^"]|"")*"|[^,]*)/g)?.map((s) => s.replace(/^,/, '').trim().replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || line.split(',').map((p) => p.trim());
-    } else {
-      parts = [line.trim()];
-    }
-    let category = defaultCategory || '', name = '', url = '';
-    if (parts.length >= 3) {
-      category = parts[0] || defaultCategory || ''; name = parts[1]; url = parts[2];
-    } else if (parts.length === 2) {
-      if (parts[0].startsWith('http://') || parts[0].startsWith('https://')) {
-        url = parts[0]; name = parts[1];
-      } else if (parts[1].startsWith('http://') || parts[1].startsWith('https://')) {
-        name = parts[0]; url = parts[1];
-      }
-    } else {
-      url = parts[0];
-    }
-    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) continue;
-    list.push({ name, url, category });
-  }
-  return list;
-}
-
-function openFeedImportModal() {
-  const fileInput = h('input', { type: 'file', accept: '.opml,.xml,.txt', style: 'display:none' });
-  const fileBtn = h('button', { class: 'btn sm', onclick: () => fileInput.click() }, t('s.feeds.chooseFile'));
-  const fileLabel = h('span', { class: 'hint', style: 'margin-left:8px' }, t('s.feeds.noFileChosen'));
-  const countLabel = h('span', { class: 'hint', style: 'margin-left:auto;font-weight:500;' }, '');
-  const textarea = h('textarea', {
-    placeholder: t('s.feeds.pastePlaceholder'),
-    style: 'width:100%;height:140px;margin-top:8px;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:8px;border-radius:8px;background:var(--bg);border:1px solid var(--border);color:inherit;'
-  });
-  const skipExisting = h('input', { type: 'checkbox', checked: true });
-  const defaultCategory = h('input', { type: 'text', placeholder: t('s.feeds.categoryPlaceholder'), maxlength: '40', style: 'max-width:180px;' });
-
-  const updateCount = () => {
-    const raw = textarea.value.trim();
-    if (!raw) { countLabel.textContent = ''; return; }
-    const feeds = parseFeedsInput(raw, defaultCategory.value.trim());
-    countLabel.textContent = feeds.length > 0 ? t('s.feeds.foundCount', { count: feeds.length }) : '';
-  };
-
-  textarea.oninput = updateCount;
-  defaultCategory.oninput = updateCount;
-
-  fileInput.onchange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    fileLabel.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => { textarea.value = reader.result; updateCount(); };
-    reader.readAsText(file);
-  };
-
-  const normUrl = (u) => {
-    try {
-      const parsed = new URL((u || '').trim());
-      parsed.hash = '';
-      return parsed.href;
-    } catch (_) {
-      return (u || '').trim();
-    }
-  };
-
-  const doImport = () => {
-    const raw = textarea.value.trim();
-    if (!raw) { toast(t('s.feeds.chooseFileOrPaste'), true); return; }
-    const feeds = parseFeedsInput(raw, defaultCategory.value.trim());
-    if (!feeds.length) { toast(t('s.feeds.noFeedsFound'), true); return; }
-    cfg.feeds ??= [];
-    const MAX_FEEDS = 30;
-    const existingUrls = new Set(cfg.feeds.map((f) => normUrl(f.url)));
-    let added = 0, updated = 0, skippedLimit = 0;
-    for (const f of feeds) {
-      const key = normUrl(f.url);
-      if (existingUrls.has(key)) {
-        if (!skipExisting.checked) {
-          const target = cfg.feeds.find((x) => normUrl(x.url) === key);
-          if (target) {
-            if (f.name) target.name = f.name;
-            if (f.category) target.category = f.category;
-            updated++;
-          }
-        }
-      } else {
-        if (cfg.feeds.length >= MAX_FEEDS) {
-          skippedLimit++;
-          continue;
-        }
-        cfg.feeds.push(f);
-        existingUrls.add(key);
-        added++;
-      }
-    }
-    closeModal();
-    renderFeeds();
-    changed();
-    const catCount = new Set(cfg.feeds.map((f) => f.category).filter(Boolean)).size;
-    const limitMsg = skippedLimit ? t('s.feeds.skippedLimitToast', { count: skippedLimit, max: MAX_FEEDS }) : '';
-    const toastMsg = updated
-      ? t('s.feeds.importedUpdatedToast', { added, updated, categories: catCount })
-      : t('s.feeds.importedToast', { added, categories: catCount });
-    toast(toastMsg + limitMsg);
-  };
-
-  $('modalBody').replaceChildren(
-    h('h3', {}, t('s.feeds.importTitle')),
-    h('p', { class: 'hint', style: 'margin:0 0 12px' }, t('s.feeds.importHint')),
-    h('div', { style: 'display:flex;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:4px;' }, fileBtn, fileLabel, fileInput, countLabel),
-    textarea,
-    h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin:12px 0;' },
-      h('label', { class: 'check' }, skipExisting, t('s.feeds.skipExisting')),
-      h('div', { style: 'display:flex;gap:8px;align-items:center;' },
-        h('span', { class: 'hint' }, t('s.feeds.fallbackCategory')), defaultCategory
-      )
-    )
-  );
-
-  $('feedImportDo')?.remove();
-  const importBtn = h('button', { id: 'feedImportDo', class: 'btn primary', onclick: doImport }, t('s.feeds.doImport'));
-  $('modalClose').before(importBtn);
-  onModalClose = () => { importBtn.remove(); };
-
-  $('modal').hidden = false;
-}
-
-function renderFeeds() {
-  cfg.feeds ??= [];
-  $('feedList').replaceChildren(...cfg.feeds.map((f, i) => h('div', { class: 'cal-row feed-row' },
-    h('input', { type: 'text', value: f.category || '', maxlength: '40', placeholder: t('s.feeds.categoryPlaceholder'), title: t('s.feeds.categoryTitle'), oninput: (e) => { f.category = e.target.value; changed(); } }),
-    h('input', { type: 'text', value: f.name || '', maxlength: '60', placeholder: t('s.feeds.namePlaceholder'), title: t('s.feeds.nameTitle'), oninput: (e) => { f.name = e.target.value; changed(); } }),
-    h('input', { type: 'text', class: 'cal-url', value: f.url || '', placeholder: t('s.feeds.urlPlaceholder'), spellcheck: 'false', title: t('s.feeds.urlTitle'),
-      oninput: (e) => { f.url = e.target.value.trim(); changed(); } }),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.feeds.splice(i, 1); renderFeeds(); changed(); } }, t('s.js.remove')))));
-}
-$('feedAdd').onclick = () => {
-  cfg.feeds ??= [];
-  cfg.feeds.push({ name: '', url: '', category: '' });
-  renderFeeds(); changed();
-};
-$('feedImport').onclick = openFeedImportModal;
-// ---------------------------------------------------------------- cameras
-// Ids are made here, not from the name: a widget points at its camera by id, so renaming one keeps its widgets.
-const cameraId = () => Array.from({ length: 12 }, () => '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)]).join('');
-function renderCameras() {
-  cfg.cameras ??= { ffmpeg: '', sources: [] };
-  cfg.cameras.sources ??= [];
-  $('cameraList').replaceChildren(...cfg.cameras.sources.map((c, i) => h('div', { class: 'cal-row cam-row' },
-    h('input', { type: 'text', value: c.name || '', maxlength: '60', placeholder: t('s.camera.name'), oninput: (e) => { c.name = e.target.value; changed(); } }),
-    h('input', { type: 'text', class: 'cal-url', value: c.url || '', placeholder: 'rtsp://user:password@192.168.1.20:554/stream1', spellcheck: 'false', autocomplete: 'off',
-      oninput: (e) => { c.url = e.target.value.trim(); changed(); } }),
-    h('select', { title: 'Pictures a second', onchange: (e) => { c.fps = +e.target.value; changed(); } },
-      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => h('option', { value: n, selected: (c.fps || 5) === n }, `${n} fps`))),
-    h('select', { title: 'RTSP transport', onchange: (e) => { c.transport = e.target.value; changed(); } },
-      ...[['tcp', 'TCP'], ['udp', 'UDP']].map(([v, l]) => h('option', { value: v, selected: (c.transport || 'tcp') === v }, l))),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.cameras.sources.splice(i, 1); renderCameras(); changed(); } }, t('s.js.remove')))));
-}
-$('cameraAdd').onclick = () => {
-  cfg.cameras ??= { ffmpeg: '', sources: [] };
-  cfg.cameras.sources ??= [];
-  cfg.cameras.sources.push({ id: cameraId(), name: '', url: '', transport: 'tcp', fps: 5 });
-  renderCameras(); changed();
-};
-$('calAdd').onclick = () => {
-  cfg.calendars ??= [];
-  cfg.calendars.push({ name: '', url: '', color: CAL_COLORS[cfg.calendars.length % CAL_COLORS.length] });
-  renderCalendars(); changed();
-};
-
-// ---------------------------------------------------------------- rules
-// The trigger, action, priority and preset tables below are English text that the phone's dictionary cannot key by
-// name: they are translated by their English text through the same catalog lookup the widget catalog uses.
-const tl = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
-const TRIGGERS = {
-  'session-waiting': { label: 'an AI session needs me', match: 'any project (or: api|docs, codex)' },
-  'session-busy': { label: 'an AI session is working', match: 'any project (or: api|docs, codex)' },
-  'process-running': { label: 'an app is running', match: 'zoom|Teams|obs64' },
-  'app-in-front': { label: 'an app is in front', match: 'Code|obs64|Safari' },
-  'calendar-event': { label: 'a calendar event is on', match: 'any event (or: meeting|call)' },
-  'cpu-above': { label: 'the CPU is busy', value: '% (for 15 s)', def: 85 },
-  idle: { label: 'I am away from the PC', value: 'minutes', def: 5 },
-  time: { label: 'it is between', match: '22:00-07:00' },
-  push: { label: 'a pushed value', match: 'key, e.g. doorbell' },
-  'quota-above': { label: 'an AI quota is above', value: '%', def: 80, match: 'any (or: claude|codex)' },
-  'review-requested': { label: 'a GitHub review is requested', match: 'any repo (or: api|web)' },
-  'ci-failed': { label: 'CI fails on my pull request', match: 'any repo (or: api|web)' },
-  'battery-low': { label: 'a device battery is below', value: '%', def: 20, match: 'any device (or: mouse|headset)' },
-  'ping-high': { label: 'the network is slow', value: 'ms (or unreachable)', def: 150 },
-  always: { label: 'always (use the days and hours below)' },
-};
-const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value' };
-const DAYS = [['mon', 'Mo'], ['tue', 'Tu'], ['wed', 'We'], ['thu', 'Th'], ['fri', 'Fr'], ['sat', 'Sa'], ['sun', 'Su']];
-const PRIORITIES = { 2: 'low', 5: 'normal', 8: 'high' };
-const pageId = (...ids) => ids.find((id) => cfg.pages.some((p) => p.id === id)) || cfg.pages[0]?.id || '';
-const RULE_PRESETS = [
-  ['✳️ Claude needs me → AI page', () => ({ name: 'Claude needs me', when: 'session-waiting', then: 'goto', page: pageId('ai', 'work'), whileActive: true })],
-  ['🔥 CPU busy → notification', () => ({ name: 'CPU busy', when: 'cpu-above', value: 90, then: 'notify', text: '{detail} for a while', level: 'warn', whileActive: false })],
-  ['🌙 Away → ambient page', () => ({ name: 'Away', when: 'idle', value: 10, then: 'goto', page: pageId('ambient', 'clock', 'calm'), whileActive: true })],
-  ['🕙 Evenings → calm page', () => ({ name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: pageId('calm', 'clock', 'ambient'), whileActive: true })],
-  ['🔔 Doorbell → notification', () => ({ name: 'Doorbell', when: 'push', match: 'doorbell', then: 'notify', text: 'Someone is at the door', level: 'warn', whileActive: false })],
-  ['🎯 Quota above 80 % → warning', () => ({ name: 'Quota', when: 'quota-above', value: 80, then: 'notify', text: '{detail}', level: 'warn', whileActive: false, cooldownMin: 60 })],
-  ['👀 Review requested → work page', () => ({ name: 'Review requested', when: 'review-requested', then: 'goto', page: pageId('work', 'devops'), whileActive: false, priority: 2, cooldownMin: 30, days: 'mon,tue,wed,thu,fri', during: '09:00-18:00' })],
-  ['❌ CI failed → notification', () => ({ name: 'CI failed', when: 'ci-failed', then: 'notify', text: '{detail}', level: 'error', whileActive: false })],
-  ['🌅 Workday mornings → daily page', () => ({ name: 'Morning', when: 'always', during: '08:30-09:30', days: 'mon,tue,wed,thu,fri', then: 'goto', page: pageId('daily', 'home'), whileActive: true, priority: 2 })],
-  ['🔋 Mouse battery low', () => ({ name: 'Battery low', when: 'battery-low', value: 15, then: 'notify', text: '{detail} — time to charge', level: 'warn', whileActive: false, cooldownMin: 240 })],
-  ['🌡️ Too warm (webhook value)', () => ({ name: 'Too warm', when: 'push', match: 'temperature', op: '>', arg: '28', then: 'notify', text: 'It is {detail} °C', level: 'warn', whileActive: false, cooldownMin: 60 })],
-  ['➕ Empty rule', () => ({ name: '', when: 'session-waiting', then: 'goto', page: pageId('home'), whileActive: true })],
-];
-let activeRules = [];
-
-function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.phones ??= []; cfg.homeAssistant ??= {};
-  $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
-    cfg.rules.push({ id: '', enabled: true, ...make() });
-    renderRules(); changed();
-  } }, rich(tl(label)))));
-  const list = $('ruleList');
-  if (!cfg.rules.length) { list.replaceChildren(h('p', { class: 'hint' }, t('s.r.noRules'))); return; }
-  list.replaceChildren(...cfg.rules.map((r, i) => ruleCard(r, i)));
-}
-
-// per rule being edited: the comparison value and the stale seconds that are not shown right now (see the operator select)
-const RULE_ARGS = new WeakMap();
-
-function ruleCard(r, i) {
-  const set = (k, v, rerender = false) => { r[k] = v; changed(); if (rerender) renderRules(); };
-  const trig = TRIGGERS[r.when] || TRIGGERS['session-waiting'];
-  const sel = (value, options, onchange) => h('select', { onchange: (e) => onchange(e.target.value) },
-    ...Object.entries(options).map(([k, v]) => h('option', { value: k, selected: k === value }, tl(typeof v === 'string' ? v : v.label))));
-  const text = (key, placeholder, cls = '') => h('input', { type: 'text', class: cls, value: r[key] ?? '', placeholder, oninput: (e) => set(key, e.target.value || null) });
-
-  const cond = [];
-  // the trigger table keeps English as its key, so the example value inside the box is translated too
-  if (trig.match) cond.push(text('match', tl(trig.match), 'grow'));
-  if (r.when === 'push') cond.push(sel(r.op || 'on', { on: 'is on', '>': 'is above', '>=': 'is at least', '<': 'is below', '<=': 'is at most', '=': 'equals', '!=': 'is not', stale: 'has no update for' },
-    (v) => {
-      // the seconds of "has no update for" and the value of a comparison are kept apart, so trying one operator and
-      // going back does not overwrite the other (only the selected operator's value is saved)
-      if ((r.op === 'stale') !== (v === 'stale')) {
-        const kept = RULE_ARGS.get(r) || {};
-        if (r.op === 'stale') kept.stale = r.arg; else kept.compare = r.arg;
-        r.arg = v === 'stale' ? (+kept.stale > 0 ? kept.stale : '60') : (kept.compare ?? null);
-        RULE_ARGS.set(r, kept);
-      }
-      set('op', v === 'on' ? null : v, true);
-    }),
-    r.op === 'stale' ? h('input', { type: 'number', min: 1, max: 86400, style: 'width:90px', value: r.arg ?? '60', oninput: (e) => set('arg', e.target.value || null) }) : r.op ? text('arg', tl('value'), '') : null,
-    r.op === 'stale' ? h('span', { class: 'hint' }, tl('seconds')) : null);
-  if (trig.value) cond.push(h('input', { type: 'number', min: 0, style: 'width:90px', value: r.value ?? trig.def, oninput: (e) => set('value', e.target.value === '' ? null : +e.target.value) }), h('span', { class: 'hint' }, tl(trig.value)));
-
-  const act = [];
-  if (r.then === 'goto') act.push(h('select', { onchange: (e) => set('page', e.target.value) },
-    ...(cfg.pages.some((p) => p.id === r.page) ? [] : [h('option', { value: r.page || '', selected: true }, t('s.r.pickPage'))]),
-    ...cfg.pages.map((p) => h('option', { value: p.id, selected: p.id === r.page }, plain(`${p.icon || ''} ${p.title}`)))));
-  if (r.then === 'notify') act.push(text('text', t('s.r.textPlaceholder'), 'grow'),
-    sel(r.level || 'info', { info: 'info', ok: 'ok', warn: 'warning', error: 'error' }, (v) => set('level', v)));
-  if (r.then === 'push') act.push(text('key', t('s.r.keyPlaceholder')), text('pushValue', t('s.r.valuePlaceholder'), 'grow'));
-
-  const num = (key, min, max, width = 64) => h('input', { type: 'number', min, max, style: `width:${width}px`, value: r[key] ?? '', placeholder: '0',
-    oninput: (e) => set(key, e.target.value === '' ? (key === 'countdownSec' ? null : 0) : +e.target.value) });
-  const days = (r.days || '').split(',').filter(Boolean);
-  const dayBtns = h('span', { class: 'days' }, ...DAYS.map(([d, l]) => h('button', { class: 'day' + (!days.length || days.includes(d) ? ' on' : ''), title: t('s.r.onlyTheseDays'),
-    onclick: () => {
-      const cur = days.length ? days : DAYS.map(([x]) => x);
-      const next = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d];
-      set('days', next.length === 7 || !next.length ? null : DAYS.map(([x]) => x).filter((x) => next.includes(x)).join(','), true);
-    } }, tl(l))));
-  const opts = h('details', { class: 'ropts', open: !!(r.days || r.during || r.forSec || r.cooldownMin || (r.priority ?? 5) !== 5 || r.countdownSec != null) },
-    h('summary', {}, t('s.r.options'), h('span', { class: 'hint' }, ' ' + ruleSummary(r))),
-    h('div', { class: 'line' }, h('b', {}, t('s.r.only')), dayBtns, h('span', { class: 'hint' }, t('s.r.between')), text('during', t('s.r.allDay'))),
-    h('div', { class: 'line' }, h('b', {}, t('s.r.wait')), h('span', { class: 'hint' }, t('s.r.actWhenLasts')), num('forSec', 0, 3600), h('span', { class: 'hint' }, t('s.r.thenRest')), num('cooldownMin', 0, 1440),
-      h('span', { class: 'hint' }, t('s.r.minBeforeAgain'))),
-    r.then === 'goto' ? h('div', { class: 'line' }, h('b', {}, t('s.r.page')), h('span', { class: 'hint' }, t('s.r.priority')),
-      sel(String(r.priority ?? 5), PRIORITIES[r.priority ?? 5] ? PRIORITIES : { ...PRIORITIES, [r.priority]: String(r.priority) }, (v) => set('priority', +v)),
-      h('span', { class: 'hint' }, '· ' + t('s.r.countdown')), num('countdownSec', 0, 30, 56), h('span', { class: 'hint' }, t('s.r.countdownEmpty', { n: cfg.display.switchCountdownSec ?? 3 }))) : null);
-
-  const live = activeRules.includes(r.id);
-  return h('div', { class: 'card rule' + (r.enabled === false ? ' off' : '') },
-    h('div', { class: 'line' },
-      h('label', { class: 'switch', title: t('s.r.enabled') }, h('input', { type: 'checkbox', checked: r.enabled !== false, onchange: (e) => set('enabled', e.target.checked, true) }), h('span')),
-      h('input', { type: 'text', class: 'grow', value: r.name || '', placeholder: t('s.r.namePlaceholder'), oninput: (e) => set('name', e.target.value) }),
-      live ? h('span', { class: 'live' }, '● ' + t('s.r.activeNow')) : null,
-      h('button', { class: 'btn sm', title: t('s.r.runOnce'), onclick: async () => {
-        const res = await fetch('/api/rules/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) });
-        toast(res.ok ? t('s.r.done') : t('s.js.couldNotRun'), !res.ok);
-      } }, t('s.r.test')),
-      h('button', { class: 'btn sm danger', onclick: () => { cfg.rules.splice(i, 1); renderRules(); changed(); } }, t('s.r.del'))),
-    h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
-    h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
-    r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
-      r.then === 'goto' ? t('s.r.onlyWhileGoto') : t('s.r.onlyWhileValue')) : null,
-    opts);
-}
-
-function ruleSummary(r) {
-  const parts = [];
-  if (r.days) parts.push(r.days.split(',').map(d => tl(DAYS.find(([id]) => id === d)?.[1] || d)).join(' '));
-  if (r.during) parts.push(r.during);
-  if (r.forSec) parts.push(t('s.r.afterSec', { n: r.forSec }));
-  if (r.cooldownMin) parts.push(t('s.r.restMin', { n: r.cooldownMin }));
-  if (r.then === 'goto' && (r.priority ?? 5) !== 5) parts.push(t('s.r.priorityPart', { level: tl(PRIORITIES[r.priority] || r.priority) }));
-  if (r.then === 'goto' && r.countdownSec != null) parts.push(r.countdownSec ? t('s.r.countdownSec', { n: r.countdownSec }) : t('s.r.noCountdown'));
-  return parts.length ? '· ' + parts.join(' · ') : '· ' + t('s.r.everyDayAtOnce');
-}
-
-// shows which rules hold right now while the Rules section is open
-async function pollRules() {
-  if (!$('rules').classList.contains('on')) return;
-  try {
-    const s = await (await fetch('/api/state')).json();
-    const next = s.rules || [];
-    rulesPausedUntil = s.rulesPaused || null;
-    $('rulesPauseBtn').textContent = rulesPausedUntil ? t('s.r.resumeRules') : t('s.rules.pause1h');
-    $('rulesPausedState').textContent = rulesPausedUntil ? t('s.rules.pausedUntil', { time: new Date(rulesPausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
-      : t('s.rules.countdown');
-    if (next.join() !== activeRules.join()) { activeRules = next; if (!document.activeElement?.closest?.('#ruleList')) renderRules(); }
-  } catch (_) {}
-}
-setInterval(pollRules, 2000);
-let rulesPausedUntil = null;
-$('rulesPauseBtn').onclick = async () => {
-  await fetch(`/api/rules/pause?minutes=${rulesPausedUntil ? 0 : 60}`, { method: 'POST' });
-  pollRules();
-};
-
-// ---------------------------------------------------------------- webhooks
-function renderWebhooks(lan) {
-  const local = `http://127.0.0.1:${location.port || 8765}`;
-  const host = lan?.active && lan.hosts?.length ? `https://${lan.hosts[0]}:${lan.port}` : null;
-  const token = cfg.lan?.webhookToken || '';
-  const ex = [
-    [t('s.wh.exNumber'), `curl -X POST ${local}/api/push/temperature -d 21.5`],
-    [t('s.wh.exStatus'), `curl -X POST ${local}/api/push/build -H "Content-Type: application/json" -d "{\\"value\\":\\"passed\\",\\"sub\\":\\"main · 3m 12s\\"}"`],
-    [t('s.wh.exList'), `curl -X POST ${local}/api/push/todo -H "Content-Type: application/json" -d "[\\"Ship 0.6.2\\",\\"Buy milk\\"]"`],
-    [t('s.wh.exTtl'), `curl -X POST "${local}/api/push/door?ttl=600" -d open`],
-    [t('s.wh.exNotify'), `curl -X POST ${local}/api/notify -H "Content-Type: application/json" -d "{\\"title\\":\\"Deploy\\",\\"text\\":\\"Production is live\\",\\"level\\":\\"ok\\"}"`],
-    [t('s.wh.exGoto'), `curl -X POST ${local}/api/goto/music`],
-    [t('s.wh.exRefresh'), `curl -X POST ${local}/api/refresh`],
-    ['PowerShell', `Invoke-RestMethod -Method Post ${local}/api/push/cpu-fan -Body 1450`],
-  ];
-  // the label is not called `t`: that name is the translation helper, and shadowing it made these examples throw
-  $('whExamples').replaceChildren(...ex.map(([label, c]) => h('div', { class: 'ex' }, h('span', {}, label), h('code', { class: 'cmdline', title: t('s.wh.clickToCopy'), onclick: () => { navigator.clipboard?.writeText(c); toast(t('s.wh.copied')); } }, c))));
-  $('whLan').replaceChildren(host
-    ? h('div', {}, h('p', { class: 'hint', style: { marginTop: 0 } }, t('s.wh.lanHint')),
-      h('div', { class: 'row', style: { gap: '8px', margin: '0 0 8px' } }, h('code', {}, token ? token.slice(0, 6) + '…' : tc('(generated on save)')),
-        h('button', { class: 'btn sm', disabled: !token, onclick: () => { navigator.clipboard?.writeText(token); toast(t('s.js.webhookKeyCopied')); } }, t('s.wh.copyKey')),
-        h('button', { class: 'btn sm', onclick: () => { cfg.lan = { ...(cfg.lan || {}), webhookToken: '' }; changed(); toast(t('s.js.webhookKeyOnSave')); } }, t('s.k.newKey'))),
-      h('code', { class: 'cmdline', onclick: () => { navigator.clipboard?.writeText(`curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token}" -d 21.5`); toast(t('s.wh.copied')); } },
-        `curl -k -X POST ${host}/api/push/temperature -H "Authorization: Bearer ${token.slice(0, 6)}…" -d 21.5`))
-    : h('p', { class: 'hint', style: { margin: 0 } }, tc('Turn on "Wi-Fi & Tailscale" in General to accept webhooks from other machines too. From this PC no token is needed.')));
-}
-
-async function loadPushed() {
-  if (location.hash !== '#webhooks') return;
-  try {
-    const r = await (await fetch('/api/push')).json();
-    const items = Object.entries(r.items || {}).sort((a, b) => b[1].at - a[1].at);
-    $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
-      h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
-      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, t('s.r.del')))))
-      : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
-  } catch (_) {}
-}
-
-async function postJson(url, body) {
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body == null ? '' : JSON.stringify(body) });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
-}
-
 /** Minimal HTML5 drag-and-drop reordering. */
 function dragSort(el, arr, done) {
   el.addEventListener('dragstart', (e) => { el.classList.add('dragging'); e.dataTransfer.setData('text/plain', el.dataset.i); });
@@ -2612,6 +1502,8 @@ function renderAppearanceSettings() {
 
 const t = (k, v) => (window.PhoneBoxI18n ? window.PhoneBoxI18n.t(k, v) : k);
 const tc = (s) => (window.PhoneBoxI18n?.tc ? window.PhoneBoxI18n.tc(s) : s);
+// English labels in tables (the appearance styles and fonts) are translated by their English text, like the widget catalog
+const tl = tc;
 
 /** The catalog ships English names, descriptions and option labels; translate a copy so every render site
  *  keeps working unchanged. The English original stays in catalogRaw for the next language switch. */
@@ -2663,10 +1555,6 @@ function bindLanguage() {
     // every section holds localized strings: rebuild them all, not only the pages editor
     renderAppearanceSettings();
     renderPages();
-    renderRules();
-    renderCalendars();
-    renderFeeds();
-    renderCameras();
     if (typeof queuePreview === 'function') queuePreview();
     changed();
   };
@@ -2693,12 +1581,10 @@ function bindForm() {
       setPath(cfg, p, val);
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
       if (p === 'lan.enabled') renderLanStatus();
-      if (p === 'photos.source' || p === 'photos.immichUrl' || p === 'photos.immichKey') renderPhotoSource();
       changed();
     };
   });
   bindCodexBar();
-  renderPhotoSource();
   $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
 }
 
@@ -2718,25 +1604,6 @@ function bindCodexBar() {
       changed();
     };
   });
-}
-
-async function searchCity() {
-  const q = $('citySearch').value.trim();
-  const box = $('cityResults');
-  if (!q) return;
-  box.hidden = false;
-  box.replaceChildren(h('button', { disabled: true }, t('s.searching')));
-  try {
-    const lang = window.PhoneBoxI18n ? window.PhoneBoxI18n.getLang() : 'en';
-    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=${encodeURIComponent(lang)}&format=json`);
-    const j = await r.json();
-    const res = j.results || [];
-    box.replaceChildren(...(res.length ? res.map((c) => h('button', { onclick: () => {
-      // a new place keeps the temperature unit
-      cfg.weather = { ...cfg.weather, city: c.name, lat: +c.latitude.toFixed(3), lon: +c.longitude.toFixed(3) };
-      bindForm(); changed(); box.hidden = true; toast(`Location: ${c.name}`);
-    } }, c.name, ' ', h('small', {}, [c.admin1, c.country].filter(Boolean).join(', ')))) : [h('button', { disabled: true }, t('s.noResults'))]));
-  } catch (_) { box.replaceChildren(h('button', { disabled: true }, t('s.searchFailed'))); }
 }
 
 // The Wi-Fi line follows the switch at once: the saved state alone said "Off" right after the switch was turned on,
@@ -2782,7 +1649,6 @@ async function loadInfo() {
     renderLanStatus();
     $('restartBtn').hidden = !lan.restartNeeded;
     renderUpdate(await (await fetch('/api/update')).json());
-    renderWebhooks(lan);
     const [claudeHook, codexHook] = await Promise.all([
       fetch('/api/claude/hook').then((r) => r.json()),
       fetch('/api/codex/hook').then((r) => r.json()),
@@ -2807,9 +1673,9 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
+  cfg.pages = fitPages(cfg.pages); cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
-  for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
+  for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, volumeKeys: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
 }
 
@@ -2823,7 +1689,7 @@ async function load() {
   // in English that has display.language = "vi" would otherwise render every editor in English and never rebuild them
   if (window.PhoneBoxI18n) applyLanguageUi(cfg.display?.language || 'auto');
   else localizeCatalog();
-  renderPages(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderNetAdapters(); bindForm();
+  renderPages(); renderNetAdapters(); bindForm();
   // the editors fill in the sections and fields they own (feeds, cameras, an action's "enabled", ...), so the
   // baseline is taken after they ran: otherwise a freshly loaded page already counts as unsaved, and Revert can never
   // get back to a clean state
@@ -2862,7 +1728,7 @@ async function doSave() {
 }
 
 $('save').onclick = save;
-$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderNetAdapters(); renderPhones(); bindForm(); changed(); };
+$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderNetAdapters(); renderPhones(); bindForm(); changed(); };
 // Over USB this also wakes the phone and brings the panel to the front (adb); over Wi-Fi the phone switches to the
 // page selected in the editor through the live stream.
 $('openPhone').onclick = async () => {
@@ -2883,7 +1749,6 @@ $('openPhone').onclick = async () => {
     toast(`Showing ${p.title || 'this page'} on the phone`);
   } else toast(t('s.js.openingPanel'));
 };
-$('cityBtn').onclick = searchCity;
 function renderUpdate(u) {
   const s = u.status;
   $('updRepo').textContent = cfg.updates?.repo || 'kinarovK/phonebox';
@@ -2948,14 +1813,6 @@ for (const name of ['codex', 'claude']) $(`${name}HookBtn`).onclick = async () =
 $('modalClose').onclick = closeModal;
 $('lanPair').onclick = pairOverWifi;
 $('modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
-const whTry = (fn, ok) => async () => { try { await fn(); toast(tc(ok)); loadPushed(); } catch (e) { toast(e.message, true); } };
-$('whNotify').onclick = whTry(() => postJson('/api/notify', { title: 'PhoneBox', text: tc('Hello from the settings page'), level: 'ok' }), 'Sent — look at the phone');
-$('whPush').onclick = whTry(() => postJson('/api/push/demo', { value: Math.round(Math.random() * 100), unit: '%', sub: tc('sent ') + new Date().toLocaleTimeString() }), 'Pushed "demo"');
-$('whRefresh').onclick = whTry(() => postJson('/api/refresh'), 'The panel refreshes');
-$('whReload').onclick = whTry(() => postJson('/api/refresh?reload=1'), 'The panel reloads');
-$('whClear').onclick = async () => { if (!confirm(t('s.js.deletePushed'))) return; await fetch('/api/push', { method: 'DELETE' }); loadPushed(); };
-setInterval(loadPushed, 4000);
-$('citySearch').onkeydown = (e) => { if (e.key === 'Enter') searchCity(); };
 $('applyJson').onclick = () => {
   try {
     const c = JSON.parse($('json').value);
@@ -2963,7 +1820,7 @@ $('applyJson').onclick = () => {
     cfg = c;
     fillDefaults();
     $('jsonErr').textContent = '';
-    renderPages(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderNetAdapters(); renderPhones(); bindForm(); changed(); toast(t('s.jsonLoaded'));
+    renderPages(); renderNetAdapters(); renderPhones(); bindForm(); changed(); toast(t('s.jsonLoaded'));
   }
   catch (e) { $('jsonErr').textContent = e instanceof SyntaxError ? tc('Invalid settings JSON.') : e.message; }
 };
@@ -2994,7 +1851,6 @@ function route() {
   const id = (location.hash || '#pages').slice(1);
   document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === id));
   document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + id));
-  if (id === 'webhooks') loadPushed();
   fitLeads();
 }
 window.addEventListener('hashchange', route);

@@ -21,7 +21,7 @@ public sealed class ApprovalExpiryTests : IDisposable
     public ApprovalExpiryTests()
     {
         Directory.CreateDirectory(_dir);
-        _store = new ApprovalStore(new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_dir, "events.json")),
+        _store = new ApprovalStore(new PushStore(),
             NullLogger<ApprovalStore>.Instance, _clock);
         Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, long.MaxValue);
     }

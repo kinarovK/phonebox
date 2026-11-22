@@ -93,7 +93,7 @@ public sealed class OpenCodeApprovalsTests : IDisposable
 
     public OpenCodeApprovalsTests()
     {
-        _events = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_dir, "events.json"));
+        _events = new PushStore();
         _servicePath = Path.Combine(_dir, ".local", "state", "opencode", "service.json");
         Directory.CreateDirectory(Path.GetDirectoryName(_servicePath)!);
         File.WriteAllText(_servicePath, """{"url":"http://127.0.0.1:28894","password":"pw","version":"2.3.2"}""");
@@ -103,7 +103,6 @@ public sealed class OpenCodeApprovalsTests : IDisposable
     public void Dispose()
     {
         Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, _phone);
-        _events.Dispose();
         Directory.Delete(_dir, recursive: true);
     }
 

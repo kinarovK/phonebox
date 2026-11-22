@@ -9,18 +9,14 @@ const path = require('path');
 // stays right when the sample config changes.
 const DEMO_NAMES = [
   '🏠 Home', '🧭 Dashboard', '✳️ AI quotas', '🤖 Sessions', '📊 System', '⚙️ Processes',
-  '🎯 Status', '🌅 Ambient', '🌍 World', '✅ Daily', '💱 Markets', '📡 Feeds', '🍅 Focus',
-  '🫁 Calm', '🕰️ Clock', '⚡ Automation', '🗓️ Planner', '🛏️ Nightstand', '🏖️ Weekend', '🎧 Deep work',
-  '🧭 CodexBar', '🛠️ DevOps',
+  '🎯 Status', '🕰️ Clock', '🧭 CodexBar', '🛠️ DevOps',
   // adapter and device names reported by the machine
   'Intel(R) Ethernet Controller I225-V', 'Intel(R) Wi-Fi 6E AX211 160MHz', 'WireGuard Tunnel',
   'UMIDIGI BISON · connected now over USB · WebView 134',
   'samsung SM-X200 · seen 2 min ago over Wi-Fi · WebView 134',
   '0.9.16 (up to date)',
   // template names the demo config carries
-  'AI quotas', 'Deep work', 'Hacker News', 'Smart Stack', 'Workflow GitHub',
-  // placeholder paths shown as example values inside inputs
-  'C:\\Users\\you\\Pictures\\Frame', 'C:\\ffmpeg\\bin\\ffmpeg.exe',
+  'AI quotas', 'Workflow GitHub',
 ];
 
 // Any run of two English words with no Vietnamese diacritics. Ids, codes, units, urls and single words (product names
@@ -94,23 +90,17 @@ test('the settings page shows no English left in Vietnamese, with every section 
 
   // Product names and platform names that are not translated on purpose, and demo/sample data the config carries.
   const leftoversKept = englishLeftovers(texts, [
-    'PhoneBox', 'Claude', 'Codex', 'GitHub', 'Home Assistant',
+    'PhoneBox', 'Claude', 'Codex', 'GitHub',
     'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView', 'PowerShell',
     'JSON', 'HTTPS', 'USB', 'Wi-Fi', 'SPA', 'CodexBar',
     // Wi-Fi and Tailscale are product names, so the section title stays the same in every language
     'Wi-Fi & Tailscale',
-    // Open-Meteo forecast model names (and the agencies that run them) are proper names in every language
-    'GFS (NOAA)', 'ECMWF IFS', 'ICON (DWD)', 'UKMO (Met Office)', 'GEM (ECCC)', 'CMA GRAPES',
-    // a Home Assistant / calendar UI label the user looks for inside those programs, not our own interface text
-    'Long-lived access tokens', 'Secret address in iCal format',
     // names the machine reports, so they are data and not interface text
     'UMIDIGI BISON', 'samsung SM-X200',
-    // literal values the API accepts, shown inside <code>: translating them would break the examples
-    '(ok / warn / error)', '(ok / warn / error),',
   ].concat(
     // English names of the other languages in the picker
     names,
-    // the sample config: page, rule, shortcut, adapter and device names come from the file, not from the UI
+    // the sample config: page, adapter and device names come from the file, not from the UI
     DEMO_NAMES,
   ));
 
@@ -137,13 +127,11 @@ test('widget and template catalog entries are available in every interface langu
     for (const t of templates) {
       for (const f of ['title', 'desc']) if (t[f]) wanted.add(t[f]);
     }
-    // A choice whose label is a plain number ("1", "2", "3" for the feeds line count) is the value itself, not text.
+    // A choice whose label is a plain number is the value itself, not text.
     const isValue = (s) => /^[\d.,%\-/+ ]+$/.test(s);
-    // TRY is the Turkish lira code, used as a currency label: translating it would turn the code into a word.
-    const NOT_TRANSLATED = new Set(['TRY']);
     const missing = I18n.LANGUAGES.filter(({ code }) => code !== 'en').flatMap(({ code }) => {
       const dict = I18n.CATALOG[code] || {};
-      return [...wanted].filter((s) => !dict[s]?.trim() && !NOT_TRANSLATED.has(s) && !isValue(s))
+      return [...wanted].filter((s) => !dict[s]?.trim() && !isValue(s))
         .map((s) => `${code}: ${s}`);
     });
     return { widgets: widgets.length, missing };
@@ -182,17 +170,8 @@ test('settings.html keeps no English literal in a position that reaches the scre
     }
   }
 
-  // The trigger, action and preset tables are looked up through tc()/tl(), so their English text is correct here: it is
-  // the key. Everything else must go through t().
-  const LOOKED_UP_BY_TEXT = new Set([
-    'an AI session needs me', 'an AI session is working', 'music or video plays', 'an app is running',
-    'an app is in front', 'the microphone is in use', 'the camera is in use', 'a calendar event is on',
-    'OBS is recording or streaming', 'the CPU is busy', 'I am away from the PC', 'it is between',
-    'a pushed value', 'an AI quota is above', 'a GitHub review is requested', 'CI fails on my pull request',
-    'a device battery is below', 'the network is slow', 'always (use the days and hours below)',
-    'show the page', 'show a notification', 'push a value', 'run a shortcut',
-  ]);
-  const left = [...new Set(hits)].filter((s) => !LOOKED_UP_BY_TEXT.has(s));
+  // Everything must go through t().
+  const left = [...new Set(hits)];
 
   expect(left, `English literals that reach the screen in settings.html:\n${left.join('\n')}`).toEqual([]);
 });

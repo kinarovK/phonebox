@@ -45,7 +45,7 @@ with tempfile.TemporaryDirectory(prefix='phonebox-smoke-') as work:
     except urllib.error.HTTPError as error:return error.code
    assert usb_status('/api/state')==401,'USB port answered without a key'
    assert usb_status('/api/state',headers={'Authorization':'Bearer '+'A'*43})==401,'USB port accepted an unknown key'
-   assert usb_status('/api/rules/test','POST',{'Content-Type':'application/json'})==401,'USB port took a rule test without a key'
+   assert usb_status('/api/volume','POST',{'Content-Type':'application/json'})==401,'USB port took a volume change without a key'
    assert usb_status('/api/settings',headers={'Origin':'https://foreign.example'})==403,'USB port accepted a browser origin'
    print(json.dumps({'version':args.version,'os':get('/api/info')['os'],'cpu':state['pc']['cpu'],'ramTotalGb':state['pc']['ramTotalGb'],'processGroups':len(procs['groups']),'widgets':len(catalog['widgets']),'foreignOrigin':403,'usbWithoutKey':401}))
   except BaseException:

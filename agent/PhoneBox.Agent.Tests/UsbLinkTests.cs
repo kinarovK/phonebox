@@ -44,7 +44,6 @@ public class UsbLinkTests
     [InlineData("POST", "/api/approvals/a1")]
     [InlineData("POST", "/api/phone/battery")]
     [InlineData("GET", "/api/pair")]   // the phone keeps its Wi-Fi pairing data current over USB
-    [InlineData("GET", "/api/proxy")]  // the panel's feed proxy
     public void TheAppsKeyOpensThePhoneApi(string method, string path)
     {
         Assert.Equal(UsbLink.Access.Allowed, Linked().Authorize(method, path, "", "Bearer " + Key));
@@ -56,7 +55,6 @@ public class UsbLinkTests
     [InlineData("POST", "/api/pair/start")]
     [InlineData("GET", "/api/pair/status")]
     [InlineData("POST", "/api/pair")]
-    [InlineData("POST", "/api/proxy")]
     [InlineData("GET", "/api/info")]
     [InlineData("POST", "/api/update/apply")]
     [InlineData("GET", "/api/latency")]

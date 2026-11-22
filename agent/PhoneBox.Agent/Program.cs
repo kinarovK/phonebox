@@ -67,24 +67,17 @@ builder.Services.AddSingleton<AudioControl>();
 builder.Services.AddSingleton<PairingCodes>();
 builder.Services.AddSingleton<PushStore>();
 builder.Services.AddSingleton<ApprovalStore>();
-builder.Services.AddSingleton<HomeAssistant>();
 AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
 AddMonitor<ProcessMonitor>(builder.Services);
 AddMonitor<SessionMonitor>(builder.Services);
 AddMonitor<OpenCodeApprovals>(builder.Services);
-AddMonitor<FeedMonitor>(builder.Services);
-builder.Services.AddSingleton<PhotoFrame>();
-builder.Services.AddSingleton<CameraFeeds>();
 AddMonitor<GitHubMonitor>(builder.Services);
 AddMonitor<PingMonitor>(builder.Services);
 AddMonitor<AdbReverse>(builder.Services);
 AddMonitor<SessionLockMonitor>(builder.Services);
 AddMonitor<UpdateService>(builder.Services);
-AddMonitor<CalendarMonitor>(builder.Services);
 AddMonitor<DockerMonitor>(builder.Services);
-AddMonitor<BatteryMonitor>(builder.Services);
-AddMonitor<RuleEngine>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
@@ -143,21 +136,18 @@ app.Use(async (ctx, next) =>
     }
     else if (lanCert is not null && ctx.Connection.LocalPort == lanCfg.Port && ctx.Request.IsHttps)
     {
-        // The phone's key opens the panel API; the separate webhook key opens only the webhook endpoints, in a header
-        // or, for senders that cannot set headers, in ?token= (URLs end up in logs, so it must not be the phone's key).
+        // The phone's key opens the panel API.
         var lan = configStore.Get().Lan;
-        var access = Lan.AuthorizeRequest(lan, ctx.Request.Method, ctx.Request.Path, origin,
-            ctx.Request.Headers.Authorization, ctx.Request.Query["token"]);
+        var access = Lan.AuthorizeRequest(lan, ctx.Request.Method, ctx.Request.Path, origin, ctx.Request.Headers.Authorization);
         if (access == Lan.LanAccess.Denied)
         {
             ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
-        if (access is Lan.LanAccess.PairingClaim or Lan.LanAccess.Webhook)
+        if (access is Lan.LanAccess.PairingClaim)
         {
-            // pairing claims and webhooks must not touch phone registry, app version or "phone connected" updates
-            if (access == Lan.LanAccess.PairingClaim)
-                ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 1024;
+            // pairing claims must not touch phone registry, app version or "phone connected" updates
+            ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 1024;
             ctx.Response.Headers.CacheControl = "no-store";
             await next();
             return;
@@ -294,7 +284,7 @@ app.MapGet("/api/settings", (HttpRequest req, ConfigStore cfg, HttpResponse res)
     return Results.Text(json, "application/json; charset=utf-8");
 });
 
-app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame photos, CameraFeeds cameras, ILogger<Program> log, CancellationToken ct) =>
+app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, ILogger<Program> log) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     using var r = new StreamReader(req.Body);
@@ -302,35 +292,13 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame 
     var body = await r.ReadToEndAsync();
     if (LanPortCollidesWithLocal(body, Port))
         return Results.BadRequest(new { error = $"Wi-Fi port cannot be the same as the local port ({Port})" });
-    if (LanKeysShared(body))
-        return Results.BadRequest(new { error = "The Wi-Fi key and the webhook key must be different: make a new key for one of them" });
-    AgentConfig? proposed = null;
-    try { proposed = JsonSerializer.Deserialize<AgentConfig>(body, ConfigStore.ReadOpts); }
-    catch (JsonException) { }
     string? err;
     long savedVersion;
     err = cfg.Save(body, expected, out savedVersion);
     if (err == ConfigStore.Conflict) return Results.Json(new { error = err }, statusCode: StatusCodes.Status409Conflict);
     if (err is not null) return Results.BadRequest(new { error = err });
-    photos.SettingsSaved();
-    cameras.SettingsSaved();
     log.LogInformation("settings saved");
     return Results.Ok(new { version = savedVersion.ToString(CultureInfo.InvariantCulture) });
-});
-
-// Narrow write path for the phone: only the text of a Note widget may be changed.
-// The text travels in the query string: the Android proxy forwards no request body.
-app.MapPost("/api/widget/{pageId}/{widgetId}/note", (string pageId, string widgetId, string? text, string? version, ConfigStore cfg) =>
-{
-    long? expected = long.TryParse(version, out var v) ? v : null;
-    var r = NoteEdit.Apply(cfg, pageId, widgetId, text, expected);
-    return r.Status switch
-    {
-        200 => Results.Ok(new { version = r.Version }),
-        404 => Results.NotFound(new { error = r.Error }),
-        409 => Results.Json(new { error = r.Error }, statusCode: StatusCodes.Status409Conflict),
-        _ => Results.BadRequest(new { error = r.Error }),
-    };
 });
 
 app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
@@ -355,44 +323,6 @@ app.MapPost("/api/phone/open", async (AdbReverse adb) => { await adb.OpenPanelAs
 app.MapGet("/api/catalog", () => Results.Text($"{{\"cols\":{Catalog.Cols},\"rows\":{Catalog.Rows},\"widgets\":{Catalog.WidgetsJson},\"templates\":{Catalog.TemplatesJson}}}",
     "application/json; charset=utf-8"));
 
-// ---------------------------------------------------------------- webhook API: push data and events into the panel
-// POST /api/push/{key}       body: JSON or plain text (or ?value=); optional ?ttl=seconds. Shown by "push" widgets.
-// DELETE /api/push/{key}     removes a value; GET /api/push lists them.
-// POST /api/notify           {"title","text","level":"info|ok|warn|error","vibrate":true,"page":"<page id>","seconds":5} or plain text
-// POST /api/goto/{page}      switches the phone to a page (id, or 1-based number)
-// POST /api/refresh          refreshes quotas/GitHub now and makes the phone reload its settings and data; ?reload=1 reloads the whole panel
-app.MapGet("/api/push", (PushStore push) => Results.Json(new { version = push.Version, items = push.Snapshot() }));
-app.MapGet("/api/push/{key}", (string key, PushStore push) => push.Get(key) is { } item ? Results.Json(item) : Results.NotFound());
-app.MapMethods("/api/push/{key}", ["POST", "PUT"], async (string key, int? ttl, HttpRequest req, PushStore push) =>
-{
-    var (data, error) = await PushStore.ReadBody(req);
-    if (error is not null) return Results.BadRequest(new { error });
-    error = push.Set(key, data!.Value, ttl);
-    return error is null ? Results.Json(new { ok = true, key, version = push.Version }) : Results.BadRequest(new { error });
-});
-app.MapDelete("/api/push/{key}", (string key, PushStore push) => push.Remove(key) ? Results.Ok() : Results.NotFound());
-app.MapDelete("/api/push", (PushStore push) => { push.Clear(); return Results.Ok(); });
-
-app.MapPost("/api/notify", async (HttpRequest req, PushStore push) =>
-{
-    var (data, error) = await PushStore.ReadBody(req);
-    if (error is not null) return Results.BadRequest(new { error });
-    var d = data!.Value;
-    var payload = d.ValueKind == JsonValueKind.Object ? d : JsonSerializer.SerializeToElement(new { text = d.ToString() });
-    if (!payload.TryGetProperty("text", out _) && !payload.TryGetProperty("title", out _)) return Results.BadRequest(new { error = "give a text or a title" });
-    return Results.Json(push.Emit("notify", payload));
-});
-
-// ?countdown=0 switches at once; otherwise the phone counts down like for a rule.
-app.MapPost("/api/goto/{page}", (string page, int? countdown, PushStore push) =>
-    Results.Json(push.Emit("goto", JsonSerializer.SerializeToElement(new { page, countdown = countdown is { } c ? Math.Clamp(c, 0, 30) : (int?)null }))));
-
-app.MapPost("/api/refresh", (bool? reload, PushStore push) =>
-{
-    Wake.Now();
-    return Results.Json(push.Emit(reload == true ? "reload" : "refresh"));
-});
-
 // ---------------------------------------------------------------- phone panel API
 object State(IServiceProvider sp, long? ev)
 {
@@ -405,52 +335,13 @@ object State(IServiceProvider sp, long? ev)
         host = Environment.MachineName,
         os = AppPaths.Os, // the Trackpad's gesture vibration is only for the computers that act on a gesture (macOS)
         cfgVersion = sp.GetRequiredService<ConfigStore>().Version.ToString(),
-        pushVersion = push.Version,
         evSeq = push.Seq,
         events = ev is { } since ? push.Since(since) : [],
         pc = sp.GetRequiredService<SystemMonitor>().Snapshot(),
         audio = sp.GetRequiredService<AudioControl>().Snapshot(),
         ping = sp.GetRequiredService<PingMonitor>().Snapshot(),
-        rules = sp.GetRequiredService<RuleEngine>().Active(),
-        rulesPaused = sp.GetRequiredService<RuleEngine>().PausedUntil(),
     };
 }
-
-// Upcoming calendar events (Agenda widget); the feed URLs stay here.
-app.MapGet("/api/calendar", (CalendarMonitor cal) => Results.Json(cal.Snapshot()));
-
-// Headlines for the Feeds widget; the feed and article addresses stay here, the phone opens an article by its id.
-app.MapGet("/api/feeds", (FeedMonitor feeds) =>
-{
-    var s = feeds.Snapshot();
-    return Results.Json(new { s.Items, s.Updated, s.Errors, canOpen = feeds.OpenAllowed() });
-});
-// Photo frame: ids of the photos in the chosen folder, then one (scaled-down) photo at a time by id.
-app.MapGet("/api/photos", (PhotoFrame photos) =>
-{
-    var (ids, error, scanning) = photos.List();
-    return Results.Json(new { ids, error, scanning });
-});
-app.MapGet("/api/photos/{id}", async (string id, PhotoFrame photos, HttpResponse res, CancellationToken ct) =>
-{
-    var (bytes, type, error) = await photos.Get(id, ct);
-    if (bytes is null) return Results.Json(new { error }, statusCode: 404);
-    res.Headers.CacheControl = "private, max-age=86400";
-    return Results.File(bytes, type!);
-});
-// Camera widget: the latest picture of the camera a widget shows, as a JPEG. Pulling a camera starts with these requests
-// and stops a few seconds after the last one; without a fresh picture the answer is a state, never an older picture.
-// "fresh" is read as text, not bound as a bool: a value the bool binder can't parse ("1") would answer 400 instead
-app.MapGet("/api/camera", (string? widget, string? fresh, HttpRequest req, HttpResponse res, CameraFeeds cameras) =>
-{
-    var (status, jpeg, state) = cameras.Frame(req.Headers["X-PhoneBox-Device"].ToString(), widget, fresh is "true" or "1");
-    res.Headers.CacheControl = "no-store";
-    res.Headers["X-Content-Type-Options"] = "nosniff";
-    if (status == 204) return Results.NoContent(); // no newer picture than the one this widget has
-    return jpeg is null ? Results.Json(new { state }, statusCode: status) : Results.Bytes(jpeg, "image/jpeg");
-});
-app.MapPost("/api/feeds/open", (string? id, FeedMonitor feeds) =>
-    feeds.Open(id) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
 
 // Docker / Podman containers (Docker widget); start / stop / restart only if a widget allows it.
 app.MapGet("/api/docker", async (DockerMonitor docker, CancellationToken ct) =>
@@ -458,49 +349,11 @@ app.MapGet("/api/docker", async (DockerMonitor docker, CancellationToken ct) =>
 app.MapPost("/api/docker/{id}/{action}", async (string id, string action, DockerMonitor docker) =>
     await docker.ActAsync(id, action) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
 
-// Home Assistant (widget): states of the entities the widgets list, and switching those a widget allows.
-app.MapGet("/api/ha/states", async (string? ids, HomeAssistant ha) =>
-    Results.Json(await ha.StatesAsync((ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))));
-app.MapPost("/api/ha/toggle/{id}", async (string id, HomeAssistant ha) =>
-    await ha.ToggleAsync(id) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
 // Settings › General › Ping & network: the connected adapters to pick from (local only, not on the Wi-Fi list)
 app.MapGet("/api/network/adapters", (ConfigStore cfg) => Results.Json(SystemMonitor.Adapters(cfg.Get().Ping.Adapters)));
 
-// Settings › widget › Home Assistant entities: the picker's list (local only, not on the Wi-Fi allow-list)
-app.MapGet("/api/ha/entities", async (HomeAssistant ha) => Results.Json(await ha.ListEntitiesAsync()));
-// Settings › General › Home Assistant › Test (local only)
-app.MapPost("/api/ha/test", async (HomeAssistantConfig body) =>
-    Results.Json(new { result = await HomeAssistant.TestAsync(body.Url ?? "", body.Token ?? "") }));
-
-// Settings › General › Photo frame › Immich › Load albums (local only: not on the Wi-Fi allow-list). The key in the body
-// is used for this request only; the saved one stands in when the address is unchanged and the field was left empty.
-app.MapPost("/api/immich/albums", async (ImmichAlbumsRequest body, PhotoFrame photos, CancellationToken ct) =>
-{
-    var (albums, error) = await photos.ImmichAlbums(body.Url, body.Key, ct);
-    return albums is null ? Results.Json(new { error }) : Results.Json(new { albums });
-});
-
-// Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
-app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));
-
-// Settings › Rules › Test: runs a rule's action once (the rule may be unsaved).
-app.MapPost("/api/rules/test", (RuleConfig rule, RuleEngine rules) =>
-{
-    if (!RuleConfig.Actions.Contains(rule.Then)) return Results.BadRequest(new { error = "unknown action" });
-    if (string.IsNullOrWhiteSpace(rule.Id)) rule.Id = "test";
-    rules.Test(rule);
-    return Results.Ok(new { ok = true });
-});
-
 // The phone reports its battery; USB setup reads its view of the USB link (UsbDoctor).
 app.MapPost("/api/phone/battery", (int level, bool plugged, double? temp, string? source, string? usb) => { ChargeGuard.Report(level, plugged, temp, source, usb); return Results.Ok(); });
-// Pause all rules for a while (the phone's overview, the settings); minutes=0 resumes.
-app.MapPost("/api/rules/pause", (int? minutes, RuleEngine rules) =>
-{
-    rules.Pause(minutes ?? 60);
-    return Results.Ok(new { pausedUntil = rules.PausedUntil() });
-});
-
 app.MapGet("/api/state", (long? ev, HttpContext ctx) => Results.Json(State(ctx.RequestServices, ev)));
 
 // Live stream (server-sent events) for the phone: "state" every second, "event" as soon as one happens, "work" when it
@@ -654,7 +507,6 @@ app.MapGet("/api/quotas", (QuotaMonitor q) => Results.Json(new { providers = q.S
 
 app.MapGet("/api/work", (SessionMonitor s, GitHubMonitor gh) => Results.Json(WorkFeed.Build(s, gh)));
 
-app.MapGet("/api/proxy", (string? url, CancellationToken ct) => WidgetFeedProxy.FetchAsync(url, ct));
 
 app.MapGet("/api/procs", (ProcessMonitor procs, int? top) =>
 {
@@ -728,37 +580,6 @@ public partial class Program
                 collides = enabled && port == localPort;
             }
             return collides;
-        }
-        catch (JsonException) { }
-        return false;
-    }
-
-    /// <summary>
-    /// True when settings JSON gives the phone key and the webhook key the same value: every webhook sender would then
-    /// hold the phone's key (Lan.AuthorizeRequest no longer trusts it as one). Checked on the settings page's save
-    /// only, so other writes (a Note from the phone) still go through on a config that was edited by hand.
-    /// </summary>
-    internal static bool LanKeysShared(string json)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-            if (doc.RootElement.ValueKind != JsonValueKind.Object) return false;
-            string? token = null, webhook = null;
-            // last-wins for repeated members, like ConfigStore.Save; blank keys are replaced by new ones there
-            foreach (var prop in doc.RootElement.EnumerateObject())
-            {
-                if (!prop.Name.Equals("lan", StringComparison.OrdinalIgnoreCase)) continue;
-                token = webhook = null;
-                if (prop.Value.ValueKind != JsonValueKind.Object) continue;
-                foreach (var lp in prop.Value.EnumerateObject())
-                {
-                    var text = lp.Value.ValueKind == JsonValueKind.String ? lp.Value.GetString() : null;
-                    if (lp.Name.Equals("token", StringComparison.OrdinalIgnoreCase)) token = text;
-                    else if (lp.Name.Equals("webhookToken", StringComparison.OrdinalIgnoreCase)) webhook = text;
-                }
-            }
-            return !string.IsNullOrWhiteSpace(token) && string.Equals(token, webhook, StringComparison.Ordinal);
         }
         catch (JsonException) { }
         return false;

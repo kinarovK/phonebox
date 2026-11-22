@@ -36,19 +36,16 @@
     c = store.get('pb-demo-config', null);
     if (c) return c;
     const byId = Object.fromEntries(templates.map((t) => [t.id, t]));
-    const rule = (r) => ({ enabled: true, match: null, value: null, page: null, text: null, level: null, key: null, pushValue: null, whileActive: true,
-      priority: 5, forSec: 0, cooldownMin: 0, days: null, during: null, countdownSec: null, op: null, arg: null, ...r });
     // every section the agent serves, with its defaults (Config.cs), so the settings page shows what a real one does
     c = {
       codexBar: { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 },
       deviceSerial: null, adbPath: null,
-      weather: { city: 'Tallinn', lat: 59.437, lon: 24.745, unit: 'celsius', model: '' },
       night: { enabled: false, start: '00:30', end: '07:30', brightness: 0.02 },
       display: { appearance: null, showSeconds: true, hour12: false, idleReturnSec: 0, vibrate: true, volumeKeys: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf',
         pixelShift: false, idleDimMin: 0,
         autoBrightness: false, nightWhenDark: false, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, pin: false, homeScreen: false, keepAwake: true, openOnConnect: true, followComputerLock: false,
-        homePage: null, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30 },
-      lan: { enabled: true, port: 8766, token: 'demo', webhookToken: 'demo-webhook-key' },
+        homePage: null, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15 },
+      lan: { enabled: true, port: 8766, token: 'demo' },
       updates: { auto: true, repo: 'ersinkoc/phonebox' },
       claude: { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false },
       antigravity: { sessions: false, shareSessionTitles: false },
@@ -61,13 +58,7 @@
           return { ...w, id: n === 1 ? w.type : `${w.type}-${n}`, options: { ...(w.options || {}), ...control } };
         }) };
       }),
-      rules: [
-        rule({ id: 'claude-needs-me', name: 'Claude needs me', when: 'session-waiting', then: 'goto', page: 'ai', priority: 8 }),
-        rule({ id: 'review-requested', name: 'Review requested', when: 'review-requested', then: 'notify', text: '{detail}', whileActive: false, days: 'mon,tue,wed,thu,fri', during: '09:00-18:00' }),
-        rule({ id: 'evenings', name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: 'calm', priority: 2 }),
-      ],
-      phones: [], calendars: [],
-      homeAssistant: { url: null, token: null },
+      phones: [],
     };
     c = JSON.parse(JSON.stringify(c, (_, v) => v === null ? undefined : v)); // the agent leaves unset (null) settings out
     store.set('pb-demo-config', c);
@@ -77,25 +68,21 @@
     return loadConfig();
   }
   const cfgVersion = () => store.get('pb-demo-version', 1);
-  // every widget of the layout, Smart Stack children included (AgentConfig.Widgets)
-  const widgets = (c) => (c.pages || []).flatMap((p) => p.widgets || []).flatMap((w) => [w, ...(w.type === 'stack' ? (w.options?.widgets || []).filter((x) => x.enabled !== false) : [])]);
+  // every widget of the layout (AgentConfig.Widgets)
+  const widgets = (c) => (c.pages || []).flatMap((p) => p.widgets || []);
   const allows = (c, test) => widgets(c).some((w) => test(w.type) && w.options?.control === true);
-  // like AgentConfig.Widgets(enabledPagesOnly: true): what may control the computer comes from enabled pages only
-  const shownWidgets = (c) => widgets({ ...c, pages: (c.pages || []).filter((p) => p.enabled !== false) });
-  const feedsCanOpen = (c) => shownWidgets(c).some((w) => w.type === 'feeds' && w.options?.open === true);
 
   // What the agent sends to a phone (AgentConfig.ToPublic): no keys, tokens or what a rule matches on.
   function publicConfig(c) {
     const options = (w) => w.options ?? null;
     return {
-      weather: c.weather, codexBar: c.codexBar, night: c.night, display: c.display,
+      codexBar: c.codexBar, night: c.night, display: c.display,
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
         widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null, options: options(w) })) })),
-      rules: (c.rules || []).map(({ id, name, enabled, when }) => ({ id, name, enabled: enabled !== false, when })),
     };
   }
 
-  // ---- webhook-style events (notifications, page switches) shared between tabs
+  // ---- events (page switches, permission prompts) shared between tabs
   const events = [];
   let seq = 0;
   function emit(kind, data, broadcast = true) {
@@ -105,16 +92,6 @@
     if (broadcast) bc.postMessage({ type: 'event', kind, data });
     return e;
   }
-  const push = {
-    temperature: { data: 21.5, at: now() - 180e3, expiresAt: null },
-    build: { data: { value: 'passed', sub: 'main · 3m 12s' }, at: now() - 240e3, expiresAt: null },
-    deploy: { data: { value: 'running', sub: 'production' }, at: now() - 60e3, expiresAt: null },
-    progress: { data: { value: 64 }, at: now() - 30e3, expiresAt: null },
-    todo: { data: { items: [{ label: 'Try the layout editor', value: 'now', level: 'warn' }, { label: 'Widgets', value: 'done', level: 'ok' },
-      { label: 'Webhooks', value: 'done', level: 'ok' }, 'Water the plants'] }, at: now() - 600e3, expiresAt: null },
-  };
-  let pushVersion = 1;
-  let rulesPaused = 0;
   // the phone reports its battery through /api/phone/battery
   let phoneBattery = { level: 72, plugged: true, temp: 29, at: now() - 20e3, source: 'usb', usb: 'configured' };
   let approvals = [];
@@ -136,16 +113,13 @@
     if (d.type === 'ask') { const a = ask(d.sample, false); a.id = d.id; }
     if (d.type === 'decided') { approvals = approvals.filter((x) => x.id !== d.id); emit('approval-done', { id: d.id }, false); }
     if (d.type === 'event') emit(d.kind, d.data, false);
-    if (d.type === 'push') setPush(d.key, d.value, d.ttl);
   };
-  function setPush(key, value, ttl = null) { push[key] = { data: value, at: now(), expiresAt: ttl > 0 ? now() + ttl * 1000 : null }; pushVersion++; }
-  const livePush = () => { for (const k of Object.keys(push)) if (push[k].expiresAt && push[k].expiresAt <= now()) { delete push[k]; pushVersion++; } return push; };
 
   // ---- made-up computer
   const audio = { volume: 42, muted: false, canControl: true };
   function state(since) {
     return {
-      update: null, ts: now(), host: 'DESK-PC', os: window.__demoOs || 'windows', cfgVersion: cfgVersion(), pushVersion, evSeq: seq, rules: [], rulesPaused: rulesPaused > now() ? rulesPaused : null,
+      update: null, ts: now(), host: 'DESK-PC', os: window.__demoOs || 'windows', cfgVersion: cfgVersion(), evSeq: seq,
       events: since == null ? [] : events.filter((e) => e.seq > since),
       pc: {
         cpu: Math.max(1, wave(37, 8, 46, 0, 6)), cpuName: 'AMD Ryzen 9 7950X 16-Core Processor', cpuTemp: wave(60, 52, 68),
@@ -169,24 +143,6 @@
     };
   }
 
-  // made-up Home Assistant entities; switching flips them
-  const ha = {
-    'light.desk': { name: 'Desk lamp', state: 'on' }, 'light.ceiling': { name: 'Ceiling', state: 'off' },
-    'switch.coffee': { name: 'Coffee machine', state: 'off' }, 'sensor.office_temperature': { name: 'Office', state: '21.4', unit: '°C', deviceClass: 'temperature' },
-    'sensor.office_humidity': { name: 'Humidity', state: '43', unit: '%', deviceClass: 'humidity' }, 'binary_sensor.front_door': { name: 'Front door', state: 'off', deviceClass: 'door' },
-    'lock.front_door': { name: 'Door lock', state: 'locked' }, 'scene.movie': { name: 'Movie night', state: 'scening' },
-  };
-  function haStates(ids) {
-    const list = (ids.length ? ids : Object.keys(ha)).filter((id) => ha[id]).map((id) => ({ id, unit: null, deviceClass: null, icon: null, changed: now() - 6e5, ...ha[id] }));
-    return { configured: true, error: null, entities: list };
-  }
-  function haToggle(id) {
-    const e = ha[id];
-    if (!e) return;
-    if (id.startsWith('lock.')) e.state = e.state === 'locked' ? 'unlocked' : 'locked';
-    else if (/^(light|switch)\./.test(id)) e.state = e.state === 'on' ? 'off' : 'on';
-  }
-
   // made-up containers; start / stop / restart change them
   const containers = [
     { id: 'a1b2c3d4e5f6', name: 'shop-web-1', image: 'nginx:1.27', project: 'shop', state: 'running', status: 'Up 3 hours', health: null, cpu: 0.4, mem: '12MiB' },
@@ -198,23 +154,6 @@
   function docker() {
     const live = containers.map((c) => c.state === 'running' && c.cpu != null ? { ...c, cpu: Math.max(0.1, c.cpu * (0.8 + Math.random() * 0.4)) } : c);
     return { snapshot: { available: true, error: null, containers: live, updated: now() } };
-  }
-
-  // made-up calendar around the current time: one meeting is on now
-  function calendar() {
-    const day = new Date(new Date().toDateString()).getTime(), H = 3600e3, M = 60e3, t = now();
-    const ev = (title, start, mins, cal, color, location, allDay = false) => ({ title, start, end: start + mins * M, allDay, location, calendar: cal, color });
-    const work = '#60a5fa', home = '#34d399';
-    const utcDay = (n) => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + n); };
-    return { updated: t - 4 * M, errors: [], events: [
-      ev('Design review', t - 20 * M, 45, 'Work', work, 'Room 4'),
-      ev('1:1 with Sam', t + 90 * M, 30, 'Work', work, null),
-      ev('Gym', day + 18.5 * H, 60, 'Personal', home, null),
-      ev('Release day', utcDay(1), 24 * 60, 'Work', work, null, true), // all-day: UTC midnight of the date, as the agent sends it
-      ev('Sprint planning', day + 33.5 * H, 60, 'Work', work, 'Big room'),
-      ev('Lunch with Alex', day + 36 * H, 60, 'Personal', home, 'Noodle bar'),
-      ev('Dentist', day + 2 * 24 * H + 10 * H, 45, 'Personal', home, null),
-    ].sort((a, b) => a.start - b.start) };
   }
 
   function quotas() {
@@ -264,41 +203,12 @@
   }
 
   // ---- router
-  const DEMO_PHOTOS = [['ph1', '#f97316', '#7c3aed'], ['ph2', '#0ea5e9', '#22c55e'], ['ph3', '#ec4899', '#facc15'], ['ph4', '#14b8a6', '#1e3a8a']];
-  // headlines as the agent sends them: no links, the phone opens one by its id
-  const DEMO_FEEDS = () => [
-    ['f1', 'A tiny e-ink weather station that runs for a year on one charge', 'Hackaday', 18],
-    ['f2', 'Rust 2.0 roadmap: what changes for async code', 'Tech news', 47],
-    ['f3', 'Why old phones make great desk dashboards', 'Blog', 95],
-    ['f4', 'The James Webb telescope finds water in a young planetary system', 'Science', 160],
-    ['f5', 'Ten keyboard shortcuts that save an hour a week', 'Tech news', 240],
-    ['f6', 'Inside the factory that still makes film cameras', 'Hackaday', 420],
-  ].map(([id, title, source, min]) => ({ id, title, source, published: now() - min * 60_000, openable: true }));
-  // "pageId/widgetId", or "pageId/stackId:cardId" for a Smart Stack card (PanelWidgets.Find)
-  const panelWidget = (c, key, type) => (c.pages || []).filter((p) => p.enabled !== false).flatMap((p) => (p.widgets || []).flatMap((w) =>
-    // card-<i> counts every card, disabled ones too, like StackWidgets.Children and stack.js
-    [[`${p.id}/${w.id}`, w], ...(w.type === 'stack' ? (w.options?.widgets || []).map((x, i) => [x, i]).filter(([x]) => x.enabled !== false)
-      .map(([x, i]) => [`${p.id}/${w.id}:${x.id || `card-${i}`}`, x]) : [])]))
-    .find(([k, w]) => w.type === type && k === key)?.[1];
   const json = (o, status = 200, headers = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
   const parse = (body) => { if (body == null || body === '') return null; try { return JSON.parse(body); } catch (_) { return String(body); } };
 
   async function handle(method, path, q, body, headers) {
     if (path === '/api/state') return json(state(q.has('ev') ? +q.get('ev') : null));
     if (path === '/api/config') return json({ version: cfgVersion(), config: publicConfig(await config()) });
-    if (path.startsWith('/api/widget/') && path.endsWith('/note') && method === 'POST') {
-      const parts = path.split('/');
-      const pageId = decodeURIComponent(parts[3]);
-      const widgetId = decodeURIComponent(parts[4]);
-      const c = await config();
-      const pg = (c.pages || []).find((p) => p.id === pageId);
-      const w = pg && (pg.widgets || []).find((x) => x.id === widgetId);
-      if (!w || w.type !== 'note') return json({ error: 'option not allowed' }, 400);
-      w.options = { ...(w.options || {}), text: q.get('text') || '' };
-      store.set('pb-demo-config', c);
-      store.set('pb-demo-version', cfgVersion() + 1);
-      return json({ version: cfgVersion() });
-    }
     if (path === '/api/volume' && method === 'POST') {
       // the agent answers with the new volume state (AudioSnapshot)
       const op = q.get('op'), level = q.has('level') ? +q.get('level') : null;
@@ -334,7 +244,6 @@
           { tool: 'Bash', detail: 'npm', at: n - 20e3, running: true },
         ] });
     }
-    if (path === '/api/calendar') return json(calendar());
     if (path === '/api/docker') return json({ ...docker(), control: allows(await config(), (t) => t === 'docker') });
     if (path === '/api/phones') return json([
       { id: '3f9a1c0d7b2e', model: 'UMIDIGI BISON', lastSeen: now() - 2000, via: 'USB', webView: 'com.google.android.webview/134.0.6998.135', webviewProblem: null, name: null, pages: null },
@@ -342,39 +251,6 @@
     ]);
     if (path === '/api/network/adapters') return json([{ name: 'Ethernet', description: 'Intel(R) Ethernet Controller I225-V', auto: true },
       { name: 'Wi-Fi', description: 'Intel(R) Wi-Fi 6E AX211 160MHz', auto: true }, { name: 'WireGuard', description: 'WireGuard Tunnel', auto: false }]);
-    if (path === '/api/batteries') return json({ devices: [
-      { name: 'WH-1000XM5', level: 64, kind: 'headphones', charging: null },
-      { name: 'MX Master 3S', level: 85, kind: 'mouse', charging: null },
-      { name: 'MX Keys', level: 18, kind: 'keyboard', charging: null },
-      { name: 'Xbox Wireless Controller', level: 40, kind: 'controller', charging: null },
-    ] });
-    // photo frame: like the agent, ids from an enabled page's widget, then one image by id (generated pictures here)
-    if (path === '/api/photos') { const c = await config(); return json(shownWidgets(c).some((w) => w.type === 'photos') ? { ids: DEMO_PHOTOS.map((p) => p[0]), error: null, scanning: false } : { ids: [], error: 'Add a Photo frame widget to a page to show photos', scanning: false }); }
-    if (path.startsWith('/api/photos/')) {
-      const p = DEMO_PHOTOS.find((x) => x[0] === decodeURIComponent(path.slice(12)));
-      if (!p || !shownWidgets(await config()).some((w) => w.type === 'photos')) return json({ error: 'Unknown photo' }, 404);
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="${p[1]}"/><stop offset="1" stop-color="${p[2]}"/></linearGradient></defs><rect width="1600" height="1000" fill="url(#g)"/><circle cx="1220" cy="260" r="120" fill="#fff8" /><path d="M0 820 L420 520 L760 760 L1100 480 L1600 860 V1000 H0Z" fill="#0006"/></svg>`;
-      return new Response(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml' } });
-    }
-    if (path === '/api/feeds') { const c = await config(); return json({ items: DEMO_FEEDS(), updated: now(), errors: [], canOpen: feedsCanOpen(c) }); }
-    if (path === '/api/feeds/open' && method === 'POST') {
-      if (!feedsCanOpen(await config())) return json({ error: 'Opening articles is off: turn on "Open articles on the PC" in the News feeds widget\'s settings' }, 400);
-      return DEMO_FEEDS().some((i) => i.id === q.get('id') && i.openable) ? json({ ok: true }) : json({ error: 'That headline is no longer in the list' }, 400);
-    }
-    // Camera: like CameraFeeds, a picture only for a camera widget on an enabled page with a camera chosen; the demo's
-    // "camera" draws a moving sweep with the time instead of a stream
-    if (path === '/api/camera') {
-      const c = await config();
-      const w = panelWidget(c, q.get('widget'), 'camera');
-      if (!w) return json({ state: 'unknown' }, 404);
-      if (!w.options?.camera || !(c.cameras?.sources || []).some((s) => s.id === w.options.camera)) return json({ state: 'pick' }, 404);
-      const d = new Date(), x = (d.getTime() / 25) % 640;
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#1f2937"/><rect y="250" width="640" height="110" fill="#374151"/><rect x="${x.toFixed(0)}" y="0" width="6" height="360" fill="#22d3ee" opacity=".5"/><text x="16" y="34" fill="#fff" font-family="monospace" font-size="22">CAM 1  ${d.toTimeString().slice(0, 8)}</text></svg>`;
-      return new Response(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' } });
-    }
-    if (path === '/api/ha/entities') return json({ configured: true, error: null, entities: Object.keys(ha).sort().map((id) => ({ id, name: ha[id].name, switchable: /^(light|switch|lock|scene)\./.test(id) })) });
-    if (path === '/api/ha/states') return json(haStates((q.get('ids') || '').split(',').filter(Boolean)));
-    if (path.startsWith('/api/ha/toggle/') && method === 'POST') { haToggle(decodeURIComponent(path.slice(15))); return json({ ok: true }); }
     if (path.startsWith('/api/docker/') && method === 'POST') {
       const [, , , id, action] = path.split('/');
       if (!allows(await config(), (t) => t === 'docker')) return json({ error: "starting and stopping containers is turned off in the widget's settings" }, 400);
@@ -396,32 +272,6 @@
       bc.postMessage({ type: 'decided', id });
       return json({ ok: true });
     }
-    if (path === '/api/push' && method === 'GET') return json({ version: pushVersion, items: livePush() });
-    if (path === '/api/push' && method === 'DELETE') { for (const k of Object.keys(push)) delete push[k]; pushVersion++; return json({}); }
-    if (path.startsWith('/api/push/') && method === 'DELETE') { const key = decodeURIComponent(path.slice(10)); if (!push[key]) return json({}, 404); delete push[key]; pushVersion++; return json({}); }
-    if (path.startsWith('/api/push/') && method === 'POST') {
-      const key = decodeURIComponent(path.slice(10)), value = body == null || body === '' ? (q.has('value') ? parse(q.get('value')) : true) : parse(body), ttl = q.has('ttl') ? +q.get('ttl') : null;
-      setPush(key, value, ttl);
-      bc.postMessage({ type: 'push', key, value, ttl });
-      return json({ ok: true, key, version: pushVersion });
-    }
-    if (path === '/api/rules/test' && method === 'POST') {
-      // runs the rule's action once, like the agent's Test button
-      const r = parse(body) || {};
-      if (r.then === 'goto' && r.page) emit('goto', { page: r.page, rule: r.id || 'test', name: r.name || null, priority: r.priority ?? 5, countdown: r.countdownSec ?? null, hold: false });
-      else if (r.then === 'notify') emit('notify', { title: r.name || 'PhoneBox', text: (r.text || 'test').replace('{detail}', 'test'), level: r.level || 'info' });
-      else if (r.then === 'push' && r.key) {
-        const value = r.pushValue ?? true;
-        setPush(r.key, value);
-        bc.postMessage({ type: 'push', key: r.key, value });
-      }
-      return json({ ok: true });
-    }
-    if (path === '/api/rules/pause' && method === 'POST') {
-      const m = q.has('minutes') ? +q.get('minutes') : 60;
-      rulesPaused = m > 0 ? now() + m * 60e3 : 0;
-      return json({ pausedUntil: rulesPaused || null });
-    }
     if (path === '/api/phone/battery' && method === 'POST') {
       phoneBattery = {
         level: Math.max(0, Math.min(100, +q.get('level') || 0)),
@@ -433,14 +283,8 @@
       };
       return json({ ok: true });
     }
-    if (path === '/api/notify' && method === 'POST') {
-      const d = parse(body), payload = typeof d === 'object' && d && !Array.isArray(d) ? d : { text: d == null ? '' : String(d) };
-      if (!('text' in payload) && !('title' in payload)) return json({ error: 'give a text or a title' }, 400);
-      return json(emit('notify', payload));
-    }
     if (path.startsWith('/api/goto/') && method === 'POST')
       return json(emit('goto', { page: decodeURIComponent(path.slice(10)), countdown: q.has('countdown') ? Math.max(0, Math.min(30, +q.get('countdown') || 0)) : null }));
-    if (path === '/api/refresh' && method === 'POST') return json(emit('refresh'));
     // settings page
     if (path === '/api/catalog') return json(await loadCatalog());
     if (path === '/api/settings') {
@@ -490,14 +334,11 @@
       is24Hour: () => !new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12,
       haptic() {}, buzz() {}, setBrightness() {}, setVolumeKeys() {} };
 
-  // Served by tools/demo-server.py: webhooks sent to that server with curl arrive here. Each tab applies them itself.
+  // Served by tools/demo-server.py: page switches and prompts sent to that server with curl arrive here. Each tab applies them itself.
   if (document.currentScript.dataset.relay !== undefined && window.EventSource) {
     const es = new EventSource(ROOT + 'demo/events');
     const on = (kind, fn) => es.addEventListener(kind, (m) => fn(JSON.parse(m.data)));
-    on('notify', (d) => emit('notify', d, false));
     on('goto', (d) => emit('goto', d, false));
-    on('refresh', () => emit('refresh', null, false));
-    on('push', (d) => setPush(d.key, d.value));
     on('ask', (d) => ask(d || undefined, false));
   }
 

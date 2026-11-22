@@ -118,40 +118,20 @@ public sealed class PairingTests
         Assert.Equal(open, Lan.IsPairingClaim(method, new PathString(path)));
 
     [Fact]
-    public void DisabledLanRejectsAllTiersAndWebhookTokenStaysSeparateFromPhoneToken()
+    public void DisabledLanRejectsAllTiers()
     {
-        var enabled = new LanConfig { Enabled = true, Port = 8766, Token = "phone-tok", WebhookToken = "hook-tok" };
-        Assert.Equal(Lan.LanAccess.Phone, Lan.AuthorizeRequest(enabled, "GET", "/api/state", "", "Bearer phone-tok", null));
-        Assert.Equal(Lan.LanAccess.Webhook, Lan.AuthorizeRequest(enabled, "POST", "/api/push/ci", "", null, "hook-tok"));
-        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(enabled, "GET", "/api/state", "", "Bearer hook-tok", null));
-        Assert.Equal(Lan.LanAccess.PairingClaim, Lan.AuthorizeRequest(enabled, "POST", "/api/pair/claim", "", null, null));
-        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(enabled, "GET", "/api/state", "https://evil.example", "Bearer phone-tok", null));
+        var enabled = new LanConfig { Enabled = true, Port = 8766, Token = "phone-tok" };
+        Assert.Equal(Lan.LanAccess.Phone, Lan.AuthorizeRequest(enabled, "GET", "/api/state", "", "Bearer phone-tok"));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(enabled, "GET", "/api/state", "", "Bearer other-tok"));
+        Assert.Equal(Lan.LanAccess.PairingClaim, Lan.AuthorizeRequest(enabled, "POST", "/api/pair/claim", "", null));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(enabled, "GET", "/api/state", "https://evil.example", "Bearer phone-tok"));
 
-        var disabled = new LanConfig { Enabled = false, Port = 8766, Token = "phone-tok", WebhookToken = "hook-tok" };
-        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(disabled, "GET", "/api/state", "", "Bearer phone-tok", null));
-        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(disabled, "POST", "/api/push/ci", "", null, "hook-tok"));
-        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(disabled, "POST", "/api/pair/claim", "", null, null));
+        var disabled = new LanConfig { Enabled = false, Port = 8766, Token = "phone-tok" };
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(disabled, "GET", "/api/state", "", "Bearer phone-tok"));
+        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(disabled, "POST", "/api/pair/claim", "", null));
     }
 
     // Both keys with one value (a hand-edited config): every webhook sender would hold the phone key too.
-    [Fact]
-    public void ASharedPhoneAndWebhookKeyIsNotAPhoneKeyAndCannotBeSaved()
-    {
-        var shared = new LanConfig { Enabled = true, Port = 8766, Token = "same-tok", WebhookToken = "same-tok" };
-        Assert.Equal(Lan.LanAccess.Denied, Lan.AuthorizeRequest(shared, "GET", "/api/state", "", "Bearer same-tok", null));
-        Assert.Equal(Lan.LanAccess.Webhook, Lan.AuthorizeRequest(shared, "POST", "/api/push/ci", "", "Bearer same-tok", null));
-
-        // the settings page's save refuses it (other writes, like a Note from the phone, still go through)
-        Assert.True(Program.LanKeysShared("""{"lan":{"enabled":true,"token":"same-tok","webhookToken":"same-tok"}}"""));
-        Assert.True(Program.LanKeysShared("""{"lan":{"token":"a","webhookToken":"b"},"LAN":{"token":"c","webhookToken":"c"}}"""));
-        Assert.False(Program.LanKeysShared("""{"lan":{"enabled":true,"token":"phone-tok","webhookToken":"hook-tok"}}"""));
-        Assert.False(Program.LanKeysShared("""{"lan":{"token":"","webhookToken":""}}""")); // both get new, different keys
-        Assert.False(Program.LanKeysShared("""{"lan":{"token":"c","webhookToken":"c"},"lan":{"token":"a","webhookToken":"b"}}"""));
-
-        var dir = Directory.CreateTempSubdirectory("phonebox-shared-key-").FullName;
-        try { Assert.Null(new ConfigStore(Path.Combine(dir, "config.json")).Save("""{"lan":{"token":"same-tok","webhookToken":"same-tok"}}""")); }
-        finally { Directory.Delete(dir, recursive: true); }
-    }
 
     // A claim waiting for its body when Wi-Fi is turned off must be refused, and must not use up the code.
     [Fact]

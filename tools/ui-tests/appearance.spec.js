@@ -6,12 +6,12 @@ async function show(page, config={}) {
     localStorage.clear();
     localStorage.setItem('pb-demo-config',JSON.stringify({night:{enabled:false},shortcuts:[],display:{idleReturnSec:0},
       pages:[{id:'appearance',title:'Appearance',widgets:[
-        {id:'note',type:'note',x:0,y:0,w:6,h:6,options:{text:'Appearance sample'}},
+        {id:'note',type:'topprocs',x:0,y:0,w:6,h:6,options:{}},
         {id:'docker',type:'docker',x:6,y:0,w:6,h:6,options:{}}
       ]}],...config}));
   },config);
   await page.goto('/panel/');
-  await expect(page.locator('.w-note').first()).toBeVisible();
+  await expect(page.locator('.w-topprocs').first()).toBeVisible();
 }
 const css=(locator,key)=>locator.evaluate((node,key)=>getComputedStyle(node)[key],key);
 
@@ -23,27 +23,27 @@ test('appearance fixture configuration survives delayed default initialization',
 test('original pages retain the original card and grid appearance',async({page})=>{
   await show(page);
   await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('8px');
-  await expect.poll(()=>css(page.locator('.w-note'),'borderTopWidth')).toBe('1px');
-  expect(await css(page.locator('.w-note'),'boxShadow')).toBe('none');
+  await expect.poll(()=>css(page.locator('.w-topprocs'),'borderTopWidth')).toBe('1px');
+  expect(await css(page.locator('.w-topprocs'),'boxShadow')).toBe('none');
 });
 
 test('flat appearance has independent rounded corners, spacing and padding',async({page})=>{
   await show(page,{display:{appearance:{style:'flat',radius:30,gap:16,padding:7}}});
   await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('16px');
-  await expect.poll(()=>css(page.locator('.w-note'),'borderTopLeftRadius')).toBe('30px');
-  expect(await css(page.locator('.w-note'),'paddingLeft')).toBe('7px');
-  expect(await css(page.locator('.w-note'),'borderTopWidth')).toBe('0px');
-  expect(await css(page.locator('.w-note'),'boxShadow')).toBe('none');
-  expect(await css(page.locator('.w-note'),'backgroundImage')).toBe('none');
+  await expect.poll(()=>css(page.locator('.w-topprocs'),'borderTopLeftRadius')).toBe('30px');
+  expect(await css(page.locator('.w-topprocs'),'paddingLeft')).toBe('7px');
+  expect(await css(page.locator('.w-topprocs'),'borderTopWidth')).toBe('0px');
+  expect(await css(page.locator('.w-topprocs'),'boxShadow')).toBe('none');
+  expect(await css(page.locator('.w-topprocs'),'backgroundImage')).toBe('none');
 });
 
 test('page and widget overrides win and explicit false and zero survive',async({page})=>{
   await show(page,{display:{appearance:{style:'cards',radius:24,gap:18,border:true,shadow:true}},
     pages:[{id:'p',title:'P',appearance:{gap:0,radius:12},widgets:[
-      {id:'a',type:'note',x:0,y:0,w:6,h:6,appearance:{radius:0,padding:0,border:false,shadow:false},options:{}},
-      {id:'b',type:'note',x:6,y:0,w:6,h:6,options:{}}
+      {id:'a',type:'topprocs',x:0,y:0,w:6,h:6,appearance:{radius:0,padding:0,border:false,shadow:false},options:{}},
+      {id:'b',type:'topprocs',x:6,y:0,w:6,h:6,options:{}}
     ]}]});
-  const cards=page.locator('.w-note');
+  const cards=page.locator('.w-topprocs');
   await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('0px');
   expect(await css(cards.nth(0),'borderTopLeftRadius')).toBe('0px');
   expect(await css(cards.nth(0),'paddingLeft')).toBe('0px');
@@ -55,15 +55,15 @@ test('page and widget overrides win and explicit false and zero survive',async({
 
 test('an original-look page resets a global preset',async({page})=>{
   await show(page,{display:{appearance:{style:'seamless',radius:0,padding:0}},
-    pages:[{id:'p',title:'P',appearance:{style:'default'},widgets:[{id:'n',type:'note',x:0,y:0,w:12,h:6,options:{}}]}]});
+    pages:[{id:'p',title:'P',appearance:{style:'default'},widgets:[{id:'n',type:'topprocs',x:0,y:0,w:12,h:6,options:{}}]}]});
   await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('8px');
-  expect(parseFloat(await css(page.locator('.w-note'),'borderTopLeftRadius'))).toBeGreaterThan(0);
-  expect(parseFloat(await css(page.locator('.w-note'),'paddingLeft'))).toBeGreaterThan(0);
+  expect(parseFloat(await css(page.locator('.w-topprocs'),'borderTopLeftRadius'))).toBeGreaterThan(0);
+  expect(parseFloat(await css(page.locator('.w-topprocs'),'paddingLeft'))).toBeGreaterThan(0);
 });
 
 test('page presets inherit global edge padding that the preset does not override',async({page})=>{
   await show(page,{display:{appearance:{style:'cards',pagePadding:24}},pages:[
-    {id:'p',title:'P',appearance:{style:'flat'},widgets:[{id:'n',type:'note',x:0,y:0,w:12,h:6,options:{}}]}
+    {id:'p',title:'P',appearance:{style:'flat'},widgets:[{id:'n',type:'topprocs',x:0,y:0,w:12,h:6,options:{}}]}
   ]});
   await expect.poll(()=>css(page.locator('.page'),'paddingLeft')).toBe('24px');
   expect(await css(page.locator('.page'),'paddingBottom')).toBe('24px');
@@ -83,7 +83,7 @@ test('desktop appearance preview applies unsaved changes and Save persists them'
   await editor.getByRole('button',{name:'Show live appearance preview',exact:true}).click();
   const frame=page.frameLocator('iframe[title="Live appearance preview"]');
   await expect.poll(()=>css(frame.locator('.grid'),'gap')).toBe('11px');
-  await expect.poll(()=>css(frame.locator('.w-note'),'borderTopLeftRadius')).toBe('0px');
+  await expect.poll(()=>css(frame.locator('.w-topprocs'),'borderTopLeftRadius')).toBe('0px');
   const before=await page.evaluate(async()=>(await(await fetch('/api/settings')).json()).display?.appearance);
   expect(before).toBeUndefined();
   await page.locator('#save').click();
@@ -127,8 +127,8 @@ test('page and widget appearance editors preserve their own saved overrides',asy
   await page.locator('#save').click();await expect(page.locator('#save')).toBeDisabled();
   await page.goto('/panel/');
   await expect.poll(()=>css(page.locator('.grid'),'gap')).toBe('0px');
-  expect(await css(page.locator('.w-note'),'borderTopLeftRadius')).toBe('32px');
-  expect(await css(page.locator('.w-note'),'borderTopWidth')).toBe('0px');
+  expect(await css(page.locator('.w-topprocs'),'borderTopLeftRadius')).toBe('32px');
+  expect(await css(page.locator('.w-topprocs'),'borderTopWidth')).toBe('0px');
   expect(await css(page.locator('.w-docker'),'borderTopLeftRadius')).toBe('0px');
 });
 
@@ -144,7 +144,7 @@ for(const width of [780,360])test('appearance fits the panel at '+width+'px',asy
 test('global font and font scale affect widgets proportionally without compounding em units',async({page})=>{
   const basePages=[{id:'p',title:'P',widgets:[
     {id:'clk',type:'clock',x:0,y:0,w:6,h:4,options:{}},
-    {id:'note',type:'note',x:6,y:0,w:6,h:4,options:{text:'Tablet scale'}},
+    {id:'note',type:'topprocs',x:6,y:0,w:6,h:4,options:{}},
     {id:'docker',type:'docker',x:0,y:4,w:12,h:2,options:{}}
   ]}];
   await show(page,{display:{showSeconds:true,idleReturnSec:0},pages:basePages});
@@ -152,11 +152,11 @@ test('global font and font scale affect widgets proportionally without compoundi
   const baseClock=parseFloat(await css(page.locator('.w-clock .clock'),'fontSize'));
   const baseSec=parseFloat(await css(page.locator('.w-clock .sec'),'fontSize'));
   const baseDate=parseFloat(await css(page.locator('.w-clock .date'),'fontSize'));
-  const baseNote=parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'));
+  const baseNote=parseFloat(await css(page.locator('.w-topprocs .w-title'),'fontSize'));
   const baseDockerTitle=parseFloat(await css(page.locator('.w-docker .w-title'),'fontSize'));
 
   await show(page,{display:{showSeconds:true,idleReturnSec:0,appearance:{font:'mono',fontScale:150}},pages:basePages});
-  await expect.poll(async()=>parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'))).toBeCloseTo(baseNote*1.5,0);
+  await expect.poll(async()=>parseFloat(await css(page.locator('.w-topprocs .w-title'),'fontSize'))).toBeCloseTo(baseNote*1.5,0);
   const scaledClock=parseFloat(await css(page.locator('.w-clock .clock'),'fontSize'));
   const scaledSec=parseFloat(await css(page.locator('.w-clock .sec'),'fontSize'));
   const scaledDate=parseFloat(await css(page.locator('.w-clock .date'),'fontSize'));
@@ -165,30 +165,27 @@ test('global font and font scale affect widgets proportionally without compoundi
   expect(scaledSec).toBeCloseTo(baseSec*1.5,0);
   expect(scaledDate).toBeCloseTo(baseDate*1.5,0);
   expect(scaledDockerTitle).toBeCloseTo(baseDockerTitle*1.5,0);
-  expect(await css(page.locator('.w-note'),'fontFamily')).toMatch(/Mono|monospace/i);
+  expect(await css(page.locator('.w-topprocs'),'fontFamily')).toMatch(/Mono|monospace/i);
   expect(await css(page.locator('#offline'),'fontSize')).toBe('11.5px');
 });
 
-test('page, widget and Smart Stack font and scale overrides compose correctly',async({page})=>{
+test('page and widget font and scale overrides compose correctly',async({page})=>{
   await show(page,{display:{idleReturnSec:0,appearance:{font:'mono',fontScale:140}},pages:[{id:'p',title:'P',
     appearance:{font:'serif',fontScale:125},widgets:[
-      {id:'a',type:'note',x:0,y:0,w:4,h:6,appearance:{font:'default',fontScale:100},options:{text:'Default'}},
-      {id:'b',type:'note',x:4,y:0,w:4,h:6,options:{text:'Page serif'}},
-      {id:'c',type:'stack',x:8,y:0,w:4,h:6,appearance:{font:'rounded',fontScale:150},options:{widgets:[{id:'sn',type:'note',options:{text:'Stack child'}}]}}
+      {id:'a',type:'topprocs',x:0,y:0,w:4,h:6,appearance:{font:'default',fontScale:100},options:{}},
+      {id:'b',type:'topprocs',x:4,y:0,w:4,h:6,options:{}}
     ]}]});
-  await expect.poll(()=>page.locator('.w-note').count()).toBe(3);
-  const notes=page.locator('.w-note');
-  const baseNote=parseFloat(await css(notes.nth(0).locator('.note-t'),'fontSize'));
+  await expect.poll(()=>page.locator('.w-topprocs').count()).toBe(2);
+  const notes=page.locator('.w-topprocs');
+  const baseNote=parseFloat(await css(notes.nth(0).locator('.w-title'),'fontSize'));
   expect(await css(notes.nth(0),'fontFamily')).toMatch(/Roboto|sans-serif/i);
   expect(await css(notes.nth(1),'fontFamily')).toMatch(/Georgia|serif/i);
-  expect(parseFloat(await css(notes.nth(1).locator('.note-t'),'fontSize'))).toBeCloseTo(baseNote*1.25,1);
-  expect(await css(notes.nth(2),'fontFamily')).toMatch(/Rounded|Nunito|sans-serif/i);
-  expect(parseFloat(await css(notes.nth(2).locator('.note-t'),'fontSize'))).toBeCloseTo(baseNote*1.5,1);
+  expect(parseFloat(await css(notes.nth(1).locator('.w-title'),'fontSize'))).toBeCloseTo(baseNote*1.25,1);
 });
 
 test('desktop settings font and font size controls preview and persist',async({page})=>{
   await show(page);
-  const baseNote=parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'));
+  const baseNote=parseFloat(await css(page.locator('.w-topprocs .w-title'),'fontSize'));
   await page.setViewportSize({width:1280,height:1000});
   await page.goto('/settings/#general');
   const editor=page.locator('#appearanceSettings');
@@ -198,7 +195,7 @@ test('desktop settings font and font size controls preview and persist',async({p
   await fontSize.focus();await fontSize.press('End');
   await editor.getByRole('button',{name:'Show live appearance preview',exact:true}).click();
   const frame=page.frameLocator('iframe[title="Live appearance preview"]');
-  await expect.poll(()=>css(frame.locator('.w-note'),'fontFamily')).toMatch(/Mono|monospace/i);
+  await expect.poll(()=>css(frame.locator('.w-topprocs'),'fontFamily')).toMatch(/Mono|monospace/i);
   await expect.poll(async()=>parseFloat(await css(frame.locator('.w-docker .w-title'),'fontSize'))).toBeCloseTo(22,0);
   await page.locator('#save').click();await expect(page.locator('#save')).toBeDisabled();
   await page.goto('/settings/#pages');
@@ -209,8 +206,8 @@ test('desktop settings font and font size controls preview and persist',async({p
   await widgetEditor.getByRole('slider',{name:'Font size',exact:true}).fill('80');
   await page.locator('#save').click();await expect(page.locator('#save')).toBeDisabled();
   await page.goto('/panel/');
-  await expect.poll(()=>css(page.locator('.w-note'),'fontFamily')).toMatch(/Georgia|serif/i);
-  expect(parseFloat(await css(page.locator('.w-note .note-t'),'fontSize'))).toBeCloseTo(baseNote*0.8,0);
+  await expect.poll(()=>css(page.locator('.w-topprocs'),'fontFamily')).toMatch(/Georgia|serif/i);
+  expect(parseFloat(await css(page.locator('.w-topprocs .w-title'),'fontSize'))).toBeCloseTo(baseNote*0.8,0);
   expect(await css(page.locator('.w-docker'),'fontFamily')).toMatch(/Mono|monospace/i);
   expect(parseFloat(await css(page.locator('.w-docker .w-title'),'fontSize'))).toBeCloseTo(22,0);
 });

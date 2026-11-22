@@ -19,7 +19,7 @@ public sealed class CodexHookTests
             var cfgPath = Path.Combine(dir, "config.json");
             File.WriteAllText(cfgPath, """{"claude":{"phoneApprovals":true,"onlyWhenAway":false,"timeoutSec":30}}""");
             var cfg = new ConfigStore(cfgPath);
-            using var push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(dir, "push.json"));
+            var push = new PushStore();
             var approvals = new ApprovalStore(push, NullLogger<ApprovalStore>.Instance);
             var sessions = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
             Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());

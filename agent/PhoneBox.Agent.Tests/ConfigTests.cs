@@ -34,49 +34,11 @@ public class ConfigTests
         Assert.NotEmpty(c.Pages);
         Assert.All(c.Pages, p => Assert.NotEmpty(p.Widgets!));
         Assert.False(string.IsNullOrEmpty(c.Lan.Token));
-        Assert.False(string.IsNullOrEmpty(c.Lan.WebhookToken));
-        Assert.NotEqual(c.Lan.Token, c.Lan.WebhookToken);
     }
 
     // The panel converts the forecast itself, so the only values the agent hands it are the two it knows how to show.
-    [Theory]
-    [InlineData("""{"weather":{"city":"Tallinn","lat":59.437,"lon":24.745}}""", "celsius")]
-    [InlineData("""{"weather":{"unit":"fahrenheit"}}""", "fahrenheit")]
-    [InlineData("""{"weather":{"unit":" Fahrenheit "}}""", "fahrenheit")]
-    [InlineData("""{"weather":{"unit":"kelvin"}}""", "celsius")]
-    [InlineData("""{"weather":{"unit":null}}""", "celsius")]
-    [InlineData("""{"weather":{"city":"Oslo","unit":123}}""", "celsius")]
-    [InlineData("""{"weather":{"city":"Oslo","unit":true}}""", "celsius")]
-    [InlineData("""{"weather":{"city":"Oslo","unit":{"deep":[1]}}}""", "celsius")]
-    public void WeatherUnitDefaultsToCelsiusAndReachesThePhone(string json, string expected)
-    {
-        var c = Load(json);
-        Assert.Equal(expected, c.Weather.Unit);
-        // a bad unit costs only the unit: the rest of the weather section (and the file) still loads
-        if (json.Contains("Oslo")) Assert.Equal("Oslo", c.Weather.City);
-        var weather = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts).GetProperty("weather");
-        Assert.Equal(expected, weather.GetProperty("unit").GetString());
-    }
 
     // The model goes into the phone's forecast URL, so only the names the settings offer get through.
-    [Theory]
-    [InlineData("""{"weather":{"city":"Tallinn","lat":59.437,"lon":24.745}}""", "")]
-    [InlineData("""{"weather":{"model":"gfs_seamless"}}""", "gfs_seamless")]
-    [InlineData("""{"weather":{"model":" GFS_Seamless "}}""", "gfs_seamless")]
-    [InlineData("""{"weather":{"model":"ecmwf_ifs025"}}""", "ecmwf_ifs025")]
-    [InlineData("""{"weather":{"model":"gfs_seamless&daily=x"}}""", "")]
-    [InlineData("""{"weather":{"model":"accuweather"}}""", "")]
-    [InlineData("""{"weather":{"model":null}}""", "")]
-    [InlineData("""{"weather":{"city":"Oslo","model":42}}""", "")]
-    [InlineData("""{"weather":{"city":"Oslo","model":["gfs_seamless"]}}""", "")]
-    public void WeatherModelIsOneOfTheOfferedModelsOrBestMatch(string json, string expected)
-    {
-        var c = Load(json);
-        Assert.Equal(expected, c.Weather.Model);
-        if (json.Contains("Oslo")) Assert.Equal("Oslo", c.Weather.City);
-        var weather = JsonSerializer.SerializeToElement(c.ToPublic(), ConfigStore.WriteOpts).GetProperty("weather");
-        Assert.Equal(expected, weather.GetProperty("model").GetString());
-    }
 
     [Fact]
     public void BurnInProtectionIsOffByDefaultAndTheDimTimeIsClamped()
@@ -124,7 +86,6 @@ public class ConfigTests
                 pages = new[] { new { id = "Desk / Live" }, new { id = "Desk + Live" }, new { id = "kitchen" } },
                 display = new { homePage = reference },
                 phones = new[] { new { id = "desk", pages = new[] { reference } } },
-                rules = new[] { new { when = "time", then = "goto", page = reference } },
             });
             var store = new ConfigStore(path);
             Assert.Null(store.Save(json));
@@ -132,9 +93,8 @@ public class ConfigTests
             foreach (var config in new[] { store.Get(), new ConfigStore(path).Get() })
             {
                 Assert.Equal(["desk-live", "desk-live-2", "kitchen"], config.Pages.Select(p => p.Id));
-                var actual = (Home: config.Display.HomePage, Phone: string.Join(",", config.PagesFor("desk").Select(p => p.Id)),
-                    Rule: Assert.Single(config.Rules).Page);
-                Assert.Equal((expectedId, expectedId, expectedId), actual);
+                var actual = (Home: config.Display.HomePage, Phone: string.Join(",", config.PagesFor("desk").Select(p => p.Id)));
+                Assert.Equal((expectedId, expectedId), actual);
             }
         }
         finally { directory.Delete(recursive: true); }
@@ -163,14 +123,14 @@ public class ConfigTests
               "pages": [{
                 "id": "desk",
                 "widgets": [
-                  { "type": "timer" },
-                  { "type": "timer", "id": "timer" }
+                  { "type": "stat" },
+                  { "type": "stat", "id": "stat" }
                 ]
               }]
             }
             """);
 
-        Assert.Equal(["timer-2", "timer"], Assert.Single(config.Pages).Widgets!.Select(w => w.Id));
+        Assert.Equal(["stat-2", "stat"], Assert.Single(config.Pages).Widgets!.Select(w => w.Id));
     }
 
     [Fact]
@@ -179,11 +139,9 @@ public class ConfigTests
         // ToLowerInvariant leaves İ (U+0130) as it is; the id must not lose the letter ("zmir")
         var c = Load("""
         { "pages": [ { "title": "İzmir", "icon": "x", "widgets": [ { "type": "clock" } ] },
-                     { "title": "İş Akışı", "icon": "x", "widgets": [ { "type": "clock" } ] } ],
-          "rules": [ { "name": "İkindi", "when": "always", "then": "notify" } ] }
+                     { "title": "İş Akışı", "icon": "x", "widgets": [ { "type": "clock" } ] } ] }
         """);
         Assert.Equal(["izmir", "is-akisi"], c.Pages.Select(p => p.Id));
-        Assert.Equal("ikindi", c.Rules.Single().Id);
     }
 
     [Fact]
@@ -197,7 +155,6 @@ public class ConfigTests
         var stats = p.Widgets!.Where(w => w.Type == "stat").ToList();
         Assert.Equal(["cpu", "ram"], stats.Select(w => w.Str("metric")));
         Assert.Equal(12, stats.Sum(w => w.W));                         // the tiles share the full width
-        Assert.False(p.Widgets!.Single(w => w.Type == "clock").Bool("weather"));
         Assert.Equal(12, p.Widgets!.Single(w => w.Type == "clock").W); // no media: the clock takes the row
     }
 
@@ -214,8 +171,8 @@ public class ConfigTests
         var c = Load("""
         { "pages": [ { "id": "p", "title": "P", "widgets": [
             { "type": "clock", "x": 10, "y": 5, "w": 20, "h": 9 },
-            { "type": "note", "id": "n", "x": -3, "y": 0, "w": 2, "h": 2 },
-            { "type": "note", "id": "n", "x": 0, "y": 0, "w": 2, "h": 2 },
+            { "type": "stat", "id": "n", "x": -3, "y": 0, "w": 2, "h": 2 },
+            { "type": "stat", "id": "n", "x": 0, "y": 0, "w": 2, "h": 2 },
             { "type": "no-such-widget", "x": 0, "y": 0, "w": 2, "h": 2 } ] } ] }
         """);
         var ws = c.Pages.Single().Widgets!;
@@ -246,15 +203,6 @@ public class ConfigTests
         // command widgets and shortcuts are gone: the page keeps none of the command widget
         Assert.Empty(c.Pages.Single().Widgets!);
     }
-
-    [Fact]
-    public void RulesAreCleanedUp()
-    {
-        var c = Load("""{ "rules": [ { "when": "explode", "then": "goto" }, { "name": "Away", "when": "idle", "value": 99999, "then": "notify", "level": "weird" }, { "name": "Away", "when": "idle", "then": "goto" } ] }""");
-        Assert.Equal(["away", "away-2"], c.Rules.Select(r => r.Id));
-        Assert.Equal(1440, c.Rules[0].Value);
-        Assert.Equal("info", c.Rules[0].Level);
-    }
 }
 
 public class LanTests
@@ -262,11 +210,6 @@ public class LanTests
     [Theory]
     [InlineData("/api/state", true)]
     [InlineData("/api/stream", true)]
-    [InlineData("/api/feeds", true)]
-    [InlineData("/api/feeds/open", true)]
-    [InlineData("/api/photos", true)]
-    [InlineData("/api/photos/0123456789abcdef", true)]
-    [InlineData("/api/push/temperature", true)]
     [InlineData("/api/settings", false)]
     [InlineData("/api/pair", false)]
     [InlineData("/api/pair/claim", true)]
@@ -276,21 +219,11 @@ public class LanTests
     [InlineData("/api/pair/claim/x", false)]
     [InlineData("/api/claude/hook", false)]
     [InlineData("/api/codex/hook", false)]
-    [InlineData("/api/ha/test", false)]
     [InlineData("/api/phones", false)]
-    [InlineData("/api/rules/test", false)]
+    [InlineData("/api/goto/home", false)] // the settings page's "Open on the phone" only
     [InlineData("/panel/main.js", false)]
     [InlineData("/", false)]
     public void OnlyThePhoneApiIsReachableOverWifi(string path, bool allowed) => Assert.Equal(allowed, Lan.AllowedOverLan(new PathString(path)));
-
-    [Theory]
-    [InlineData("/api/push/x", true)]
-    [InlineData("/api/notify", true)]
-    [InlineData("/api/goto/2", true)]
-    [InlineData("/api/refresh", true)]
-    [InlineData("/api/state", false)]
-    [InlineData("/api/volume", false)]
-    public void TheWebhookKeyOpensOnlyWebhooks(string path, bool webhook) => Assert.Equal(webhook, Lan.IsWebhook(new PathString(path)));
 
     [Fact]
     public void TokensAreComparedExactly()
@@ -299,9 +232,6 @@ public class LanTests
         Assert.False(Lan.Matches("Bearer abc12", "abc123"));
         Assert.False(Lan.Matches("abc123", "abc123"));
         Assert.False(Lan.Matches(null, "abc123"));
-        Assert.True(Lan.MatchesQuery("abc123", "abc123"));
-        Assert.False(Lan.MatchesQuery("", "abc123"));
-        Assert.False(Lan.MatchesQuery(null, "abc123"));
     }
 
     [Theory]
@@ -318,25 +248,6 @@ public class LanTests
         Assert.Equal(skip, Lan.ShouldSkipAdapter(desc, hasGateway));
 }
 
-public class PushTests
-{
-    [Theory]
-    [InlineData("temperature", true)]
-    [InlineData("build.main-ci_2", true)]
-    [InlineData("", false)]
-    [InlineData("has space", false)]
-    [InlineData("../etc", false)]
-    public void Keys(string key, bool valid) => Assert.Equal(valid, PushStore.ValidKey(key));
-
-    [Fact]
-    public void ValuesAreTyped()
-    {
-        Assert.Equal(JsonValueKind.Number, PushStore.ParseValue("21.5").ValueKind);
-        Assert.Equal(JsonValueKind.True, PushStore.ParseValue("true").ValueKind);
-        Assert.Equal(JsonValueKind.String, PushStore.ParseValue("passed").ValueKind);
-        Assert.Equal(JsonValueKind.String, PushStore.ParseValue("NaN").ValueKind);
-    }
-}
 
 /// <summary>Audit F10: a settings tab loaded earlier must not silently undo a change saved since (a stale tab once turned the night screen back on).</summary>
 public class ConfigConcurrencyTests
@@ -402,7 +313,6 @@ public class ConfigConcurrencyTests
             Assert.True(File.Exists(path));
             var restarted = new ConfigStore(path).Get().Lan;
             Assert.Equal(generated.Token, restarted.Token);
-            Assert.Equal(generated.WebhookToken, restarted.WebhookToken);
 
             const string invalid = "{ incomplete";
             File.WriteAllText(path, invalid);

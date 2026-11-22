@@ -24,7 +24,7 @@ public sealed class AppearanceTests
     public void ImportedAppearanceValuesAreBoundedAndOnlyKnownStylesAreAccepted() => WithConfig("""
         {"display":{"appearance":{"style":"url(private)","font":"url(evil)","fontScale":999,"radius":999,"gap":-5,"padding":99,"pagePadding":99}},
          "pages":[{"id":"p","title":"P","appearance":{"style":"flat","font":"serif","fontScale":10,"border":false},"widgets":[
-          {"type":"note","w":6,"h":6,"appearance":{"font":"mono","fontScale":135,"radius":-5,"gap":99,"pagePadding":99,"shadow":false}}]}]}
+          {"type":"stat","w":6,"h":6,"appearance":{"font":"mono","fontScale":135,"radius":-5,"gap":99,"pagePadding":99,"shadow":false}}]}]}
         """, store =>
     {
         var config = store.Get();
@@ -45,7 +45,7 @@ public sealed class AppearanceTests
     [Fact]
     public void DuplicatedWidgetsHaveIndependentAppearance()
     {
-        var original = new WidgetConfig { Type = "note", Appearance = new() { Style = "flat", Font = "mono", FontScale = 125, Radius = 24 } };
+        var original = new WidgetConfig { Type = "stat", Appearance = new() { Style = "flat", Font = "mono", FontScale = 125, Radius = 24 } };
         var clone = original.Clone();
         clone.Appearance!.Radius = 0;
         clone.Appearance.Font = "serif";

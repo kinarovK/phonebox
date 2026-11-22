@@ -3,14 +3,12 @@
 PhoneBox demo server: serves the web demo (tools/pages) straight from the sources, so the real panel and settings page
 run in a desktop browser with made-up data; no phone, agent or Windows needed. Handy for working on the UI and for
 screenshots. The made-up data lives in tools/pages/demo.js (the same as on the live demo); this server adds the
-webhook API, so curl can push values, notifications and page switches into the open browser tabs.
+page-switch webhook, so curl can switch the page in the open browser tabs.
 
     python tools/demo-server.py [port]     # http://127.0.0.1:8790/          the landing page with the panel in a phone
                                            # http://127.0.0.1:8790/panel/    the panel (size the window to 780 x 360)
                                            # http://127.0.0.1:8790/settings/ the settings page and layout editor
-    curl -X POST http://127.0.0.1:8790/api/notify -d hello
-    curl -X POST http://127.0.0.1:8790/api/push/temperature -d 21.5
-    curl -X POST http://127.0.0.1:8790/api/goto/music
+    curl -X POST http://127.0.0.1:8790/api/goto/home
     curl -X POST http://127.0.0.1:8790/api/ask                     # a made-up Claude Code permission prompt
 
 Only the Python standard library is used. Layout changes are kept in the browser (as on the live demo).
@@ -28,7 +26,7 @@ site = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(site)
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8790
 
-# webhooks received by this server, relayed to the open tabs over /demo/events (server-sent events)
+# page switches and prompts received by this server, relayed to the open tabs over /demo/events (server-sent events)
 EVENTS, LOCK = [], threading.Condition()
 
 
@@ -48,14 +46,9 @@ def parse(body):
 
 
 def webhook(method, path, body):
-    """The agent's webhook endpoints. Returns a JSON-able reply, or None when the path is not one of them."""
+    """The agent's /api/goto and the demo's /api/ask. Returns a JSON-able reply, or None when the path is not one of them."""
     if method not in ('POST', 'PUT'): return None
-    if path.startswith('/api/push/'): return {'ok': True, 'seq': relay('push', {'key': unquote(path[10:]), 'value': parse(body)})}
-    if path == '/api/notify':
-        d = parse(body)
-        return {'ok': True, 'seq': relay('notify', d if isinstance(d, dict) else {'text': '' if d is None else str(d)})}
     if path.startswith('/api/goto/'): return {'ok': True, 'seq': relay('goto', {'page': unquote(path[10:])})}
-    if path == '/api/refresh': return {'ok': True, 'seq': relay('refresh', None)}
     if path == '/api/ask': return {'ok': True, 'seq': relay('ask', parse(body) if isinstance(parse(body), dict) else None)}
     return None
 
@@ -137,6 +130,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     ThreadingHTTPServer.daemon_threads = True
     srv = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
-    print(f'PhoneBox demo: http://127.0.0.1:{PORT}/  ·  panel /panel/  ·  settings /settings/  ·  webhooks: curl -X POST http://127.0.0.1:{PORT}/api/notify -d hello')
+    print(f'PhoneBox demo: http://127.0.0.1:{PORT}/  ·  panel /panel/  ·  settings /settings/  ·  page switch: curl -X POST http://127.0.0.1:{PORT}/api/goto/home')
     try: srv.serve_forever()
     except KeyboardInterrupt: pass

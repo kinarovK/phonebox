@@ -74,9 +74,9 @@ public sealed partial class UsbLink(int port, string pin)
         return Allowed(method, path) ? Access.Allowed : Access.Forbidden;
     }
 
-    /// <summary>What the phone may reach over USB: the Wi-Fi paths, its Wi-Fi pairing data, and the feed proxy.</summary>
+    /// <summary>What the phone may reach over USB: the Wi-Fi paths and its Wi-Fi pairing data.</summary>
     internal static bool Allowed(string method, PathString path) =>
-        Lan.AllowedOverLan(path) || (HttpMethods.IsGet(method) && (path == "/api/pair" || path == "/api/proxy"));
+        Lan.AllowedOverLan(path) || (HttpMethods.IsGet(method) && path == "/api/pair");
 
     /// <summary>The key in "adb shell content query" output ("Row: 0 key=…"), or null.</summary>
     internal static string? ParseKey(string output) =>

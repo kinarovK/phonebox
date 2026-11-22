@@ -81,16 +81,12 @@ public static class Lan
         return CryptographicOperations.FixedTimeEquals(given, expected);
     }
 
-    public static bool MatchesQuery(string? given, string token) =>
-        !string.IsNullOrEmpty(given) && CryptographicOperations.FixedTimeEquals(
-            System.Text.Encoding.UTF8.GetBytes(given), System.Text.Encoding.UTF8.GetBytes(token));
-
     /// <summary>Endpoints the phone may use over Wi-Fi. Settings, tests and pairing stay local-only.</summary>
     public static bool AllowedOverLan(PathString path) =>
         path.StartsWithSegments("/api/state") || path.StartsWithSegments("/api/config")
         || path.StartsWithSegments("/api/volume") || path.StartsWithSegments("/api/quotas")
         || path.StartsWithSegments("/api/work") || path.StartsWithSegments("/api/procs")
-        || path.StartsWithSegments("/api/widget") || path.StartsWithSegments("/api/calendar") || path.StartsWithSegments("/api/feeds") || path.StartsWithSegments("/api/photos") || path == "/api/camera" || path.StartsWithSegments("/api/docker") || path.StartsWithSegments("/api/batteries") || path.StartsWithSegments("/api/ha/states") || path.StartsWithSegments("/api/ha/toggle") || path.StartsWithSegments("/api/approvals") || path.StartsWithSegments("/api/rules/pause") || path.StartsWithSegments("/api/phone/battery") || path.StartsWithSegments("/api/stream") || path == "/api/pair/claim" || IsWebhook(path);
+        || path.StartsWithSegments("/api/docker") || path.StartsWithSegments("/api/approvals") || path.StartsWithSegments("/api/phone/battery") || path.StartsWithSegments("/api/stream") || path == "/api/pair/claim";
 
     /// <summary>
     /// The one Wi-Fi path that needs no key: a phone pairing without USB trades a one-time code for it (see
@@ -98,23 +94,12 @@ public static class Lan
     /// </summary>
     public static bool IsPairingClaim(string method, PathString path) => method == "POST" && path == "/api/pair/claim";
 
-    /// <summary>The webhook API: other machines on the network (or Tailscale) may push data with the same token.</summary>
-    public static bool IsWebhook(PathString path) =>
-        path.StartsWithSegments("/api/push") || path.StartsWithSegments("/api/notify")
-        || path.StartsWithSegments("/api/goto") || path.StartsWithSegments("/api/refresh");
+    internal enum LanAccess { Denied, Phone, PairingClaim }
 
-    internal enum LanAccess { Denied, Phone, Webhook, PairingClaim }
-
-    internal static LanAccess AuthorizeRequest(LanConfig lan, string method, PathString path, string origin, string? authorization, string? queryToken)
+    internal static LanAccess AuthorizeRequest(LanConfig lan, string method, PathString path, string origin, string? authorization)
     {
         if (!lan.Enabled || origin != "" || !AllowedOverLan(path)) return LanAccess.Denied;
-        // A hand-edited config can give both keys the same value. Every webhook sender then holds the phone key too,
-        // and the agent cannot tell them apart, so that value is not trusted as a phone key until one of them changes.
-        var sharedKey = string.Equals(lan.Token, lan.WebhookToken, StringComparison.Ordinal);
-        if (!sharedKey && !string.IsNullOrEmpty(lan.Token) && Matches(authorization, lan.Token)) return LanAccess.Phone;
-        if (IsWebhook(path) && !string.IsNullOrEmpty(lan.WebhookToken)
-            && (Matches(authorization, lan.WebhookToken) || MatchesQuery(queryToken, lan.WebhookToken)))
-            return LanAccess.Webhook;
+        if (!string.IsNullOrEmpty(lan.Token) && Matches(authorization, lan.Token)) return LanAccess.Phone;
         if (IsPairingClaim(method, path)) return LanAccess.PairingClaim;
         return LanAccess.Denied;
     }

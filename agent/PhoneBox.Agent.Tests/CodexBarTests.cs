@@ -122,56 +122,6 @@ public sealed class CodexBarTests
     }
 
     /// <summary>
-    /// Verifies that quota-above fires for cached limits carrying an error while ignoring omitted providers.
-    /// </summary>
-    [Fact]
-    public void QuotaAboveRuleKeepsFiringForCachedLimitsWithErrorAndSkipsOmittedProviders()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "phonebox-codexbar-rule-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
-        {
-            var cfgPath = Path.Combine(dir, "config.json");
-            File.WriteAllText(cfgPath, """
-                {"rules":[
-                  {"id":"q-claude","name":"Claude High","when":"quota-above","match":"claude","value":80,"then":"push","key":"q_claude","pushValue":"hot","whileActive":true},
-                  {"id":"q-cursor","name":"Cursor High","when":"quota-above","match":"cursor","value":80,"then":"push","key":"q_cursor","pushValue":"hot","whileActive":true}
-                ]}
-                """);
-            var cfg = new ConfigStore(cfgPath);
-            using var push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(dir, "data.json"));
-            var quotas = new QuotaMonitor(NullLogger<QuotaMonitor>.Instance);
-            quotas.SetStateForTest(
-                claude: new QuotaProvider("claude", "Claude", "Max",
-                    [new QuotaLimit("5-hour session", 92, null, 18000, "warning")],
-                    null, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "Could not fetch quota (HTTP 500)"),
-                external: [new QuotaProvider("cursor", "Cursor", "Pro", [], null,
-                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "CodexBar omitted this provider", Source: "codexbar")]);
-
-            var engine = new RuleEngine(cfg, push,
-                new SessionMonitor(NullLogger<SessionMonitor>.Instance),
-                new SystemMonitor(NullLogger<SystemMonitor>.Instance),
-                new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance),
-                quotas,
-                new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
-                new BatteryMonitor(NullLogger<BatteryMonitor>.Instance),
-                new PingMonitor(),
-                NullLogger<RuleEngine>.Instance);
-
-            engine.Evaluate();
-
-            Assert.Contains("q-claude", engine.Active());
-            Assert.DoesNotContain("q-cursor", engine.Active());
-            Assert.True(push.Snapshot().ContainsKey("q_claude"));
-            Assert.False(push.Snapshot().ContainsKey("q_cursor"));
-        }
-        finally
-        {
-            try { Directory.Delete(dir, true); } catch { }
-        }
-    }
-
-    /// <summary>
     /// Verifies that cost overview slices 90-day daily records to the stated window, avoids cross-period totals fallback,
     /// narrows mixed windows, and keeps currencies segregated.
     /// </summary>
@@ -294,7 +244,7 @@ public sealed class CodexBarTests
     /// Verifies that cost polling is skipped unless an enabled page (or enabled Smart Stack child) sets showOverview.
     /// </summary>
     [Fact]
-    public async Task OverviewSkipsPollingUnlessShowOverviewEnabledIncludingStackChildren()
+    public async Task OverviewSkipsPollingUnlessShowOverviewEnabled()
     {
         var dir = Path.Combine(Path.GetTempPath(), "phonebox-cost-gate-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -334,20 +284,11 @@ public sealed class CodexBarTests
             Assert.False(await monitor.RefreshOverviewOnceAsync(() => "codexbar", FakeRead, 1000, CancellationToken.None));
             Assert.Equal(0, calls);
 
-            WriteCfg("""
-                {"pages":[{"id":"ai","enabled":true,"widgets":[
-                  {"id":"s1","type":"stack","options":{"widgets":[{"id":"c1","type":"codexbar","enabled":true,"options":{"showOverview":true}}]}}
-                ]}]}
-                """);
+            WriteCfg("""{"pages":[{"id":"ai","enabled":true,"widgets":[{"id":"q1","type":"codexbar","options":{"showOverview":true}}]}]}""");
             Assert.True(cfg.Get().ShowQuotaOverview());
             Assert.True(await monitor.RefreshOverviewOnceAsync(() => "codexbar", FakeRead, 1000, CancellationToken.None));
             Assert.Equal(1, calls);
             Assert.NotNull(monitor.Overview(2000));
-
-            WriteCfg("""{"pages":[{"id":"ai","enabled":true,"widgets":[{"id":"q1","type":"codexbar","options":{"showOverview":true}}]}]}""");
-            Assert.True(cfg.Get().ShowQuotaOverview());
-            Assert.True(await monitor.RefreshOverviewOnceAsync(() => "codexbar", FakeRead, 3000, CancellationToken.None));
-            Assert.Equal(2, calls);
         }
         finally
         {

@@ -15,7 +15,6 @@ public sealed class ConfigPathTests
             Assert.True(File.Exists(path));
             var loaded = new ConfigStore(path).Get().Lan;
             Assert.Equal(generated.Token, loaded.Token);
-            Assert.Equal(generated.WebhookToken, loaded.WebhookToken);
         }
         finally { File.Delete(path); }
     }

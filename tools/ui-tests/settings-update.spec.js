@@ -32,7 +32,7 @@ test('an update shows in the header on every section, and the button installs it
   await expect(top).toBeVisible();
   await expect(top).toHaveText('Update to 0.9.23');
   await expect(top).toHaveAttribute('title', /0\.9\.22 → 0\.9\.23/);
-  await page.goto('/settings/#webhooks'); // same document: the header stays
+  await page.goto('/settings/#advanced'); // same document: the header stays
   await expect(top).toBeVisible();
   await top.click();
   await expect.poll(() => page.evaluate(() => window.applied)).toBe(1);

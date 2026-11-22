@@ -107,124 +107,6 @@ test('keys flip pages and the overview jumps to a page', async ({ page }) => {
   await expect.poll(() => activeDot(page)).toBe(3);
 });
 
-test('a webhook notification shows a toast', async ({ page }) => {
-  await page.goto('/panel/');
-  await expect(page.locator('.w').first()).toBeVisible();
-  await page.evaluate(() => window.PhoneBoxDemo.emit('notify', { title: 'Build #7', text: 'main passed', level: 'ok' }));
-  await expect(page.locator('#toast')).toContainText('main passed');
-});
-
-test('an event the agent queued while it restarted is still delivered', async ({ page }) => {
-  await page.goto('/panel/');
-  await expect(page.locator('.w').first()).toBeVisible();
-  await page.evaluate(() => {
-    window.PhoneBoxDemo.emit('notify', { title: 'One', text: 'first', level: 'ok' });
-    window.PhoneBoxDemo.emit('notify', { title: 'Two', text: 'second', level: 'ok' });
-  });
-  await expect(page.locator('#toast')).toContainText('second');
-  // the agent restarted: its event counter starts over below the phone's (PushStore keeps events in memory)
-  await page.evaluate(() => { window.PhoneBoxDemo.restart(); window.PhoneBoxDemo.emit('notify', { title: 'After', text: 'post-restart', level: 'ok' }); });
-  await expect(page.locator('#toast')).toContainText('post-restart');
-});
-
-test('the stream path also replays events the agent queued while it restarted', async ({ page }) => {
-  await page.goto('/panel/');
-  await expect(page.locator('.w').first()).toBeVisible();
-  // the phone runs on the live stream, not the poll: feed states so streaming() stays true
-  await page.evaluate(() => {
-    window.__evSeq = 5;
-    window.onAgentStream('open');
-    window.__feed = setInterval(() => window.onAgentStream('state', JSON.stringify({ ts: Date.now(), evSeq: window.__evSeq })), 500);
-  });
-  await page.waitForTimeout(1200); // a few streamed states: the panel now tracks seq 5
-  await page.evaluate(() => {
-    // the agent restarted: its counter starts over below the phone's, and an event is already queued
-    window.PhoneBoxDemo.restart();
-    window.PhoneBoxDemo.emit('notify', { title: 'Backlog', text: 'backlog event', level: 'ok' });
-    window.__evSeq = 1; // streamed states now report the restarted counter
-  });
-  await page.waitForTimeout(700); // a streamed state has armed the replay
-  // a live event arrives while the backlog is being replayed: it has to be applied after it, not before
-  await page.evaluate(() => window.onAgentStream('event', JSON.stringify({ seq: 2, kind: 'notify', data: { title: 'Live', text: 'live event', level: 'ok' } })));
-  await expect(page.locator('#toast')).toContainText('live event');
-  await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).D.notes.slice(0, 2).map((n) => n.title))).toEqual(['Live', 'Backlog']);
-});
-
-test('a follow-up replay merges its events with the ones still held', async ({ page }) => {
-  await page.goto('/panel/');
-  await expect(page.locator('.w').first()).toBeVisible();
-  await page.evaluate(() => {
-    window.__evSeq = 5;
-    window.onAgentStream('open');
-    window.__feed = setInterval(() => window.onAgentStream('state', JSON.stringify({ ts: Date.now(), evSeq: window.__evSeq })), 500);
-  });
-  await page.waitForTimeout(1200);
-  await page.evaluate(() => {
-    window.PhoneBoxDemo.restart();
-    window.PhoneBoxDemo.emit('notify', { title: 'Backlog', text: 'backlog event', level: 'ok' });
-  });
-  // freeze the first ?ev=0 answer at a snapshot taken before the flood: it cannot contain the flooded events
-  // (the demo answers fetch() inside the page, so the interception wraps window.fetch rather than the network)
-  await page.evaluate(() => {
-    const answer = window.fetch('/api/state?ev=0').then((r) => r.json());
-    const orig = window.fetch;
-    window.fetch = async (input, init) => {
-      const url = String(typeof input === 'string' ? input : input.url);
-      if (window.__frozen && url.includes('/api/state') && url.includes('ev=0')) {
-        const frozen = window.__frozen;
-        window.__frozen = null;
-        return new Response(JSON.stringify(await frozen), { headers: { 'Content-Type': 'application/json' } });
-      }
-      return orig(input, init);
-    };
-    window.__frozen = answer;
-  });
-  await page.evaluate(() => {
-    window.__evSeq = 1;
-    window.onAgentStream('state', JSON.stringify({ ts: Date.now(), evSeq: 1 })); // arms the replay in this same task
-    // events 2–102 arrive live and are in the agent's backlog too; the agent only retains the last 50 (53–102),
-    // so the follow-up replay returns the newer half while seqs 3–52 stay held in the buffer (2 was pushed out)
-    const push = (kind, data) => window.onAgentStream('event', JSON.stringify(window.PhoneBoxDemo.emit(kind, data)));
-    for (let i = 0; i < 50; i++) push('back', {});
-    push('back', { rule: 'r1' });                            // seq 52 — held: must run before the goto below
-    push('goto', { page: 3, rule: 'r1' });                   // seq 53 — first event the follow-up replay returns
-    for (let i = 0; i < 49; i++) push('back', {});
-    window.__evSeq = 102;                                    // streamed states now match the demo counter
-  });
-  // if the replayed goto ran first, the older back would remove it from the nav queue and the page never opens
-  // (page numbers are 1-based for the user, so page 3 shows as index 2)
-  await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).curPage), { timeout: 10000 }).toBe(2);
-  await page.waitForTimeout(1500); // and it has to stay open — the back must not run after it
-  await expect.poll(async () => page.evaluate(async () => (await import('/panel/main.js')).curPage)).toBe(2);
-});
-
-test('events sent before the first state of a reopened stream wait for it', async ({ page }) => {
-  await page.goto('/panel/');
-  await expect(page.locator('.w').first()).toBeVisible();
-  await page.evaluate(() => {
-    window.__evSeq = 5;
-    window.onAgentStream('open');
-    window.__feed = setInterval(() => window.onAgentStream('state', JSON.stringify({ ts: Date.now(), evSeq: window.__evSeq })), 500);
-  });
-  await page.waitForTimeout(1200);
-  await page.evaluate(() => {
-    // the stream reopened against a restarted agent: it can send an event before its first state identifies the run
-    window.onAgentStream('close');
-    window.onAgentStream('open');
-    window.PhoneBoxDemo.restart();
-    const early = window.PhoneBoxDemo.emit('notify', { title: 'Early', text: 'before the first state', level: 'ok' });
-    window.onAgentStream('event', JSON.stringify(early)); // seq 1 arrives while the panel still tracks seq 5
-    window.__evSeq = 1;
-    window.onAgentStream('state', JSON.stringify({ ts: Date.now(), evSeq: 1 })); // the first state arms the replay
-  });
-  // the event must be applied exactly once: not on arrival and again when the replay delivers it
-  const earlyCount = async () => page.evaluate(async () =>
-    (await import('/panel/main.js')).D.notes.filter((n) => n.title === 'Early').length);
-  await expect.poll(earlyCount, { timeout: 10000 }).toBe(1);
-  await page.waitForTimeout(2500); // let any duplicate from the replay land — the count must stay 1
-  await expect.poll(earlyCount).toBe(1);
-});
-
 test('a webhook switches pages after a countdown', async ({ page }) => {
   await page.goto('/panel/');
   await expect(page.locator('.w').first()).toBeVisible();
@@ -257,30 +139,6 @@ test('a rule waits while the panel is in use and then goes on request', async ({
   await expect(page.locator('#navCard')).not.toHaveClass(/on/);
   await page.locator('#ncGo').click();
   await expect.poll(() => activeDot(page)).toBe(3);
-});
-
-test('rules firing one after another do not bounce the screen', async ({ page }) => {
-  test.setTimeout(45_000);
-  await page.goto('/panel/');
-  await expect(page.locator('.w').first()).toBeVisible();
-  // a rule that ends before its turn is dropped
-  await page.evaluate(() => {
-    window.PhoneBoxDemo.emit('goto', { page: 2, rule: 'flappy', hold: true, countdown: 2 });
-    window.PhoneBoxDemo.emit('back', { rule: 'flappy' });
-  });
-  await page.waitForTimeout(2500);
-  expect(await activeDot(page)).toBe(0);
-  // the higher of two rules goes first; the lower one waits for the minimum time between switches
-  await page.evaluate(() => {
-    window.PhoneBoxDemo.emit('goto', { page: 2, rule: 'low', name: 'Low', priority: 2, hold: true, countdown: 0 });
-    window.PhoneBoxDemo.emit('goto', { page: 5, rule: 'high', name: 'High', priority: 8, hold: true, countdown: 0 });
-  });
-  await expect.poll(() => activeDot(page)).toBe(4);
-  await page.waitForTimeout(1500);
-  expect(await activeDot(page)).toBe(4);                      // the lower rule does not take the page over
-  // the high rule ends: the low one (still on) gets its turn instead of going back and forth
-  await page.evaluate(() => window.PhoneBoxDemo.emit('back', { rule: 'high' }));
-  await expect.poll(() => activeDot(page), { timeout: 20000 }).toBe(1);
 });
 
 test('a Claude Code permission prompt can be answered', async ({ page }) => {
@@ -496,31 +354,6 @@ test('the live preview does not enter unreachable night mode', async ({ page }) 
   await expect(preview.locator('body')).not.toHaveClass(/(^|\s)night($|\s)/);
 });
 
-test('rule options and page switching settings are there', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 860 });
-  await page.goto('/settings/#rules');
-  await page.locator('#rulePresets button', { hasText: 'Review requested' }).click();
-  const rule = page.locator('#ruleList .rule').last();
-  await expect(rule.locator('.ropts')).toHaveAttribute('open', '');
-  await expect(rule.locator('.ropts summary')).toContainText('09:00-18:00');
-  await expect(rule.locator('.day.on')).toHaveCount(5);
-  await rule.locator('.day', { hasText: 'Sa' }).click();
-  await expect(rule.locator('.day.on')).toHaveCount(6);
-  await page.goto('/settings/#general');
-  await expect(page.locator('#homePageSel option')).not.toHaveCount(0);
-  await expect(page.locator('[data-bind="display.switchCountdownSec"]')).toHaveValue(/\d/);
-});
-
-test('rules can be added from the examples', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 860 });
-  await page.goto('/settings/#rules');
-  await expect(page.locator('#rulePresets button').first()).toBeVisible();
-  const before = await page.locator('#ruleList .rule').count();
-  await page.locator('#rulePresets button').first().click();
-  await expect(page.locator('#ruleList .rule')).toHaveCount(before + 1);
-  await expect(page.locator('#save')).toBeEnabled();
-});
-
 // The agent sends all-day events as the UTC midnight of their date; the panel has to show them on that date wherever
 // the phone is (audit F9: west of UTC they showed a day early, east of UTC they ran into the next day).
 for (const [zone, noon] of [['America/New_York', '2026-11-09T12:00:00-05:00'], ['Pacific/Auckland', '2026-11-09T12:00:00+13:00']]) {
@@ -609,8 +442,5 @@ test('interface chrome uses inline SVG icons instead of emoji', async ({ page })
     await expect(page.locator(sel)).toBeAttached();
   }
   await expect(page.locator('#webviewWarn svg.ico')).toHaveCount(2); // warning mark + close
-  // Toasts pick up a kind icon next to their message.
-  await page.evaluate(() => window.PhoneBoxDemo.emit('notify', { title: 'Build', text: 'done' }));
-  await expect(page.locator('#toast svg.ico')).toBeVisible();
   expect(errors).toEqual([]);
 });

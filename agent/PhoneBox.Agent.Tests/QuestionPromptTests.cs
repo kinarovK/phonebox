@@ -43,7 +43,7 @@ public sealed class QuestionPromptTests
     [Fact]
     public async Task GotItEndsTheRequestWithoutAnAnswerSoTheTerminalKeepsTheQuestion()
     {
-        var store = new ApprovalStore(new PushStore(NullLogger<PushStore>.Instance, Path.Combine(Path.GetTempPath(), "phonebox-q-" + Guid.NewGuid().ToString("N") + ".json")), NullLogger<ApprovalStore>.Instance);
+        var store = new ApprovalStore(new PushStore(), NullLogger<ApprovalStore>.Instance);
         Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var a = new Approval("q1", "Claude Code", "s", "p", "/work/p", "Claude has a question", "text", null, now, now + 30_000, "question");
@@ -66,7 +66,7 @@ public sealed class QuestionPromptTests
             var cfgPath = Path.Combine(dir, "config.json");
             File.WriteAllText(cfgPath, """{"claude":{"phoneApprovals":true,"onlyWhenAway":false,"timeoutSec":30}}""");
             var cfg = new ConfigStore(cfgPath);
-            push = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(dir, "push.json"));
+            push = new PushStore();
             var approvals = new ApprovalStore(push, NullLogger<ApprovalStore>.Instance);
             var sessions = new SessionMonitor(NullLogger<SessionMonitor>.Instance);
             Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
@@ -114,7 +114,6 @@ public sealed class QuestionPromptTests
         }
         finally
         {
-            push?.Dispose();
             Directory.Delete(dir, true);
         }
     }

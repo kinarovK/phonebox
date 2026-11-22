@@ -35,14 +35,13 @@ public sealed class ApprovalOutcomeTests : IDisposable
 
     public ApprovalOutcomeTests()
     {
-        _events = new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_dir, "events.json"));
+        _events = new PushStore();
         Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, long.MaxValue);
     }
 
     public void Dispose()
     {
         Interlocked.Exchange(ref ApprovalStore.PhoneLastSeen, _phone);
-        _events.Dispose();
         Directory.Delete(_dir, recursive: true);
     }
 

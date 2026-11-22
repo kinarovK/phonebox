@@ -4,7 +4,7 @@
 const { test, expect } = require('@playwright/test');
 
 const PAGES = ['one', 'two', 'three', 'four', 'five'].map((id) => ({ id, title: id[0].toUpperCase() + id.slice(1),
-  widgets: [{ id: 'n-' + id, type: 'note', x: 0, y: 0, w: 12, h: 6, options: { text: 'Page ' + id } }] }));
+  widgets: [{ id: 'n-' + id, type: 'docker', x: 0, y: 0, w: 12, h: 6, options: { title: 'Page ' + id } }] }));
 
 async function show(page, display = {}) {
   await page.clock.install();

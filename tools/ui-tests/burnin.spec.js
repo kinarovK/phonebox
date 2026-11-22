@@ -9,13 +9,13 @@ async function show(page, display) {
     localStorage.setItem('pb-demo-config', JSON.stringify({
       night: { enabled: false }, rules: [], shortcuts: [], display: { idleReturnSec: 0, ...display },
       pages: [
-        { id: 'one', title: 'One', widgets: [{ id: 'n1', type: 'note', x: 0, y: 0, w: 12, h: 6, options: { text: 'Page one' } }] },
-        { id: 'two', title: 'Two', widgets: [{ id: 'n2', type: 'note', x: 0, y: 0, w: 12, h: 6, options: { text: 'Page two' } }] },
+        { id: 'one', title: 'One', widgets: [{ id: 'n1', type: 'docker', x: 0, y: 0, w: 12, h: 6, options: { title: 'Page one' } }] },
+        { id: 'two', title: 'Two', widgets: [{ id: 'n2', type: 'docker', x: 0, y: 0, w: 12, h: 6, options: { title: 'Page two' } }] },
       ],
     }));
   }, display);
   await page.goto('/panel/');
-  await expect(page.locator('.w-note').first()).toBeVisible();
+  await expect(page.locator('.w-docker').first()).toBeVisible();
   // Until the stored config arrives the panel runs on its defaults, whose night screen covers 00:30-07:30. Between
   // those hours (on the CI's UTC clock too) a tap would only wake that screen; the next tick clears it.
   await expect(page.locator('body')).not.toHaveClass(/night/);
@@ -68,20 +68,12 @@ test('idle dim covers the panel, and the touch that wakes it presses nothing', a
   await expect(page.locator('#overview')).toBeVisible();
 });
 
-test('a notification brightens a dimmed panel', async ({ page }) => {
-  await show(page, { idleDimMin: 1 });
-  await page.clock.fastForward(61_000);
-  await expect(page.locator('body')).toHaveClass(/dimmed/);
-  await page.evaluate(() => fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Build', text: 'done' }) }));
-  await expect(page.locator('body')).not.toHaveClass(/dimmed/);
-});
-
 test('a page switch waiting behind the open overview does not keep the panel from dimming', async ({ page }) => {
   await show(page, { idleDimMin: 1, switchCountdownSec: 0 });
   const dots = await page.locator('#dots').boundingBox();
   await page.mouse.click(dots.x + dots.width / 2, dots.y + dots.height / 2);
   await expect(page.locator('#overview')).toBeVisible();
-  await page.evaluate(() => fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Build', text: 'done', page: 'two' }) }));
+  await page.evaluate(() => fetch('/api/goto/two', { method: 'POST' }));
   await expect(page.locator('#navChip')).toHaveClass(/on/); // waits until the overview is closed
   await page.clock.fastForward(61_000);
   await expect(page.locator('body')).toHaveClass(/dimmed/);
