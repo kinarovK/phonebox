@@ -32,6 +32,19 @@ public class ConfigTests
     }
 
     [Fact]
+    public void ForkUpdatesAreOffByDefaultAndPointAtTheFork()
+    {
+        var c = Load("{}");
+        Assert.False(c.Updates.Auto);
+        Assert.Equal("kinarovK/phonebox", c.Updates.Repo);
+
+        // a blank repo falls back to the fork, never to upstream
+        c = Load("{\"updates\":{\"auto\":true,\"repo\":\" \"}}");
+        Assert.True(c.Updates.Auto);
+        Assert.Equal(UpdateConfig.DefaultRepo, c.Updates.Repo);
+    }
+
+    [Fact]
     public void EmptyConfigGetsTheDefaultPagesAndFreshTokens()
     {
         var c = Load("{}");
