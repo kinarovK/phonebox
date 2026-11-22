@@ -230,53 +230,6 @@ public sealed class PairingTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
-    [Fact]
-    public async Task ShortcutIconUploadRejectsConcurrentSettingsSaveAcrossBodyReadWithoutOrphans()
-    {
-        var dir = Directory.CreateTempSubdirectory("phonebox-icon-race-").FullName;
-        try
-        {
-            var cfgPath = Path.Combine(dir, "config.json");
-            var iconsDir = Path.Combine(dir, "icons");
-            var cfg = new ConfigStore(cfgPath);
-            Assert.Null(cfg.Save("""{"shortcuts":[{"id":"keep-me","label":"Keep","cmd":"builtin:mute"},{"id":"temp-sc","label":"Temp","cmd":"builtin:mute"}]}"""));
-            var icons = new ShortcutIconUploads(iconsDir);
-            var png = Convert.FromHexString("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082");
-
-            var v1 = cfg.VersionText;
-            var enteredRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var releaseRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            using var gated = new GatedMemoryStream(png, enteredRead, releaseRead.Task);
-
-            var uploadTask = Program.UploadShortcutIconAsync("temp-sc", v1, gated, "image/png", cfg, icons);
-            long savedV2;
-            try
-            {
-                // an upload that returns before reading the body fails here instead of hanging the test
-                var first = await Task.WhenAny(enteredRead.Task, uploadTask).WaitAsync(TimeSpan.FromSeconds(10));
-                Assert.True(first == enteredRead.Task, "the upload finished before it read the body");
-
-                // Advance config timestamp deterministically and delete temp-sc while body read is suspended
-                File.SetLastWriteTimeUtc(cfgPath, new DateTime(cfg.Version, DateTimeKind.Utc).AddSeconds(-2));
-                _ = cfg.Get();
-                Assert.Null(cfg.Save("""{"shortcuts":[{"id":"keep-me","label":"Keep","cmd":"builtin:mute"}]}""", cfg.Version, out savedV2));
-                icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
-            }
-            finally
-            {
-                // released whatever happened above, and the upload observed before the directory goes
-                releaseRead.TrySetResult();
-                try { await uploadTask.WaitAsync(TimeSpan.FromSeconds(10)); } catch { }
-            }
-            var result = await uploadTask;
-            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode;
-            Assert.Equal(StatusCodes.Status409Conflict, status);
-            Assert.False(icons.Exists("temp-sc"));
-            Assert.Equal(savedV2, cfg.Version);
-        }
-        finally { Directory.Delete(dir, recursive: true); }
-    }
-
     private sealed class GatedMemoryStream(byte[] data, TaskCompletionSource entered, Task release) : Stream
     {
         private int _pos;

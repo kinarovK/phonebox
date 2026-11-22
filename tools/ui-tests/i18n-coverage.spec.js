@@ -8,23 +8,17 @@ const path = require('path');
 // Names the demo config carries, so they are data rather than interface text. Read from the demo server so the list
 // stays right when the sample config changes.
 const DEMO_NAMES = [
-  '🏠 Home', '🧭 Dashboard', '✳️ AI quotas', '🤖 Sessions', '📊 System', '⚙️ Processes', '🎛️ Shortcuts',
-  '🎵 Music', '🎯 Status', '🌅 Ambient', '🌍 World', '✅ Daily', '💱 Markets', '📡 Feeds', '🍅 Focus',
+  '🏠 Home', '🧭 Dashboard', '✳️ AI quotas', '🤖 Sessions', '📊 System', '⚙️ Processes',
+  '🎯 Status', '🌅 Ambient', '🌍 World', '✅ Daily', '💱 Markets', '📡 Feeds', '🍅 Focus',
   '🫁 Calm', '🕰️ Clock', '⚡ Automation', '🗓️ Planner', '🛏️ Nightstand', '🏖️ Weekend', '🎧 Deep work',
   '🧭 CodexBar', '🛠️ DevOps',
-  // shortcut presets shown in the sample deck, and the ids the deck sample uses
-  'terminal — Terminal', 'code — VS Code', 'browser — Browser', 'files — Files', 'music — Spotify',
-  'chat — Discord', 'snip — Snip', 'taskmgr — Task Manager', 'mute — Mute', 'screenoff — Screen Off',
-  'lock — Lock', 'settings — Settings',
-  '⌨️ Terminal', '📝 VS Code', '🌐 Browser', '📁 Files', '🎧 Spotify', '💬 Discord', '✂️ Snip',
-  '📊 Task Manager', '🔇 Mute', '🌙 Screen Off', '🔒 Lock', '⚙️ Settings',
   // adapter and device names reported by the machine
   'Intel(R) Ethernet Controller I225-V', 'Intel(R) Wi-Fi 6E AX211 160MHz', 'WireGuard Tunnel',
   'UMIDIGI BISON · connected now over USB · WebView 134',
   'samsung SM-X200 · seen 2 min ago over Wi-Fi · WebView 134',
   '0.9.16 (up to date)',
-  // template names and shortcut sample data the demo config carries
-  'AI quotas', 'Deep work', 'Hacker News', 'Smart Stack', 'Workflow GitHub', 'Screen Off',
+  // template names the demo config carries
+  'AI quotas', 'Deep work', 'Hacker News', 'Smart Stack', 'Workflow GitHub',
   // placeholder paths shown as example values inside inputs
   'C:\\Users\\you\\Pictures\\Frame', 'C:\\ffmpeg\\bin\\ffmpeg.exe',
 ];
@@ -100,18 +94,15 @@ test('the settings page shows no English left in Vietnamese, with every section 
 
   // Product names and platform names that are not translated on purpose, and demo/sample data the config carries.
   const leftoversKept = englishLeftovers(texts, [
-    'PhoneBox', 'Spotify', 'Claude', 'Codex', 'GitHub', 'Home Assistant',
-    'Discord', 'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView',
-    'Windows Terminal', 'File Explorer (args: folder)', 'Task Manager', 'AppID', 'PowerShell',
+    'PhoneBox', 'Claude', 'Codex', 'GitHub', 'Home Assistant',
+    'Antigravity', 'Tailscale', 'Windows', 'macOS', 'Linux', 'Android', 'WebView', 'PowerShell',
     'JSON', 'HTTPS', 'USB', 'Wi-Fi', 'SPA', 'CodexBar',
-    'SoundVolumeView', 'xdotool', 'wtype', 'soffice', 'POWERPNT', 'VS Code', 'Strip[0].Gain',
     // Wi-Fi and Tailscale are product names, so the section title stays the same in every language
     'Wi-Fi & Tailscale',
     // Open-Meteo forecast model names (and the agencies that run them) are proper names in every language
     'GFS (NOAA)', 'ECMWF IFS', 'ICON (DWD)', 'UKMO (Met Office)', 'GEM (ECCC)', 'CMA GRAPES',
-    // an OBS/Home Assistant UI label the user looks for inside those programs, not our own interface text
-    'Long-lived access tokens', 'Spotify Client ID', 'Client ID', 'Client secret',
-    'Enable WebSocket server', 'Show Connect Info', 'Secret address in iCal format',
+    // a Home Assistant / calendar UI label the user looks for inside those programs, not our own interface text
+    'Long-lived access tokens', 'Secret address in iCal format',
     // names the machine reports, so they are data and not interface text
     'UMIDIGI BISON', 'samsung SM-X200',
     // literal values the API accepts, shown inside <code>: translating them would break the examples

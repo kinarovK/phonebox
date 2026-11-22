@@ -26,9 +26,7 @@ public sealed class AgentConfig
     [JsonPropertyName("opencode")]
     public OpenCodeConfig OpenCode { get; set; } = new();
     public List<PageConfig> Pages { get; set; } = [];
-    public List<Shortcut> Shortcuts { get; set; } = [];
     public List<RuleConfig> Rules { get; set; } = [];
-    public ChargeConfig Charge { get; set; } = new();
     /// <summary>Per-phone settings when several phones use this agent: a name and which pages each one shows.</summary>
     public List<PhoneConfig> Phones { get; set; } = [];
     /// <summary>iCalendar feeds for the Agenda widget; the URLs are secrets and never go to the phone.</summary>
@@ -41,8 +39,6 @@ public sealed class AgentConfig
     public CameraConfig Cameras { get; set; } = new();
     /// <summary>Home Assistant address and long-lived access token (the token never goes to the phone).</summary>
     public HomeAssistantConfig HomeAssistant { get; set; } = new();
-    /// <summary>App console widget: key and dial bindings per app (the phone gets labels and ids, not the keys to press).</summary>
-    public ConsoleConfig Console { get; set; } = new();
 
     /// <summary>The pages a phone shows: its own selection (Settings › Phones), or all of them.</summary>
     public IEnumerable<PageConfig> PagesFor(string? deviceId)
@@ -53,11 +49,8 @@ public sealed class AgentConfig
         return chosen.Count > 0 ? chosen : Pages;
     }
 
-    /// <summary>The part sent to the phone: commands (shortcut cmd/args/cwd, command widget scripts) are never included.</summary>
-    /// <param name="shortcutIcon">A shortcut's picture: its revision (null when it has none), and whether the user uploaded
-    /// it rather than it being the program's own icon; only an upload may fill a Big button (a program icon is small, or on
-    /// Linux a theme logo). One lookup gives both, so they always describe the same picture.</param>
-    public object ToPublic(string? deviceId = null, Func<Shortcut, (long? Rev, bool Upload)>? shortcutIcon = null) => new
+    /// <summary>The part sent to the phone: secrets (tokens, keys, camera addresses) are never included.</summary>
+    public object ToPublic(string? deviceId = null) => new
     {
         weather = Weather,
         codexBar = CodexBar,
@@ -69,20 +62,13 @@ public sealed class AgentConfig
             widgets = (p.Widgets ?? []).Select(w => new
             {
                 w.Id, w.Type, w.X, w.Y, w.W, w.H, w.Appearance,
-                // command widgets: only what the panel shows; the scripts (command, commandUnix, …) stay on this computer
                 options = StackWidgets.PublicOptions(w),
             }),
         }),
         // cameras: only how often the Camera widget may ask for a picture; the addresses and names stay on this computer
         cameras = Cameras.Sources.Select(c => new { c.Id, c.Fps }),
-        shortcuts = Shortcuts.Select(s =>
-        {
-            var pic = shortcutIcon?.Invoke(s);
-            return new { s.Id, s.Label, s.Icon, s.Color, toggle = s.Toggle || s.Cmd == "builtin:mute", hold = s.LongPress is not null, cycle = s.Cmd == "builtin:cycle" && s.Cycle is { Count: > 0 }, iconRev = pic?.Rev, iconUpload = pic?.Upload == true };
-        }),
         // names only (for the Rules widget); what a rule matches on stays here
         rules = Rules.Select(r => new { r.Id, r.Name, r.Enabled, r.When }),
-        charge = new { Charge.Enabled, Charge.Min, Charge.Max },
         // OpenCode prompts: how long the Allow always button waits before it can be pressed (it saves a pattern)
         opencode = new { OpenCode.AlwaysCountdownSec },
     };
@@ -305,7 +291,7 @@ public sealed class PageConfig
 
     /// <summary>Create the page from this template (templates.json) when it has no widgets yet.</summary>
     public string? Template { get; set; }
-    /// <summary>Pre-0.6.2 fixed page type (home | ai | work | system | procs | deck); migrated to widgets on load.</summary>
+    /// <summary>Pre-0.6.2 fixed page type (home | ai | work | system | procs | deck); migrated to widgets on load (deck, the old shortcut page, keeps none).</summary>
     public string? Type { get; set; }
     /// <summary>Pre-0.6.2 page options; migrated to widget options on load.</summary>
     public Dictionary<string, JsonElement>? Options { get; set; }
@@ -353,8 +339,6 @@ public sealed class RuleConfig
     public string? Key { get; set; }
     public string? PushValue { get; set; }
     public bool WhileActive { get; set; } = true;
-    /// <summary>Shortcut id for the "shortcut" action.</summary>
-    public string? Shortcut { get; set; }
 
     /// <summary>0-9; a page switch of a higher rule wins and is not replaced by a lower one while it lasts.</summary>
     public int Priority { get; set; } = 5;
@@ -377,22 +361,10 @@ public sealed class RuleConfig
 
     public static readonly string[] Triggers = ["session-waiting", "session-busy", "process-running", "app-in-front", "calendar-event",
         "cpu-above", "idle", "time", "push", "quota-above", "review-requested", "ci-failed", "battery-low", "ping-high", "always"];
-    public static readonly string[] Actions = ["goto", "notify", "push", "shortcut"];
+    public static readonly string[] Actions = ["goto", "notify", "push"];
 }
 
 /// <summary>Charge guard: keep the phone's battery between Min and Max by switching its power supply.</summary>
-public sealed class ChargeConfig
-{
-    public bool Enabled { get; set; }
-    public int Min { get; set; } = 50;
-    public int Max { get; set; } = 80;
-    /// <summary>"ha" (a Home Assistant switch entity) or "shortcuts" (one shortcut for power on, one for off).</summary>
-    public string Method { get; set; } = "ha";
-    public string? Entity { get; set; }
-    public string? OnShortcut { get; set; }
-    public string? OffShortcut { get; set; }
-}
-
 public sealed class HomeAssistantConfig
 {
     public string? Url { get; set; }
@@ -422,39 +394,11 @@ public sealed class CalendarSource
     public string? Color { get; set; }
 }
 
-public sealed class Shortcut
-{
-    public string Id { get; set; } = "";
-    public string Label { get; set; } = "";
-    [JsonConverter(typeof(IconJsonConverter))]
-    public string Icon { get; set; } = "";
-    public string Color { get; set; } = "#6b7280";
-    /// <summary>A program, address or file; or builtin:lock / monitor-off / mute / keys / text / macro.</summary>
-    public string Cmd { get; set; } = "";
-    /// <summary>Program arguments; the key combination for builtin:keys ("ctrl+shift+m"); the text for builtin:text.</summary>
-    public string? Args { get; set; }
-    public string? Cwd { get; set; }
-    /// <summary>builtin:macro steps, one per entry: "keys:ctrl+c", "text:hello", "wait:300", "shortcut:other-id".</summary>
-    public List<string>? Steps { get; set; }
-    /// <summary>An on / off key: the phone shows its state.</summary>
-    public bool Toggle { get; set; }
-    /// <summary>Where a toggle's state comes from: a pushed value (truthy = on). Empty: the agent remembers the last tap.</summary>
-    public string? StateKey { get; set; }
-    /// <summary>For toggles: the command (and arguments) that switch it off; empty = the same as switching on.</summary>
-    public string? OffCmd { get; set; }
-    public string? OffArgs { get; set; }
-    /// <summary>Id of another shortcut that a long press on this key runs instead (the phone only says "held"; the id is looked up here).</summary>
-    public string? LongPress { get; set; }
-    /// <summary>builtin:cycle: ids of the shortcuts to run one after another, a tap each; the key shows the one that ran last.</summary>
-    public List<string>? Cycle { get; set; }
-    public const int MaxCycle = 20;
-}
-
 /// <summary>Reads/writes config.json; external edits are picked up on the next request.</summary>
 public sealed partial class ConfigStore(string path)
 {
     /// <summary>Pages a fresh install (or an empty page list) starts with.</summary>
-    public static readonly string[] DefaultPages = ["home", "ai", "work", "system", "procs", "deck"];
+    public static readonly string[] DefaultPages = ["home", "ai", "work", "system", "procs"];
 
     public static readonly JsonSerializerOptions ReadOpts = new()
     {
@@ -538,18 +482,7 @@ public sealed partial class ConfigStore(string path)
         try { cfg = JsonSerializer.Deserialize<AgentConfig>(json, ReadOpts) ?? throw new JsonException("empty"); }
         catch (JsonException ex) { return "Invalid JSON: " + ex.Message; }
 
-        var staleIds = Get().Shortcuts.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
-        cfg = Normalize(cfg, staleIds);
-        foreach (var s in cfg.Shortcuts)
-        {
-            if (string.IsNullOrWhiteSpace(s.Cmd)) return $"Shortcut '{s.Label}' has no command";
-            if (s.Cmd == "builtin:wake" && WakeOnLan.ParseArgs(s.Args, out _, out _) is { } wakeError) return $"Shortcut '{s.Label}': {wakeError}";
-            // a toggle's off action runs through the same path while the toggle is on
-            if (s.OffCmd == "builtin:wake" && WakeOnLan.ParseArgs(s.OffArgs, out _, out _) is { } offWakeError) return $"Shortcut '{s.Label}' (off action): {offWakeError}";
-        }
-        if (cfg.Console.Profiles.Count > AppConsole.MaxProfiles) return $"The app console has more than {AppConsole.MaxProfiles} apps";
-        foreach (var p in cfg.Console.Profiles)
-            if (AppConsole.Validate(p) is { } consoleError) return consoleError;
+        cfg = Normalize(cfg);
         if (cfg.Cameras.Sources.Count > CameraFeeds.MaxCameras) return $"There are more than {CameraFeeds.MaxCameras} cameras";
         foreach (var cam in cfg.Cameras.Sources)
             if (!CameraFeeds.ValidUrl(cam.Url))
@@ -575,7 +508,7 @@ public sealed partial class ConfigStore(string path)
     }
 
     /// <summary>Fills in defaults: builds pages from templates, migrates old pages, generates unique ids.</summary>
-    private static AgentConfig Normalize(AgentConfig c, IReadOnlySet<string>? staleIds = null)
+    private static AgentConfig Normalize(AgentConfig c)
     {
         c.Weather ??= new();
         c.Weather.Unit = WeatherUnitJsonConverter.Normalize(c.Weather.Unit);
@@ -625,58 +558,6 @@ public sealed partial class ConfigStore(string path)
             : id.Trim();
         c.Display.HomePage = string.IsNullOrWhiteSpace(c.Display.HomePage) ? null : PageId(c.Display.HomePage).Trim();
 
-        var used = new HashSet<string>();
-        c.Shortcuts = (c.Shortcuts ?? []).Where(s => s is not null).ToList(); // "shortcuts": [null] in a hand-written file
-
-        // Pass 1: reserve every explicitly-provided id first. Otherwise a blank-id (brand-new) shortcut processed
-        // earlier in the list than one that explicitly keeps an id could grab that id for itself, since at that
-        // point nothing yet says it is taken — bumping the one that actually owns it to an unrelated id instead.
-        var reserved = new Dictionary<Shortcut, string>();
-        foreach (var s in c.Shortcuts.Where(s => !string.IsNullOrWhiteSpace(s.Id)))
-        {
-            var id = Slug(s.Id);
-            if (id == "") id = "shortcut";
-            var unique = id;
-            for (var i = 2; !used.Add(unique); i++) unique = $"{id}-{i}";
-            reserved[s] = unique;
-        }
-
-        foreach (var s in c.Shortcuts)
-        {
-            s.Label = s.Label?.Trim() ?? "";
-            s.Icon = IconText.Repair(s.Icon);
-            if (reserved.TryGetValue(s, out var keptId)) s.Id = keptId;
-            else
-            {
-                var id = Slug(s.Label);
-                if (id == "") id = "shortcut";
-                var unique = id;
-                for (var i = 2; staleIds?.Contains(unique) == true || !used.Add(unique); i++) unique = $"{id}-{i}";
-                s.Id = unique;
-            }
-            if (string.IsNullOrWhiteSpace(s.Args)) s.Args = null;
-            if (string.IsNullOrWhiteSpace(s.Cwd)) s.Cwd = null;
-            s.Steps = s.Steps?.Where(x => x is not null).Select(x => x.Trim()).Where(x => x.Length > 0).Take(50).ToList();
-            if (s.Steps is { Count: 0 }) s.Steps = null;
-            if (string.IsNullOrWhiteSpace(s.StateKey)) s.StateKey = null;
-            if (string.IsNullOrWhiteSpace(s.OffCmd)) s.OffCmd = null;
-            if (string.IsNullOrWhiteSpace(s.OffArgs)) s.OffArgs = null;
-        }
-        // a long press runs another key: drop a blank, self-referencing or dangling target, so the phone never offers a hold that does nothing
-        foreach (var s in c.Shortcuts)
-        {
-            s.LongPress = s.LongPress?.Trim();
-            if (string.IsNullOrEmpty(s.LongPress) || s.LongPress == s.Id || !c.Shortcuts.Any(o => o.Id == s.LongPress)) s.LongPress = null;
-        }
-        // a cycle key: the keys it runs must exist (a deleted or renamed one drops out), and none of them is the cycle itself
-        foreach (var s in c.Shortcuts)
-        {
-            s.Cycle = s.Cmd == "builtin:cycle"
-                ? (s.Cycle ?? []).Select(x => x?.Trim() ?? "").Where(x => x != s.Id && c.Shortcuts.Any(o => o.Id == x)).Take(Shortcut.MaxCycle).ToList()
-                : null;
-            // a cycle key runs the next key, not a command of its own: an on / off setting would bypass the cycle
-            if (s.Cmd == "builtin:cycle") { s.Toggle = false; s.StateKey = null; s.OffCmd = null; s.OffArgs = null; }
-        }
         c.Phones = (c.Phones ?? []).Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Id)).GroupBy(p => p.Id).Select(g => g.First()).Take(20).ToList();
         foreach (var ph in c.Phones)
         {
@@ -689,25 +570,6 @@ public sealed partial class ConfigStore(string path)
         c.HomeAssistant ??= new();
         c.HomeAssistant.Url = string.IsNullOrWhiteSpace(c.HomeAssistant.Url) ? null : c.HomeAssistant.Url.Trim().TrimEnd('/');
         c.HomeAssistant.Token = string.IsNullOrWhiteSpace(c.HomeAssistant.Token) ? null : c.HomeAssistant.Token.Trim();
-        c.Console ??= new();
-        c.Console.Profiles = (c.Console.Profiles ?? []).Where(p => p is not null).Take(200).ToList(); // more than 30 is refused on save
-        var consoleIds = new HashSet<string>();
-        foreach (var p in c.Console.Profiles)
-        {
-            p.Label = Cap(p.Label?.Trim() ?? "", 40);
-            p.Apps = p.Apps?.Trim() ?? ""; // too long is refused on save (AppConsole.Validate), not cut short
-            var id = Slug(string.IsNullOrWhiteSpace(p.Id) ? p.Label : p.Id);
-            if (id == "") id = "app";
-            var unique = id;
-            for (var i = 2; !consoleIds.Add(unique); i++) unique = $"{id}-{i}";
-            p.Id = unique;
-            p.Keys = (p.Keys ?? []).Where(k => k is not null && !string.IsNullOrWhiteSpace(k.Keys)).Take(100).ToList();
-            // a key without a label shows its keys on the phone ("ctrl+z")
-            foreach (var k in p.Keys) { k.Keys = k.Keys.Trim(); k.Label = Cap(k.Label?.Trim() is { Length: > 0 } l ? l : k.Keys, 24); }
-            p.DialLeft = string.IsNullOrWhiteSpace(p.DialLeft) ? null : p.DialLeft.Trim();
-            p.DialRight = string.IsNullOrWhiteSpace(p.DialRight) ? null : p.DialRight.Trim();
-            p.DialPress = string.IsNullOrWhiteSpace(p.DialPress) ? null : p.DialPress.Trim();
-        }
         c.Calendars = (c.Calendars ?? []).Where(x => x is not null).Take(20).ToList();
         foreach (var cal in c.Calendars) { cal.Name = cal.Name?.Trim() ?? ""; cal.Url = cal.Url?.Trim() ?? ""; }
         c.Feeds = (c.Feeds ?? []).Where(x => x is not null).Take(30).ToList();
@@ -744,12 +606,6 @@ public sealed partial class ConfigStore(string path)
             cam.Id = id;
         }
 
-        c.Charge ??= new();
-        c.Charge.Min = Math.Clamp(c.Charge.Min, 5, 95);
-        c.Charge.Max = Math.Clamp(c.Charge.Max, c.Charge.Min + 5, 100);
-        c.Charge.Method = c.Charge.Method == "shortcuts" ? "shortcuts" : "ha";
-        c.Charge.Entity = string.IsNullOrWhiteSpace(c.Charge.Entity) ? null : c.Charge.Entity.Trim();
-
         var ruleIds = new HashSet<string>();
         c.Rules = (c.Rules ?? []).Where(r => r is not null && RuleConfig.Triggers.Contains(r.When) && RuleConfig.Actions.Contains(r.Then)).Take(50).ToList();
         foreach (var r in c.Rules)
@@ -773,7 +629,6 @@ public sealed partial class ConfigStore(string path)
             if (r.Op == "stale")
                 r.Arg = (double.TryParse(r.Arg, NumberStyles.Float, CultureInfo.InvariantCulture, out var staleSec) && double.IsFinite(staleSec) && staleSec > 0
                     ? Math.Clamp(Math.Round(staleSec), 1, 86400) : 60).ToString(CultureInfo.InvariantCulture);
-            r.Shortcut = string.IsNullOrWhiteSpace(r.Shortcut) ? null : r.Shortcut.Trim();
             if (r.Page is { } page) r.Page = PageId(page);
         }
         return c;
@@ -897,9 +752,6 @@ public sealed partial class ConfigStore(string path)
             case "procs":
                 Find("processes")?.Set("allowKill", On("allowKill"));
                 break;
-            case "deck":
-                if (p.Options?.TryGetValue("columns", out var cols) == true && cols.ValueKind == JsonValueKind.Number && cols.TryGetInt32(out var n)) Find("shortcuts")?.Set("columns", n);
-                break;
         }
     }
 
@@ -920,8 +772,7 @@ public sealed partial class ConfigStore(string path)
         try
         {
             var onDisk = JsonSerializer.Deserialize<AgentConfig>(File.ReadAllText(path), ReadOpts);
-            var damagedIcons = (onDisk?.Pages ?? []).Any(p => p is not null && IconText.Repair(p.Icon) != p.Icon)
-                || (onDisk?.Shortcuts ?? []).Any(s => s is not null && IconText.Repair(s.Icon) != s.Icon);
+            var damagedIcons = (onDisk?.Pages ?? []).Any(p => p is not null && IconText.Repair(p.Icon) != p.Icon);
             if (!damagedIcons && onDisk?.Lan?.Token == c.Lan.Token && onDisk?.Lan?.WebhookToken == c.Lan.WebhookToken) return;
         }
         catch { }

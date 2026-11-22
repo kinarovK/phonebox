@@ -1,4 +1,4 @@
-import { $, D, LEVEL_COLOR, LOCALE, METRICS, PREVIEW, Q_STYLE, S_ORDER, ago, api, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, keyButton, setKeyFace, labelled, levelOf, metricText, online, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, configMark, configReadSince, localWriteStored, shortDur, shortGpu, store, t, tick, toast, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText } from '../main.js';
+import { $, D, LEVEL_COLOR, LOCALE, METRICS, PREVIEW, Q_STYLE, S_ORDER, ago, api, buildLayout, buzz, cfg, chime, cfgVersion, chart, color, cssVar, currentProcessesSort, emit, fillIcon, fmtClock, fmtDur, fmtHM, fmtMem, fmtReset, fmtTime, fmtValue, gotoProcesses, gpuMem, gpusOf, h, en, haptic, hasProcessesPage, hist, hour12, icon, labelled, levelOf, metricText, openSheet, paceInfo, pad, prRow, pushView, quotaProviders, r1, registerProcessesSorter, renderStatus, ringSvg, configMark, configReadSince, localWriteStored, shortDur, shortGpu, store, t, tick, toast, wxBlock, wxDeg, wxIcon, emo, rich, tp, tpv, quotaText } from '../main.js';
 import { W } from '../registry.js';
 
 function bindProcessLink(box, sortTarget) {
@@ -708,56 +708,6 @@ W.processes = {
   },
 };
 
-// On / off keys light up from the agent's state (D.state.toggles: { id: true | false }).
-export function applyToggles(root) {
-  const t = D.state?.toggles || {};
-  root.querySelectorAll('.key.toggle').forEach((b) => b.classList.toggle('on', t[b.dataset.id] === true));
-  applyCycles(root);
-}
-
-// A key that cycles through other keys shows the one that ran last (D.state.cycles: { id: the id of that key }); before the
-// first tap, and after the agent restarted, it shows its own icon and name. The agent sends the id, not a position, so
-// the face never depends on which version of the list the phone has loaded.
-function applyCycles(root) {
-  const at = D.state?.cycles || {}, all = cfg.shortcuts || [];
-  root.querySelectorAll('.key.cycle').forEach((b) => {
-    const id = b.dataset.id, own = all.find((x) => x.id === id);
-    if (!own) return;
-    const want = at[id] != null ? all.find((x) => x.id === at[id]) : (b.dataset.face ? own : null);
-    // a key the phone has not loaded yet leaves the face as it is: not the key's own, which did not run
-    if (!want || (b.dataset.face || '') === (want.id === id ? '' : want.id)) return;
-    setKeyFace(b, want, b._cover === true);
-  });
-}
-
-W.shortcuts = {
-  needs: ['state'],
-  create(box, { o }) {
-    const all = cfg.shortcuts || [];
-    const ids = Array.isArray(o.ids) && o.ids.length ? o.ids : null;
-    const list = ids ? ids.map((id) => all.find((s) => s.id === id)).filter(Boolean) : all;
-    if (!list.length) {
-      box.append(h('div', 'empty', all.length ? t('w.shortcutsMissing') : t('w.shortcutsWait')));
-      return {};
-    }
-    const cols = Math.min(8, Math.max(1, o.columns || 4));
-    const grid = h('div', 'deck-grid', ...list.map(keyButton));
-    grid.style.gridTemplateColumns = `repeat(${Math.min(cols, list.length)}, 1fr)`;
-    grid.style.gridTemplateRows = `repeat(${Math.ceil(list.length / cols)}, 1fr)`;
-    box.append(grid);
-    return { update: () => applyToggles(box) };
-  },
-};
-
-W.button = {
-  bare: true, needs: ['state'],
-  create(box, { o }) {
-    const s = (cfg.shortcuts || []).find((x) => x.id === o.id) || (cfg.shortcuts || [])[0];
-    box.append(s ? keyButton(s, { cover: o.cover === true, label: o.showLabel !== false }) : h('div', 'empty', t('w.pickShortcut')));
-    return { update: () => applyToggles(box) };
-  },
-};
-
 W.worldclock = {
   needs: ['tick'],
   create(box, { o }) {
@@ -1098,37 +1048,6 @@ W.label = {
   create(box, { o }) {
     box.append(h('div', 'lbl-t', o.text || ''));
     return {};
-  },
-};
-
-W.command = {
-  needs: ['tick'],
-  create(box, { o, page, w }) {
-    const out = h('div', 'cmd-o', '…'), foot = h('div', 'cmd-f', '');
-    box.append(h('div', 'w-title', o.title || en('Command')), out, foot);
-    let last = 0, busy = false, res = null;
-    const load = async (force) => {
-      if (busy) return;
-      busy = true;
-      try {
-        res = await api(`/widget/${encodeURIComponent(page.id)}/${encodeURIComponent(w.id)}${force ? '?force=true' : ''}`, 'GET', 4000);
-        const text = res.output ?? '';
-        out.textContent = text || (res.running ? t('w.running') : t('w.noOutput'));
-        const short = text.length <= 14 && !text.includes('\n');
-        out.classList.toggle('big', short);
-        box.classList.toggle('bad', res.ok === false);
-      } catch (_) { if (!res) out.textContent = online ? t('w.unavailable') : '—'; }
-      busy = false;
-    };
-    box.addEventListener('click', () => { haptic(); last = Date.now(); load(true).then(() => setTimeout(() => load(false), 1500)); });
-    return {
-      update() {
-        if (res?.at) foot.textContent = (res.running ? 'refreshing · ' : '') + ago(res.at) + (res.durationMs ? ` · ${Math.round(res.durationMs)} ms` : '');
-        if (!online || Date.now() - last < (res?.running || !res?.at ? 2000 : 5000)) return;
-        last = Date.now();
-        load(false);
-      },
-    };
   },
 };
 

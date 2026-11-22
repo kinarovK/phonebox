@@ -12,26 +12,23 @@ public sealed class IconEncodingTests
     [InlineData("\u00e2\u0153\u00b3\u00ef\u00b8\u008f", "\u2733\ufe0f")]
     public void KnownDoubleEncodedIconsAreRecoveredWithoutReencodingOtherText(string broken, string expected)
     {
-        using var f = new Fixture(new AgentConfig { Pages = [new() { Id = "p", Title = "Türkçe — 日本語", Icon = broken, Widgets = [new() { Type = "note" }] }],
-            Shortcuts = [new() { Id = "s", Label = "Français", Icon = broken, Cmd = "private-command" }] });
+        using var f = new Fixture(new AgentConfig { Pages = [new() { Id = "p", Title = "Türkçe — 日本語", Icon = broken, Widgets = [new() { Type = "note" }] }] });
         var config = f.Store.Get();
         Assert.Equal(expected, config.Pages.Single().Icon);
-        Assert.Equal(expected, config.Shortcuts.Single().Icon);
         Assert.Equal("Türkçe — 日本語", config.Pages.Single().Title);
-        Assert.Equal("private-command", config.Shortcuts.Single().Cmd);
     }
 
     [Fact]
     public void SavedIconStringsSurviveAnsiReadingAndKeepOtherUnicodeText()
     {
         const string symbols = "\u2328\ufe0f \u2699\ufe0f \u2702\ufe0f \u2733\ufe0f 🏠";
-        using var f = new Fixture(new AgentConfig { Shortcuts = [new() { Id = "s", Icon = symbols, Label = "Türkçe", Cmd = "test" }] });
+        using var f = new Fixture(new AgentConfig { Pages = [new() { Id = "p", Icon = symbols, Title = "Türkçe", Widgets = [new() { Type = "note" }] }] });
         Assert.Null(f.Store.Save(JsonSerializer.Serialize(f.Store.Get())));
         var bytes = File.ReadAllBytes(f.Path);
         Assert.False(bytes.AsSpan().StartsWith(Encoding.UTF8.GetPreamble()));
         var ansi = JsonSerializer.Deserialize<AgentConfig>(Encoding.Latin1.GetString(bytes), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(symbols, ansi.Shortcuts.Single().Icon);
-        Assert.Equal("Türkçe", new ConfigStore(f.Path).Get().Shortcuts.Single().Label);
+        Assert.Equal(symbols, ansi.Pages.Single().Icon);
+        Assert.Equal("Türkçe", new ConfigStore(f.Path).Get().Pages.Single().Title);
     }
 
     [Fact]
@@ -70,8 +67,8 @@ public sealed class IconEncodingTests
     {
         foreach (var icon in new[] { "⌨️", "⚙️", "✂️", "✳️", "🏠", "DB", "İş", "â custom", "λ" })
         {
-            using var f = new Fixture(new AgentConfig { Shortcuts = [new() { Id = "s", Icon = icon, Cmd = "test" }] });
-            Assert.Equal(icon, f.Store.Get().Shortcuts.Single().Icon);
+            using var f = new Fixture(new AgentConfig { Pages = [new() { Id = "p", Icon = icon, Widgets = [new() { Type = "note" }] }] });
+            Assert.Equal(icon, f.Store.Get().Pages.Single().Icon);
         }
     }
 

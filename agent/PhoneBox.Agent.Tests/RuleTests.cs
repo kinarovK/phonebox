@@ -169,7 +169,7 @@ public class RuleTests
         new QuotaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<QuotaMonitor>.Instance),
         new GitHubMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<GitHubMonitor>.Instance),
         new BatteryMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance),
-        new PingMonitor(), new AudioControl(),
+        new PingMonitor(),
         Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleEngine>.Instance);
 
     [Theory]
@@ -187,7 +187,7 @@ public class RuleTests
     public void RuleOptionsAreClamped()
     {
         var path = Path.Combine(Path.GetTempPath(), $"phonebox-cfg-{Guid.NewGuid():N}.json");
-        File.WriteAllText(path, """{ "rules": [ { "when": "always", "then": "shortcut", "priority": 42, "forSec": -5, "cooldownMin": 99999, "countdownSec": 99, "days": "weekdays", "op": "~", "during": "  " } ] }""");
+        File.WriteAllText(path, """{ "rules": [ { "when": "always", "then": "notify", "priority": 42, "forSec": -5, "cooldownMin": 99999, "countdownSec": 99, "days": "weekdays", "op": "~", "during": "  " } ] }""");
         try
         {
             var r = new ConfigStore(path).Get().Rules.Single();
@@ -203,7 +203,7 @@ public class RuleTests
     }
 
     [Fact]
-    public void WhileActiveShortcutRulesKeepAlreadyOnTogglesOnAndReviewRequestedCountsOnlyMatchingNonDrafts()
+    public void ReviewRequestedCountsOnlyMatchingNonDrafts()
     {
         var dir = Path.Combine(Path.GetTempPath(), $"phonebox-rule-toggle-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
@@ -213,9 +213,7 @@ public class RuleTests
             var cfgPath = Path.Combine(dir, "config.json");
             File.WriteAllText(cfgPath, """
             {
-              "shortcuts": [{ "id": "lamp", "label": "Lamp", "cmd": "builtin:macro", "toggle": true }],
               "rules": [
-                { "id": "call", "name": "Call", "when": "push", "match": "mic", "then": "shortcut", "shortcut": "lamp", "whileActive": true },
                 { "id": "rev", "name": "Rev", "when": "review-requested", "match": "org/target", "then": "notify", "text": "{detail}" }
               ]
             }
@@ -238,22 +236,12 @@ public class RuleTests
                 new QuotaMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<QuotaMonitor>.Instance),
                 gh,
                 new BatteryMonitor(Microsoft.Extensions.Logging.Abstractions.NullLogger<BatteryMonitor>.Instance),
-                new PingMonitor(), new AudioControl(),
+                new PingMonitor(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<RuleEngine>.Instance);
 
-            var lamp = cfg.Get().Shortcuts.Single();
-            Assert.Null(Shortcuts.Run(cfg.Get(), "lamp", Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, push));
-            Assert.Equal(true, Shortcuts.State(lamp, push, null));
-
-            push.Set("mic", JsonSerializer.SerializeToElement(true), null);
             var seq = push.Seq;
             engine.Evaluate();
-            Assert.Equal(true, Shortcuts.State(lamp, push, null));
             Assert.Equal("org/target#42", push.Since(seq).Single(e => e.Kind == "notify").Data!.Value.GetProperty("text").GetString());
-
-            engine.Pause(5);
-            engine.Evaluate();
-            Assert.Equal(false, Shortcuts.State(lamp, push, null));
         }
         finally
         {
@@ -262,70 +250,6 @@ public class RuleTests
         }
     }
 
-    [Fact]
-    public void MacroShortcutStepsUpdateToggleStateAndRunOffCmd()
-    {
-        var lampId = "macro-lamp-" + Guid.NewGuid().ToString("N");
-        var lamp = new Shortcut { Id = lampId, Label = "Lamp", Toggle = true, Cmd = "builtin:macro", OffCmd = "builtin:keys", OffArgs = "bad_off_key" };
-        var macro = new Shortcut { Id = "scene", Label = "Scene", Cmd = "builtin:macro", Steps = [$"shortcut:{lampId}"] };
-        var cfg = new AgentConfig { Shortcuts = [lamp, macro] };
-
-        Assert.Null(Shortcuts.Run(cfg, "scene", Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance));
-        Assert.Equal(true, Shortcuts.State(lamp, null, null));
-        var second = Shortcuts.Run(cfg, "scene", Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
-        Assert.NotNull(second);
-        Assert.Contains("bad_off_key", second);
-    }
-}
-
-public class ChargeGuardTests
-{
-    private static readonly ChargeConfig C = new() { Enabled = true, Min = 50, Max = 80 };
-    private const long Now = 1_000_000_000;
-    private static PhoneBatteryReport At(int level, bool plugged, long ageMs = 0) => new(level, plugged, null, Now - ageMs);
-
-    [Fact]
-    public void StopsChargingAtTheTop() => Assert.Equal("off", ChargeGuard.Decide(C, At(80, true), Now, null, 0));
-
-    [Fact]
-    public void StartsChargingAtTheBottom() => Assert.Equal("on", ChargeGuard.Decide(C, At(50, false), Now, "off", Now - 60_000));
-
-    [Fact]
-    public void LeavesThePowerAloneInBetween()
-    {
-        Assert.Null(ChargeGuard.Decide(C, At(65, true), Now, "on", Now - 60_000));
-        Assert.Null(ChargeGuard.Decide(C, At(65, false), Now, "off", Now - 60_000));
-    }
-
-    [Fact]
-    public void RepeatsASwitchThatDidNotTakeOnlyAfterAWhile()
-    {
-        Assert.Null(ChargeGuard.Decide(C, At(85, true), Now, "off", Now - 60_000));             // just switched: wait
-        Assert.Equal("off", ChargeGuard.Decide(C, At(85, true), Now, "off", Now - 11 * 60_000)); // still charging later: again
-    }
-
-    [Fact]
-    public void NeverLeavesASilentPhoneWithoutPower()
-    {
-        Assert.Equal("on", ChargeGuard.Decide(C, At(70, false, ageMs: 11 * 60_000), Now, "off", Now - 20 * 60_000));
-        Assert.Equal("on", ChargeGuard.Decide(C, null, Now, "off", 0));
-        Assert.Null(ChargeGuard.Decide(C, null, Now, "on", 0));
-    }
-
-    [Fact]
-    public void LimitsAreKeptApart()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"phonebox-cfg-{Guid.NewGuid():N}.json");
-        File.WriteAllText(path, """{ "charge": { "enabled": true, "min": 70, "max": 60, "method": "magic" } }""");
-        try
-        {
-            var c = new ConfigStore(path).Get().Charge;
-            Assert.Equal(70, c.Min);
-            Assert.Equal(75, c.Max);
-            Assert.Equal("ha", c.Method);
-        }
-        finally { File.Delete(path); }
-    }
 }
 
 public class UsbDoctorTests

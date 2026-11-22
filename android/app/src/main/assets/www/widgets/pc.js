@@ -28,7 +28,6 @@ W.html = {
     frame.addEventListener('load', () => HTML_KINDS.forEach(send));
     const onMsg = (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
-      if (e.data.phonebox === 'run' && (cfg.shortcuts || []).some((s) => s.id === e.data.id)) { haptic(); api('/run/' + encodeURIComponent(e.data.id), 'POST', 5000).catch(() => toast(t('panel.pcNoAnswer'), 'err')); }
       if (e.data.phonebox === 'goto') gotoPageRef(e.data.page);
     };
     window.addEventListener('message', onMsg);
@@ -238,89 +237,6 @@ W.docker = {
       }));
     };
     const tick = every(4000, async () => { await load(); render(); });
-    return { update: () => { tick(); render(); } };
-  },
-};
-
-// The computer's installed applications (macOS): search, tap one to open it (or bring it forward) on the computer.
-// The phone only sends the app's id; the agent opens apps from its own scan.
-W.apps = {
-  needs: ['tick'],
-  create(box, { o }) {
-    const pinned = String(o.pinned || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-    const confirm = o.confirm !== false; // first tap selects, a second tap within a few seconds opens
-    let data = null, q = '', busy = null, armed = null, armTimer = 0, lastKey = '';
-    const disarm = () => { clearTimeout(armTimer); if (armed) { armed = null; render(true); } };
-    const head = h('div', 'w-title', o.title || en('Apps'), h('span', 'ap-count'));
-    const search = h('input', 'ap-search');
-    search.type = 'search';
-    search.placeholder = tp('Search apps');
-    search.autocomplete = 'off';
-    search.spellcheck = false;
-    search.addEventListener('input', () => { q = search.value.trim().toLowerCase(); render(true); });
-    const grid = h('div', 'ap-grid');
-    box.append(head, ...(o.search === false ? [] : [search]), grid);
-
-    const load = async () => { try { data = await api('/apps', 'GET', 10_000); } catch (_) { return false; } };
-    const open = async (a) => {
-      if (!data?.canOpen) { toast(tp('Opening apps needs an All apps widget saved on a page')); return; }
-      haptic();
-      busy = a.id; render(true);
-      try {
-        const r = await fetch(`${API}/apps/open?id=${encodeURIComponent(a.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
-        const j = await r.json().catch(() => ({}));
-        if (r.ok) toast(`Opening ${a.name}`, 'ok'); else toast(j.error || `Could not open ${a.name}`, 'err');
-      } catch (_) { toast(tp('The PC did not answer'), 'err'); }
-      busy = null; render(true);
-    };
-    const rank = (a) => { const i = pinned.indexOf(a.name.toLowerCase()); return i < 0 ? pinned.length : i; };
-    const tile = (a) => {
-      const img = h('img', 'ap-ico');
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      img.alt = '';
-      const src = `${API}/apps/icon?id=${encodeURIComponent(a.id)}`;
-      img.src = src;
-      // The first conversion of an icon can outlast the request on a busy computer; show the initial, try once more later.
-      img.addEventListener('error', () => {
-        const letter = h('span', 'ap-ico ap-letter', a.name.slice(0, 1).toUpperCase());
-        img.replaceWith(letter);
-        setTimeout(() => {
-          if (!letter.isConnected) return;
-          const again = h('img', 'ap-ico');
-          again.alt = '';
-          again.addEventListener('load', () => { if (letter.isConnected) letter.replaceWith(again); }, { once: true });
-          again.src = src + '&retry=1';
-        }, 15_000);
-      }, { once: true });
-      const isArmed = armed === a.id;
-      const t = h('button', 'ap-tile' + (busy === a.id ? ' busy' : '') + (isArmed ? ' armed' : ''), img,
-        h('span', 'ap-name', isArmed ? 'Tap again to open' : a.name));
-      t.title = a.name;
-      t.addEventListener('click', () => {
-        if (!confirm || armed === a.id) { clearTimeout(armTimer); armed = null; open(a); return; }
-        haptic();
-        armed = a.id;
-        clearTimeout(armTimer);
-        armTimer = setTimeout(disarm, 4000);
-        render(true);
-      });
-      return t;
-    };
-    const render = (force = false) => {
-      const all = data?.apps || [];
-      const items = all.filter((a) => !q || a.name.toLowerCase().includes(q))
-        .sort((x, y) => rank(x) - rank(y) || x.name.localeCompare(y.name));
-      const key = JSON.stringify([items.map((a) => a.id), busy, armed, data?.supported, data?.canOpen]);
-      if (!force && key === lastKey) return;
-      lastKey = key;
-      head.querySelector('.ap-count').textContent = all.length ? ` ${q ? items.length + '/' : ''}${all.length}` : '';
-      if (!data) { grid.replaceChildren(h('div', 'empty', tp('Loading…'))); return; }
-      if (!data.supported) { grid.replaceChildren(h('div', 'empty', tp('The apps list is available on macOS for now'))); return; }
-      if (!items.length) { grid.replaceChildren(h('div', 'empty', q ? `No apps match "${search.value.trim()}"` : 'No apps found')); return; }
-      grid.replaceChildren(...items.map(tile));
-    };
-    const tick = every(60_000, async () => { const ok = await load(); render(); return ok; }, 5000);
     return { update: () => { tick(); render(); } };
   },
 };
@@ -596,22 +512,16 @@ W.rules = {
   },
 };
 
-// The phone's battery with the charge guard's band (Settings › General › Battery care).
+// The phone's battery as a ring: its level, whether it charges, and its temperature. Nothing switches the power.
 W.chargecare = {
   needs: ['tick'],
   create(box) {
     const C = 2 * Math.PI * 42;
     box.innerHTML = '<div class="w-title">Battery care</div><div class="cc-body"><div class="cc-wrap"><svg viewBox="0 0 100 100" class="cc-ring">' +
-      '<circle class="cc-bg" cx="50" cy="50" r="42"/><circle class="cc-band" cx="50" cy="50" r="42"/><circle class="cc-fg" cx="50" cy="50" r="42"/></svg>' +
+      '<circle class="cc-bg" cx="50" cy="50" r="42"/><circle class="cc-fg" cx="50" cy="50" r="42"/></svg>' +
       '<b class="cc-pct">—</b></div></div><div class="cc-sub"><span class="cc-state"></span> <span class="cc-text"></span></div>';
     const q = (s) => box.querySelector(s);
     const load = every(15_000, () => {
-      const ch = cfg.charge || {};
-      const min = ch.min ?? 50, max = ch.max ?? 80;
-      const band = q('.cc-band');
-      band.style.strokeDasharray = `${(C * (max - min)) / 100} ${C}`;
-      band.style.strokeDashoffset = String((-C * min) / 100);
-      band.style.opacity = ch.enabled ? '' : '0';
       if (!bridge?.battery) { q('.cc-pct').textContent = '—'; q('.cc-text').textContent = tp('Only on the phone'); return; }
       let b;
       try { b = JSON.parse(bridge.battery()); } catch (_) { return; }
@@ -619,10 +529,8 @@ W.chargecare = {
       q('.cc-fg').style.strokeDasharray = `${(C * b.level) / 100} ${C}`;
       q('.cc-pct').textContent = b.level + '%';
       q('.cc-state').replaceChildren(emo(b.plugged ? '⚡' : '🔋'));
-      const col = b.level <= 20 ? '#ef4444' : ch.enabled && b.level > max ? '#f59e0b' : b.plugged ? '#22c55e' : 'rgb(var(--ambient))';
-      box.style.setProperty('--cc', col);
-      q('.cc-text').textContent = !ch.enabled ? `Battery care is off${b.temp ? ` · ${b.temp.toFixed(0)} °C` : ''}`
-        : b.plugged ? `Charges up to ${max}%` + (b.level >= max ? ' · power off soon' : '') : `Charges again at ${min}%`;
+      box.style.setProperty('--cc', b.level <= 20 ? '#ef4444' : b.plugged ? '#22c55e' : 'rgb(var(--ambient))');
+      q('.cc-text').textContent = (b.plugged ? tp('Charging') : tp('On battery')) + (b.temp ? ` · ${b.temp.toFixed(0)} °C` : '');
     });
     return { update: load };
   },

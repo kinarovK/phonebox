@@ -156,7 +156,6 @@ public sealed class CodexBarTests
                 new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
                 new BatteryMonitor(NullLogger<BatteryMonitor>.Instance),
                 new PingMonitor(),
-                new AudioControl(),
                 NullLogger<RuleEngine>.Instance);
 
             engine.Evaluate();

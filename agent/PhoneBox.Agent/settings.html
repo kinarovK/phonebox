@@ -173,27 +173,9 @@ table.items td.val { font-family: Consolas, monospace; font-size: 12px; max-widt
 .cal-row { display: grid; grid-template-columns: 160px minmax(0, 1fr) 44px auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 .feed-row { grid-template-columns: 140px 150px minmax(0, 1fr) auto; }
 .cam-row { grid-template-columns: 160px minmax(0, 1fr) 80px 80px auto; }
-.console-row { display: grid; grid-template-columns: 160px minmax(0, 1fr) auto; gap: 8px; align-items: start; margin-bottom: 14px; }
-.console-row textarea, .console-row .console-dial { grid-column: 1 / 3; }
-.console-row textarea { font-family: ui-monospace, Consolas, monospace; }
-.console-dial { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cal-row input[type=color] { width: 44px; height: 34px; padding: 2px; }
 @media (max-width: 700px) { .cal-row { grid-template-columns: 1fr 44px auto; } .feed-row { grid-template-columns: 1fr 1fr auto; } .cam-row { grid-template-columns: 1fr 80px 80px auto; } .cal-row .cal-url { grid-column: 1 / -1; grid-row: 2; } }
 
-/* shortcuts */
-.deck { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-.key {
-  position: relative; aspect-ratio: 1.75; border-radius: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--k) 28%, #11151b), #11151b); color: #eef2f6;
-  border: 2px solid color-mix(in srgb, var(--k) 45%, transparent); user-select: none;
-}
-.key .ki { font-size: 26px; line-height: 1; }
-.key .kl { font-size: 12.5px; font-weight: 500; max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.key.sel { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
-.key.add { background: transparent; color: var(--muted); border: 2px dashed var(--line); }
-.key.dragging { opacity: .35; }
-.key.over { outline: 2px dashed var(--accent); outline-offset: 2px; }
-.editor .grid2 { align-items: start; }
 .swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .swatches button { width: 22px; height: 22px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; }
 .swatches button.on { border-color: var(--text); }
@@ -403,7 +385,6 @@ summary:focus-visible { outline-offset: 0; border-radius: 6px; }
 
 /* nav icons: Lucide, as masks so they take the text colour */
 nav a[href="#pages"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='14'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='14'%20rx='1'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='3'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='14'%20y='14'%20rx='1'/%3E%3Crect%20width='7'%20height='7'%20x='3'%20y='14'%20rx='1'/%3E%3C/svg%3E"); }
-nav a[href="#shortcuts"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M10%208h.01M12%2012h.01M14%208h.01M16%2012h.01M18%208h.01M6%208h.01M7%2016h10M8%2012h.01'/%3E%3Crect%20width='20'%20height='16'%20x='2'%20y='4'%20rx='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M10%208h.01M12%2012h.01M14%208h.01M16%2012h.01M18%208h.01M6%208h.01M7%2016h10M8%2012h.01'/%3E%3Crect%20width='20'%20height='16'%20x='2'%20y='4'%20rx='2'/%3E%3C/svg%3E"); }
 nav a[href="#rules"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolygon%20points='13%202%203%2014%2012%2014%2011%2022%2021%2010%2012%2010%2013%202'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolygon%20points='13%202%203%2014%2012%2014%2011%2022%2021%2010%2012%2010%2013%202'/%3E%3C/svg%3E"); }
 nav a[href="#webhooks"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M9%2017H7A5%205%200%200%201%207%207h2'/%3E%3Cpath%20d='M15%207h2a5%205%200%201%201%200%2010h-2'/%3E%3Cline%20x1='8'%20x2='16'%20y1='12'%20y2='12'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M9%2017H7A5%205%200%200%201%207%207h2'/%3E%3Cpath%20d='M15%207h2a5%205%200%201%201%200%2010h-2'/%3E%3Cline%20x1='8'%20x2='16'%20y1='12'%20y2='12'/%3E%3C/svg%3E"); }
 nav a[href="#general"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cline%20x1='21'%20x2='14'%20y1='4'%20y2='4'/%3E%3Cline%20x1='10'%20x2='3'%20y1='4'%20y2='4'/%3E%3Cline%20x1='21'%20x2='12'%20y1='12'%20y2='12'/%3E%3Cline%20x1='8'%20x2='3'%20y1='12'%20y2='12'/%3E%3Cline%20x1='21'%20x2='16'%20y1='20'%20y2='20'/%3E%3Cline%20x1='12'%20x2='3'%20y1='20'%20y2='20'/%3E%3Cline%20x1='14'%20x2='14'%20y1='2'%20y2='6'/%3E%3Cline%20x1='8'%20x2='8'%20y1='10'%20y2='14'/%3E%3Cline%20x1='16'%20x2='16'%20y1='18'%20y2='22'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cline%20x1='21'%20x2='14'%20y1='4'%20y2='4'/%3E%3Cline%20x1='10'%20x2='3'%20y1='4'%20y2='4'/%3E%3Cline%20x1='21'%20x2='12'%20y1='12'%20y2='12'/%3E%3Cline%20x1='8'%20x2='3'%20y1='12'%20y2='12'/%3E%3Cline%20x1='21'%20x2='16'%20y1='20'%20y2='20'/%3E%3Cline%20x1='12'%20x2='3'%20y1='20'%20y2='20'/%3E%3Cline%20x1='14'%20x2='14'%20y1='2'%20y2='6'/%3E%3Cline%20x1='8'%20x2='8'%20y1='10'%20y2='14'/%3E%3Cline%20x1='16'%20x2='16'%20y1='18'%20y2='22'/%3E%3C/svg%3E"); }
@@ -463,7 +444,6 @@ nav a.on::before { color: var(--accent); }
   .layout { grid-template-columns: 1fr; padding: 16px; }
   nav { position: static; flex-direction: row; overflow-x: auto; }
   .grid2 { grid-template-columns: 1fr; }
-  .deck { --cols: 3 !important; }
 }
 </style>
 </head>
@@ -485,7 +465,6 @@ nav a.on::before { color: var(--accent); }
 <div class="layout">
   <nav id="nav">
     <a href="#pages" class="on" data-i18n="s.nav.pages">Pages</a>
-    <a href="#shortcuts" data-i18n="s.nav.shortcuts">Shortcuts</a>
     <a href="#rules" data-i18n="s.nav.rules">Rules</a>
     <a href="#webhooks" data-i18n="s.nav.webhooks">Webhooks</a>
     <a href="#general" data-i18n="s.nav.general">General</a>
@@ -512,13 +491,6 @@ nav a.on::before { color: var(--accent); }
           <div id="peRest"></div>
         </div>
       </div>
-    </section>
-
-    <section id="shortcuts">
-      <h2 data-i18n="s.nav.shortcuts">Shortcuts</h2>
-      <p class="lead" data-i18n="s.shortcuts.lead">The keys shown by Shortcut grid and Big button widgets. Click a key to edit it, drag to reorder. The phone only sends the key's id; commands never leave this computer.</p>
-      <div class="deck" id="deck"></div>
-      <div class="card editor" id="editor"></div>
     </section>
 
     <section id="rules">
@@ -632,13 +604,6 @@ nav a.on::before { color: var(--accent); }
       </div>
 
       <div class="card">
-        <h3 data-i18n="s.console.title">App console</h3>
-        <p class="hint" style="margin:0 0 12px" data-i18n="s.console.hint">Keys and a dial for the App console widget, per app: the widget shows the keys of the app in front on this computer and sends them only to that app. Apps are process names, as in Task Manager's Details tab (photoshop, gimp-2.10). One key per line, a label then the keys: Undo = ctrl+z. Windows only; the keys stay on this computer.</p>
-        <div id="consoleList"></div>
-        <button class="btn sm" id="consoleAdd" data-i18n="s.console.add">＋ Add an app</button>
-      </div>
-
-      <div class="card">
         <h3 data-i18n="s.ha.title">Home Assistant</h3>
         <p class="hint" style="margin:0 0 12px" data-i18n-html="s.ha.tokenHint">For the <b>Home Assistant</b> widget. Create a token in Home Assistant › your profile › Security ›
           <i>Long-lived access tokens</i>. The token stays on this computer; the phone only sees the entities its widgets list.
@@ -721,25 +686,6 @@ nav a.on::before { color: var(--accent); }
         <label class="check"><input type="checkbox" data-bind="display.keepAwake"> <span data-i18n="s.kiosk.keepAwake">Keep the phone awake: turn off Android's screen saver (it starts on the charger) and keep the screen on while plugged in (set over USB)</span></label>
         <label class="check"><input type="checkbox" data-bind="display.openOnConnect"> <span data-i18n="s.kiosk.openOnConnect">Open PhoneBox when the phone is plugged in: wake the phone and bring the panel to the front whenever it connects over USB (turn off to open it yourself, for a phone you also use for app testing)</span></label>
         <label class="check" id="followComputerLockOption" style="display:none"><input type="checkbox" data-bind="display.followComputerLock"> <span data-i18n="s.kiosk.followLock">Follow the computer lock: turn the phone screen off when macOS locks; wake it and open PhoneBox when macOS unlocks (ADB required; unlock phones secured by a PIN or password manually)</span></label>
-      </div>
-
-      <div class="card">
-        <h3 data-i18n="s.battery.title">Battery care</h3>
-        <p class="hint" style="margin:0 0 12px"><span data-i18n="s.battery.leadHead">A phone that is plugged in all the time wears its battery out. PhoneBox can keep it between two</span>
-          <span data-i18n="s.battery.leadMid">levels by switching the phone's power on and off. Phones cannot stop charging by themselves without root, so the power is switched</span>
-          <span data-i18n-html="s.battery.leadTail">where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
-          <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</span></p>
-        <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> <span data-i18n="s.battery.keepBetween">Keep the battery between</span>
-          <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % <span id="chargeRangeAnd">and</span>
-          <input type="number" min="10" max="100" data-bind="charge.max" data-type="int" style="width:70px"> %</div>
-        <div class="grid2">
-          <div class="field"><label data-i18n="s.battery.method">Switch the power with</label><select data-bind="charge.method"><option value="ha" data-i18n="s.battery.methodHa">a Home Assistant switch (smart plug)</option><option value="shortcuts" data-i18n="s.battery.methodShortcuts">two shortcuts (power on / power off)</option></select></div>
-          <div class="field" id="chargeHa"><label data-i18n="s.battery.entity">Switch entity</label><input type="text" data-bind="charge.entity" placeholder="switch.phone_charger" spellcheck="false"></div>
-          <div class="field" id="chargeOn" hidden><label data-i18n="s.battery.onShortcut">Shortcut: power on</label><select id="chargeOnSel" onchange="cfg.charge.onShortcut = this.value || null; changed()"></select></div>
-          <div class="field" id="chargeOff" hidden><label data-i18n="s.battery.offShortcut">Shortcut: power off</label><select id="chargeOffSel" onchange="cfg.charge.offShortcut = this.value || null; changed()"></select></div>
-        </div>
-        <div class="row" style="gap:8px"><button class="btn sm" onclick="chargeTest('off')" data-i18n="s.battery.testOff">Test: power off</button><button class="btn sm" onclick="chargeTest('on')" data-i18n="s.battery.testOn">Test: power on</button>
-          <span class="hint" id="chargeState"></span></div>
       </div>
 
       <div class="card">
@@ -1089,50 +1035,10 @@ const plain = (text) => String(text == null ? '' : text).replace(EMOJI_RE, '').r
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#e5b84b', '#84cc16', '#22c55e', '#14b8a6', '#0ea5e9', '#2f80ed', '#6366f1', '#a855f7', '#ec4899', '#d97757', '#64748b', '#9ca3af'];
 const EMOJIS = ['⌨️', '💻', '📁', '📝', '🌐', '🎧', '🎵', '💬', '📧', '📅', '🧮', '⚙️', '✂️', '📊', '🔇', '🔊', '🌙', '🔒', '🚀', '🐙', '🐳', '🧪', '🛠️', '📦', '🎮', '📷', '🎙️', '⭐', '✳️', '🦊'];
 let osName = 'windows';
-const PRESETS_LINUX = [
-  ['', 'Pick a preset…'],
-  ['x-terminal-emulator', 'Terminal'],
-  ['xdg-open', 'Open a folder or file (args: path, ~ = home)'],
-  ['https://', 'Web address (URL in the command field)'],
-  ['gtk-launch', 'Desktop app (args: name of its .desktop file)'],
-  ['gnome-control-center', 'GNOME Settings'],
-  ['gnome-system-monitor', 'System Monitor'],
-  ['builtin:mute', 'Built-in: toggle mute'],
-  ['builtin:monitor-off', 'Built-in: turn monitors off (X11)'],
-  ['builtin:lock', 'Built-in: lock the session'],
-  ['builtin:wake', 'Built-in: wake a computer (Wake-on-LAN; args: MAC)'],
-];
-const PRESETS_MACOS = [
-  ['', 'Pick a preset…'],
-  ['open', 'Open an app (args: -a "App Name") or a folder (args: path)'],
-  ['https://', 'Web address (URL in the command field)'],
-  ['shortcuts', 'Run a Shortcut (args: run "Name")'],
-  ['osascript', 'AppleScript (args: -e "…")'],
-  ['builtin:mute', 'Built-in: toggle mute'],
-  ['builtin:monitor-off', 'Built-in: sleep the display'],
-  ['builtin:lock', 'Built-in: lock (sleeps the display)'],
-  ['builtin:wake', 'Built-in: wake a computer (Wake-on-LAN; args: MAC)'],
-];
-const presets = () => (osName === 'linux' ? PRESETS_LINUX : osName === 'macos' ? PRESETS_MACOS : PRESETS);
-const PRESETS = [
-  ['', 'Pick a preset…'],
-  ['wt.exe', 'Windows Terminal'],
-  ['explorer.exe', 'File Explorer (args: folder)'],
-  ['https://', 'Web address (URL in the command field)'],
-  ['shell:AppsFolder\\', 'Store app (shell:AppsFolder\\AppID)'],
-  ['ms-settings:', 'Windows Settings'],
-  ['ms-screenclip:', 'Screen snip'],
-  ['taskmgr.exe', 'Task Manager'],
-  ['builtin:mute', 'Built-in: toggle mute'],
-  ['builtin:monitor-off', 'Built-in: turn monitors off'],
-  ['builtin:lock', 'Built-in: lock the PC'],
-  ['builtin:wake', 'Built-in: wake a computer (Wake-on-LAN; args: MAC)'],
-];
 
 let cfg = null;        // settings being edited
 let saved = '';        // last saved JSON (dirty check)
 let cfgVersion = null; // version of the settings file this page loaded; a save over a newer one is refused
-let selKey = 0;
 
 // ---------------------------------------------------------------- helpers
 function toast(msg, err = false) {
@@ -1166,11 +1072,6 @@ let selWidget = -1;
 let activeStackSubIdx = -1;
 const widgetDef = (type) => catalog.widgets.find((w) => w.type === type) || { type, name: type, icon: '◻', options: [], minW: 1, minH: 1, w: 2, h: 2 };
 const curPage = () => cfg.pages[selPage];
-
-function deckCols() {
-  for (const p of cfg.pages) for (const w of p.widgets || []) if (w.type === 'shortcuts') return w.options?.columns || 4;
-  return 4;
-}
 
 function optVal(w, o) { return w.options && o.key in w.options ? w.options[o.key] : o.default; }
 /** An option with showWhen {key, not} is drawn only while the widget's option <key> is not set to <not> (an option that does nothing while another is off is not offered). */
@@ -1219,7 +1120,7 @@ function getStackItems(w, o) {
       } catch (_) {}
     }
     return { id: `card-${index}`, type: str, enabled: true, options: {} };
-  }).filter((x) => x && x.type && !['stack', 'command'].includes(x.type));
+  }).filter((x) => x && x.type && x.type !== 'stack');
 }
 
 /** One-line description of a widget for the canvas. */
@@ -1231,12 +1132,9 @@ function widgetSummary(w) {
     case 'chart': return (o.metrics || ['cpu']).join(' + ');
     case 'forecast': return choice('mode');
     case 'push': return 'key: ' + (o.key || '?');
-    case 'command': return o.title || 'Command';
     case 'note': return (o.text || '').split('\n')[0];
     case 'label': return o.text || '';
     case 'countdown': return o.label || '';
-    case 'button': return cfg.shortcuts.find((s) => s.id === o.id)?.label || 'pick a shortcut';
-    case 'shortcuts': return (o.ids?.length ? `${o.ids.length} keys` : 'all keys') + ` · ${o.columns || 4} columns`;
     case 'worldclock': return (o.zones || d.options[0]?.default || []).map((z) => z.split('=')[0]).join(' · ');
     case 'quotas': case 'codexbar': return (o.providers || ['claude', 'codex', 'antigravity']).join(' + ');
     case 'quotaring': return `${choice('provider')} · ${choice('limit').split(' (')[0]}`;
@@ -1458,7 +1356,7 @@ function renderCanvas() {
         e.preventDefault();
         el.classList.remove('stack-canvas-over');
         const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-        if (type && !['stack', 'command'].includes(type) && !type.startsWith('stack:') && catalog.widgets.some((cw) => cw.type === type)) {
+        if (type && type !== 'stack' && !type.startsWith('stack:') && catalog.widgets.some((cw) => cw.type === type)) {
           const list = getStackItems(w, { key: 'widgets', default: d.options?.find((x) => x.key === 'widgets')?.default });
           if (list.length >= 12) { toast(t('s.js.stackFull'), true); return; }
           list.push({ id: `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, type, enabled: true, options: defaultOptions(type) });
@@ -1592,7 +1490,7 @@ function renderStackWidgetsOption(w, o) {
 
   const add = (type, atIdx = -1) => {
     if (items.length >= 12) { toast(t('s.js.stackFull'), true); return; }
-    if (!type || ['stack', 'command'].includes(type) || !catalog.widgets.some((cw) => cw.type === type)) return;
+    if (!type || type === 'stack' || !catalog.widgets.some((cw) => cw.type === type)) return;
     const newItem = { id: `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, type, enabled: true, options: defaultOptions(type) };
     let newIdx;
     if (atIdx >= 0 && atIdx <= items.length) {
@@ -1651,7 +1549,7 @@ function renderStackWidgetsOption(w, o) {
           return;
         }
         const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-        if (type && !['stack', 'command'].includes(type) && !type.startsWith('stack:')) {
+        if (type && type !== 'stack' && !type.startsWith('stack:')) {
           add(type, i);
         }
       }
@@ -1717,7 +1615,7 @@ function renderStackWidgetsOption(w, o) {
         return;
       }
       const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-      if (type && !['stack', 'command'].includes(type) && !type.startsWith('stack:')) {
+      if (type && type !== 'stack' && !type.startsWith('stack:')) {
         add(type);
       }
     }
@@ -1728,7 +1626,7 @@ function renderStackWidgetsOption(w, o) {
 
   const quickSelect = h('div', { class: 'row', style: { gap: '6px', marginTop: '8px' } },
     h('select', { id: 'stackQuickAdd', style: { flex: '1' } },
-      ...catalog.widgets.filter((cw) => !['stack', 'command'].includes(cw.type)).map((cw) => h('option', { value: cw.type }, plain(`${cw.icon} ${cw.name}`)))
+      ...catalog.widgets.filter((cw) => cw.type !== 'stack').map((cw) => h('option', { value: cw.type }, plain(`${cw.icon} ${cw.name}`)))
     ),
     h('button', { type: 'button', class: 'btn sm', onclick: () => {
       const sel = $('stackQuickAdd');
@@ -1747,7 +1645,7 @@ function renderStackWidgetsOption(w, o) {
         if (e.target.closest('.stack-row, .stack-sub-config')) return;
         e.preventDefault();
         const type = e.dataTransfer.getData('application/phonebox-widget-type') || e.dataTransfer.getData('text/plain');
-        if (type && !['stack', 'command'].includes(type) && !type.startsWith('stack:')) add(type);
+        if (type && type !== 'stack' && !type.startsWith('stack:')) add(type);
       }
     }, ...rowsAndConfigs),
     dropzone,
@@ -1846,9 +1744,7 @@ function optionField(w, o, onValChange) {
     case 'number':
       return field(h('input', { type: 'number', min: o.min, max: o.max, step: o.step, value: v ?? '', style: { maxWidth: '140px' }, onchange: (e) => set(o.key, e.target.value === '' ? o.default : Number(e.target.value)) }));
     case 'textarea':
-      return field(h('textarea', { rows: /^command/.test(o.key) ? 3 : 4, style: /^command/.test(o.key) ? { fontFamily: 'Consolas, monospace', fontSize: '12.5px' } : {}, oninput: (e) => set(o.key, e.target.value) }, v ?? ''),
-        o.key === 'command' ? h('span', { class: 'hint' }, t('s.js.runHint'))
-          : o.key === 'commandUnix' ? h('span', { class: 'hint' }, t('s.js.commandUnixHint')) : null);
+      return field(h('textarea', { rows: 4, oninput: (e) => set(o.key, e.target.value) }, v ?? ''));
     case 'lines':
       return field(h('textarea', { rows: 5, oninput: (e) => set(o.key, e.target.value.split('\n').map((x) => x.trim()).filter(Boolean)) }, (Array.isArray(v) ? v : []).join('\n')));
     case 'color':
@@ -1857,17 +1753,7 @@ function optionField(w, o, onValChange) {
     case 'camera':
       return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.camera.pick')),
         ...(cfg.cameras?.sources || []).map((c) => h('option', { value: c.id, selected: c.id === v }, c.name || (c.url || '').replace(/\/\/[^/@]*@/, '//')))));
-    case 'shortcut':
-      return field(h('select', { onchange: (e) => set(o.key, e.target.value) }, h('option', { value: '' }, t('s.js.firstShortcut')),
-        ...cfg.shortcuts.map((s) => h('option', { value: s.id, selected: s.id === v }, plain(`${s.icon} ${s.label}`) || s.id))),
-        h('span', { class: 'hint' }, t('s.js.newShortcutsId')));
     case 'ha-items': return haItemsEditor(w, o, set);
-    case 'shortcuts': {
-      const cur = () => { const x = optVal(w, o); return Array.isArray(x) ? x : []; };
-      return field(h('div', { class: 'opts' }, ...cfg.shortcuts.map((s) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: cur().includes(s.id), onchange: (e) => {
-        set(o.key, cfg.shortcuts.map((x) => x.id).filter((id) => (id === s.id ? e.target.checked : cur().includes(id))));
-      } }), rich(`${s.icon} ${s.label || s.id}`)))));
-    }
     default:
       return field(h('input', { type: 'text', value: v ?? '', oninput: (e) => set(o.key, e.target.value) }),
         w.type === 'push' && o.key === 'key' ? h('span', { class: 'hint' }, t('s.js.pushHint')) : null);
@@ -2079,11 +1965,11 @@ function pickFile() {
     document.body.appendChild(input); input.click();
   });
 }
-// A page file: { "phonebox": "pages", "version": 1, "pages": [...] }. Command widgets keep their commands.
+// A page file: { "phonebox": "pages", "version": 1, "pages": [...] }. Custom HTML widgets keep their HTML.
 function exportPages(pages, name) {
-  const withCommands = pages.some((p) => (p.widgets || []).some((w) => w.type === 'command' || w.type === 'html'));
+  const withHtml = pages.some((p) => (p.widgets || []).some((w) => w.type === 'html'));
   download(name, { phonebox: 'pages', version: 1, exported: new Date().toISOString(), pages: JSON.parse(JSON.stringify(pages)) });
-  toast(withCommands ? 'Exported — it includes command / custom HTML widgets: check them before sharing' : 'Exported');
+  toast(withHtml ? 'Exported — it includes custom HTML widgets: check them before sharing' : 'Exported');
 }
 async function importPages() {
   const text = await pickFile();
@@ -2096,16 +1982,13 @@ async function importPages() {
   const known = new Set(catalog.widgets.map((w) => w.type));
   const clean = fitPages(pages.map((x) => ({ ...JSON.parse(JSON.stringify(x)), id: '', widgets: x.widgets.filter((w) => known.has(w.type)).map((w) => ({ ...w, id: '' })) })));
   const dropped = pages.reduce((n, x) => n + x.widgets.length, 0) - clean.reduce((n, x) => n + x.widgets.length, 0);
-  // Command widgets run their command on this computer once saved, and custom HTML can run shortcuts: a file from
-  // someone else must not bring those in unseen. Show them and keep them only with an explicit yes.
-  const risky = clean.flatMap((p) => p.widgets.filter((w) => (w.type === 'command' && (w.options?.command || w.options?.commandUnix)) || (w.type === 'html' && w.options?.html)));
+  // Custom HTML runs its own script in the panel: a file from someone else must not bring it in unseen. Show it and
+  // keep it only with an explicit yes.
+  const risky = clean.flatMap((p) => p.widgets.filter((w) => w.type === 'html' && w.options?.html));
   if (risky.length) {
-    const cut = (label, v) => { const t = String(v ?? ''); return t ? `• ${label}: ${t.length > 200 ? t.slice(0, 200) + ` … (${t.length} characters in all)` : t}` : null; };
-    const list = risky.flatMap((w) => w.type === 'command'
-      ? [cut('Command (Windows)', w.options.command), cut('Command (Linux / macOS)', w.options.commandUnix)].filter(Boolean)
-      : [`• Custom HTML (${String(w.options.html).length} characters)`]).join('\n');
+    const list = risky.map((w) => `• Custom HTML (${String(w.options.html).length} characters)`).join('\n');
     const keep = confirm(`This file contains ${risky.length} widget(s) that run code on this computer:\n\n${list}\n\nOK = import them as they are (only if you trust the file)\nCancel = import them empty`);
-    if (!keep) for (const w of risky) { w.options = { ...w.options }; delete w.options.command; delete w.options.commandUnix; if (w.type === 'html') w.options.html = ''; }
+    if (!keep) for (const w of risky) w.options = { ...w.options, html: '' };
   }
   const replace = cfg.pages.length && confirm(`Import ${clean.length} page(s).\n\nOK = replace all ${cfg.pages.length} current pages\nCancel = add them after the current pages`);
   if (replace) cfg.pages = clean; else cfg.pages.push(...clean);
@@ -2205,33 +2088,6 @@ $('haTest').onclick = async () => {
     const r = await (await fetch('/api/ha/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.homeAssistant || {}) })).json();
     $('haState').textContent = r.result;
   } catch (_) { $('haState').textContent = 'Could not check'; }
-};
-// ---------------------------------------------------------------- app console
-const consoleKeysText = (p) => (p.keys || []).map((k) => (k.label && k.label !== k.keys ? `${k.label} = ${k.keys}` : k.keys)).join('\n');
-const consoleKeysParse = (text) => text.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
-  const at = line.lastIndexOf('=');
-  // "minus" and "equals" name those keys, so "=" separates the label; nothing after it ("ctrl+=") is kept as keys,
-  // so saving says what is wrong instead of dropping the line. More than 12 keys is refused on save too.
-  return at > 0 && line.slice(at + 1).trim() ? { label: line.slice(0, at).trim(), keys: line.slice(at + 1).trim() } : { label: '', keys: line };
-});
-function renderConsole() {
-  cfg.console ??= { profiles: [] };
-  cfg.console.profiles ??= [];
-  const field = (p, key, placeholder) => h('input', { type: 'text', value: p[key] || '', placeholder, spellcheck: 'false',
-    oninput: (e) => { p[key] = e.target.value.trim() || null; changed(); } });
-  $('consoleList').replaceChildren(...cfg.console.profiles.map((p, i) => h('div', { class: 'console-row' },
-    h('input', { type: 'text', value: p.label || '', maxlength: '40', placeholder: 'Name, e.g. Photoshop', oninput: (e) => { p.label = e.target.value; changed(); } }),
-    h('input', { type: 'text', value: p.apps || '', placeholder: 'Apps, e.g. photoshop, gimp-2.10', spellcheck: 'false', oninput: (e) => { p.apps = e.target.value; changed(); } }),
-    h('textarea', { rows: '4', spellcheck: 'false', placeholder: 'Undo = ctrl+z\nRedo = ctrl+shift+z\nBrush = b',
-      oninput: (e) => { p.keys = consoleKeysParse(e.target.value); changed(); } }, consoleKeysText(p)),
-    h('div', { class: 'console-dial' },
-      field(p, 'dialLeft', 'Dial left, e.g. ['), field(p, 'dialRight', 'Dial right, e.g. ]'), field(p, 'dialPress', 'Dial press, e.g. ctrl+0')),
-    h('button', { class: 'btn sm danger', onclick: () => { cfg.console.profiles.splice(i, 1); renderConsole(); changed(); } }, t('s.js.remove')))));
-}
-$('consoleAdd').onclick = () => {
-  cfg.console ??= { profiles: [] };
-  cfg.console.profiles.push({ label: '', apps: '', keys: [] });
-  renderConsole(); changed();
 };
 // ---------------------------------------------------------------- network adapters (Settings › General › Ping)
 async function renderNetAdapters() {
@@ -2471,7 +2327,7 @@ const TRIGGERS = {
   'ping-high': { label: 'the network is slow', value: 'ms (or unreachable)', def: 150 },
   always: { label: 'always (use the days and hours below)' },
 };
-const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value', shortcut: 'run a shortcut' };
+const ACTIONS = { goto: 'show the page', notify: 'show a notification', push: 'push a value' };
 const DAYS = [['mon', 'Mo'], ['tue', 'Tu'], ['wed', 'We'], ['thu', 'Th'], ['fri', 'Fr'], ['sat', 'Sa'], ['sun', 'Su']];
 const PRIORITIES = { 2: 'low', 5: 'normal', 8: 'high' };
 const pageId = (...ids) => ids.find((id) => cfg.pages.some((p) => p.id === id)) || cfg.pages[0]?.id || '';
@@ -2492,7 +2348,7 @@ const RULE_PRESETS = [
 let activeRules = [];
 
 function renderRules() {
-  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.console ??= { profiles: [] }; cfg.phones ??= []; cfg.homeAssistant ??= {};
+  cfg.rules ??= []; cfg.calendars ??= []; cfg.feeds ??= []; cfg.cameras ??= { ffmpeg: '', sources: [] }; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.phones ??= []; cfg.homeAssistant ??= {};
   $('rulePresets').replaceChildren(...RULE_PRESETS.map(([label, make]) => h('button', { class: 'btn', onclick: () => {
     cfg.rules.push({ id: '', enabled: true, ...make() });
     renderRules(); changed();
@@ -2538,8 +2394,6 @@ function ruleCard(r, i) {
   if (r.then === 'notify') act.push(text('text', t('s.r.textPlaceholder'), 'grow'),
     sel(r.level || 'info', { info: 'info', ok: 'ok', warn: 'warning', error: 'error' }, (v) => set('level', v)));
   if (r.then === 'push') act.push(text('key', t('s.r.keyPlaceholder')), text('pushValue', t('s.r.valuePlaceholder'), 'grow'));
-  if (r.then === 'shortcut') act.push(h('select', { onchange: (e) => set('shortcut', e.target.value || null) }, h('option', { value: '' }, t('s.r.pickShortcut')),
-    ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === r.shortcut }, plain(`${s.icon || ''} ${s.label}`) || s.id))));
 
   const num = (key, min, max, width = 64) => h('input', { type: 'number', min, max, style: `width:${width}px`, value: r[key] ?? '', placeholder: '0',
     oninput: (e) => set(key, e.target.value === '' ? (key === 'countdownSec' ? null : 0) : +e.target.value) });
@@ -2573,7 +2427,7 @@ function ruleCard(r, i) {
     h('div', { class: 'line' }, h('b', {}, t('s.r.when')), sel(r.when, TRIGGERS, (v) => { r.match = null; r.value = null; set('when', v, true); }), ...cond),
     h('div', { class: 'line' }, h('b', {}, t('s.r.then')), sel(r.then, ACTIONS, (v) => { if (v === 'goto' && !cfg.pages.some((p) => p.id === r.page)) r.page = cfg.pages[0]?.id || null; set('then', v, true); }), ...act),
     r.then !== 'notify' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: r.whileActive !== false, onchange: (e) => set('whileActive', e.target.checked) }),
-      r.then === 'goto' ? t('s.r.onlyWhileGoto') : r.then === 'shortcut' ? t('s.r.onlyWhileShortcut') : t('s.r.onlyWhileValue')) : null,
+      r.then === 'goto' ? t('s.r.onlyWhileGoto') : t('s.r.onlyWhileValue')) : null,
     opts);
 }
 
@@ -2607,35 +2461,6 @@ $('rulesPauseBtn').onclick = async () => {
   await fetch(`/api/rules/pause?minutes=${rulesPausedUntil ? 0 : 60}`, { method: 'POST' });
   pollRules();
 };
-
-// ---------------------------------------------------------------- battery care
-function renderCharge() {
-  cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
-  const sc = cfg.charge.method === 'shortcuts';
-  $('chargeHa').hidden = sc; $('chargeOn').hidden = $('chargeOff').hidden = !sc;
-  for (const [id, key] of [['chargeOnSel', 'onShortcut'], ['chargeOffSel', 'offShortcut']])
-    $(id).replaceChildren(h('option', { value: '' }, t('s.r.pickShortcut')), ...(cfg.shortcuts || []).map((s) => h('option', { value: s.id, selected: s.id === cfg.charge[key] }, plain(`${s.icon || ''} ${s.label}`) || s.id)));
-}
-async function chargeTest(action) {
-  if (JSON.stringify(cfg) !== saved) { toast(t('s.js.saveThenTest'), true); return; }
-  const r = await fetch(`/api/charge/test?action=${action}`, { method: 'POST' });
-  const j = await r.json().catch(() => ({}));
-  toast(r.ok ? `Power ${action}` : j.error || 'Could not switch', !r.ok);
-  pollCharge();
-}
-async function pollCharge() {
-  if (!$('general').classList.contains('on')) return;
-  try {
-    const s = await (await fetch('/api/charge')).json();
-    const p = s.phone;
-    const age = p ? Math.round((Date.now() - p.at) / 1000) : null;
-    $('chargeState').replaceChildren(...(p
-      ? [`Phone: ${p.level}% `, ...(p.plugged ? [icon('zap', 'm'), 'charging'] : ['on battery']), ` (${age < 90 ? 'just now' : Math.round(age / 60) + ' min ago'})`]
-      : [tc('No report from the phone yet')]),
-      s.power ? ` · power ${s.power}` : '', s.error ? ` · ${s.error}` : '');
-  } catch (_) {}
-}
-setInterval(pollCharge, 5000);
 
 // ---------------------------------------------------------------- webhooks
 function renderWebhooks(lan) {
@@ -2696,230 +2521,6 @@ function dragSort(el, arr, done) {
     arr.splice(to, 0, x);
     done(from, to);
   });
-}
-
-// ---------------------------------------------------------------- shortcuts
-function renderDeck() {
-  const deck = $('deck');
-  deck.style.setProperty('--cols', deckCols());
-  deck.textContent = '';
-  cfg.shortcuts.forEach((s, i) => {
-    const k = h('div', { class: 'key' + (i === selKey ? ' sel' : ''), draggable: 'true', 'data-i': i, style: { '--k': s.color || '#6b7280' },
-      onclick: () => { selKey = i; renderDeck(); } },
-      h('span', { class: 'ki' }, rich(s.icon || '•')), h('span', { class: 'kl' }, s.label || '(untitled)'));
-    k.style.setProperty('--k', s.color || '#6b7280');
-    dragSort(k, cfg.shortcuts, (from, to) => { selKey = to; renderDeck(); changed(); });
-    deck.append(k);
-  });
-  deck.append(h('div', { class: 'key add', onclick: addShortcut }, h('span', { class: 'ki' }, icon('plus')), h('span', { class: 'kl' }, t('s.k.newShortcut'))));
-  renderEditor();
-}
-
-function addShortcut() {
-  cfg.shortcuts.push({ id: '', label: t('s.k.newShortcut'), icon: '⭐', color: '#0ea5e9', cmd: '' });
-  selKey = cfg.shortcuts.length - 1;
-  renderDeck();
-  changed();
-  setTimeout(() => document.querySelector('#editor input')?.select(), 0);
-}
-
-function renderEditor() {
-  const ed = $('editor');
-  ed.textContent = '';
-  const s = cfg.shortcuts[selKey];
-  if (!s) { ed.append(h('p', { class: 'lead', style: { margin: 0 } }, t('s.k.noShortcuts'))); return; }
-
-  const upd = (key, val, rerender = true) => { s[key] = val; if (rerender) renderDeckKeysOnly(); changed(); };
-  const text = (key, label, ph = '', hint = '') => h('div', { class: 'field' }, h('label', {}, label),
-    h('input', { type: 'text', value: s[key] ?? '', placeholder: ph, oninput: (e) => upd(key, e.target.value) }),
-    hint ? h('span', { class: 'hint' }, hint) : null);
-
-  const iconIn = h('input', { type: 'text', class: 'icon-input', value: s.icon || '', maxlength: 8, oninput: (e) => upd('icon', e.target.value) });
-  const colorIn = h('input', { type: 'color', value: s.color || '#6b7280', oninput: (e) => { upd('color', e.target.value); markSwatch(); } });
-  const sw = h('div', { class: 'swatches' }, ...COLORS.map((c) => h('button', { title: c, style: { background: c }, 'data-c': c,
-    onclick: () => { colorIn.value = c; upd('color', c); markSwatch(); } })));
-  const markSwatch = () => sw.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === s.color));
-  markSwatch();
-  const cmdIn = h('input', { type: 'text', value: s.cmd || '', placeholder: t('s.k.cmdPlaceholder'), oninput: (e) => upd('cmd', e.target.value, false) });
-  const preset = h('select', { onchange: (e) => { if (e.target.value) { cmdIn.value = e.target.value; upd('cmd', e.target.value, false); cmdIn.focus(); } e.target.value = ''; } },
-    ...presets().map(([v, l]) => h('option', { value: v }, tl(l))));
-
-  ed.append(
-    h('div', { class: 'row', style: { justifyContent: 'space-between', marginBottom: '12px' } },
-      h('h3', { style: { margin: 0 } }, t('s.k.edit')),
-      h('div', { class: 'row', style: { gap: '6px' } },
-        h('button', { class: 'btn sm', onclick: () => moveKey(-1), disabled: selKey === 0 }, t('s.js.earlier')),
-        h('button', { class: 'btn sm', onclick: () => moveKey(1), disabled: selKey === cfg.shortcuts.length - 1 }, t('s.js.later')),
-        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), t('s.test')),
-        h('button', { class: 'btn sm danger', onclick: delKey }, t('s.r.del')))),
-    h('div', { class: 'grid2' },
-      h('div', {},
-        text('label', t('s.k.label'), t('s.k.labelHint')),
-        h('div', { class: 'field' }, h('label', {}, t('s.z.iconEmoji')), h('div', { class: 'row' }, iconIn),
-          h('div', { class: 'emojis' }, ...EMOJIS.map((em) => h('button', { 'data-emoji': em, title: em, 'aria-label': em, onclick: () => { iconIn.value = em; upd('icon', em); } }, rich(em))))),
-        customIconField(s),
-        h('div', { class: 'field' }, h('label', {}, t('s.z.colour')), h('div', { class: 'row' }, colorIn), sw)),
-      h('div', {}, ...actionFields(s, upd, text, cmdIn, preset),
-        h('div', { class: 'field' }, h('label', {}, tc('Id')), s.id ? h('code', {}, s.id) : h('span', { class: 'hint' }, t('s.k.genOnSave'))))));
-}
-
-// A custom icon image (PNG, WEBP or SVG) overrides both the emoji and the auto-detected program icon on the phone.
-// Needs a saved shortcut id, so a brand new one must be saved once before it can be uploaded.
-function customIconField(s) {
-  if (!s.id) return h('div', { class: 'field' }, h('label', {}, t('s.k.customIcon')),
-    h('span', { class: 'hint' }, t('s.k.customIconSaveFirst')));
-
-  const preview = h('img', { class: 'custom-icon-preview', alt: '', onerror: () => (preview.style.visibility = 'hidden'), onload: () => (preview.style.visibility = 'visible') });
-  // fetch(), not <img src>: an <img> whose request 404s (most shortcuts have no icon at all) logs a console error;
-  // fetch()'s own failure does not, and a plain 404 is not an error here — there may be nothing to show.
-  let previewUrl = null;
-  let refreshSeq = 0;
-  const refresh = async () => {
-    // guards against two overlapping calls (load, then an upload before it settles): a superseded call must not
-    // revoke the newer call's URL out from under the <img>, or overwrite it with its own (stale) response
-    const mine = ++refreshSeq;
-    preview.style.visibility = 'hidden';
-    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
-    try {
-      const res = await fetch(`/api/shortcuts/icon?id=${encodeURIComponent(s.id)}&v=${Date.now()}`);
-      if (!res.ok || mine !== refreshSeq) return;
-      const blob = await res.blob();
-      if (mine !== refreshSeq) return;
-      previewUrl = URL.createObjectURL(blob);
-      preview.src = previewUrl;
-    } catch (_) {}
-  };
-  refresh();
-  const file = h('input', { type: 'file', accept: '.png,.webp,.svg,image/png,image/webp,image/svg+xml', style: { display: 'none' },
-    onchange: async (e) => {
-      const f = e.target.files[0];
-      e.target.value = '';
-      if (!f) return;
-      try {
-        const headers = { 'Content-Type': f.type };
-        if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
-        const res = await fetch(`/api/settings/shortcut-icon?id=${encodeURIComponent(s.id)}`, { method: 'POST', headers, body: f });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(j.error || t('s.k.uploadFailed'));
-        if (j.version) cfgVersion = j.version;
-        toast(t('s.k.iconUploaded'));
-      } catch (err) { toast(err.message, true); }
-      refresh();
-    } });
-  return h('div', { class: 'field' }, h('label', {}, t('s.k.customIcon')),
-    h('div', { class: 'row', style: { alignItems: 'center', gap: '8px' } },
-      preview, file,
-      h('button', { class: 'btn sm', type: 'button', onclick: () => file.click() }, t('s.k.upload') + '…'),
-      h('button', { class: 'btn sm', type: 'button', onclick: async () => {
-        try {
-          const headers = {};
-          if (cfgVersion) headers['X-Config-Version'] = cfgVersion;
-          const res = await fetch(`/api/settings/shortcut-icon?id=${encodeURIComponent(s.id)}`, { method: 'DELETE', headers });
-          const j = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(j.error || t('s.k.removeFailed'));
-          if (j.version) cfgVersion = j.version;
-          toast(t('s.k.iconRemoved'));
-        } catch (err) { toast(err.message, true); }
-        refresh();
-      } }, t('s.k.remove'))),
-    h('span', { class: 'hint' }, t('s.k.customIconHint')));
-}
-
-// What a key does: run a program, press keys, type text or run a macro; plus the on / off (toggle) options.
-const KINDS = () => ({ run: t('s.k.runProgram'), keys: t('s.k.pressKeys'), text: t('s.k.typeText'), macro: t('s.k.runMacro'), cycle: t('s.k.cycle') });
-const kindOf = (s) => (s.cmd === 'builtin:keys' ? 'keys' : s.cmd === 'builtin:text' ? 'text' : s.cmd === 'builtin:macro' ? 'macro' : s.cmd === 'builtin:cycle' ? 'cycle' : 'run');
-function actionFields(s, upd, text, cmdIn, preset) {
-  const kind = kindOf(s);
-  const area = (value, ph, rows, oninput) => h('textarea', { rows, placeholder: ph, spellcheck: 'false', oninput }, value);
-  const fields = [h('div', { class: 'field' }, h('label', {}, t('s.k.whatItDoes')),
-    h('select', { onchange: (e) => {
-      const k = e.target.value;
-      s.cmd = k === 'run' ? '' : 'builtin:' + k;
-      if (k !== 'macro') delete s.steps;
-      if (k !== 'cycle') delete s.cycle; else s.cycle ??= [];
-      if (k === 'cycle') s.toggle = false;
-      s.args = null; s.cwd = null;
-      changed(); renderEditor();
-    } }, ...Object.entries(KINDS()).map(([k, l]) => h('option', { value: k, selected: k === kind }, l))))];
-  if (kind === 'run') {
-    fields.push(
-      h('div', { class: 'field' }, h('label', {}, t('s.k.command')), cmdIn, preset,
-        h('span', { class: 'hint' }, osName === 'windows' ? t('s.js.commandHintWindows') : t('s.js.commandHint'))),
-      text('args', t('s.k.arguments'), osName === 'windows' ? t('s.k.argsPlaceholderWindows') : t('s.k.argsPlaceholderUnix')),
-      text('cwd', t('s.k.workingFolder'), t('s.k.optional')));
-  } else if (kind === 'keys') {
-    fields.push(text('args', t('s.k.keys'), 'e.g. ctrl+shift+m', tc('Combine with +, several in a row with commas. Ctrl, Shift, Alt, Win (Cmd on a Mac), letters, digits, F1–F24, enter, tab, esc, space, arrows, home, end, pageup, pagedown, delete, numpad0–numpad9, numpadenter, numpadadd, numpadsubtract, numpadmultiply, numpaddivide, numpaddecimal, playpause, next, prev, mute, volumeup, volumedown.')));
-  } else if (kind === 'text') {
-    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.textToType')), area(s.args || '', tc('Typed into whatever window has the focus'), 3, (e) => upd('args', e.target.value, false)),
-      h('span', { class: 'hint' }, t('s.k.textHint')), h('span', { class: 'hint' }, t('s.k.clipboardWarn'))));
-  } else if (kind === 'cycle') {
-    // each tap runs the next key of the list; the key on the phone shows the one that ran last
-    const choices = cfg.shortcuts.filter((o) => o !== s && o.id);
-    const rows = (s.cycle ??= []).map((id, i) => h('div', { class: 'row', style: { alignItems: 'center', gap: '8px', marginBottom: '6px' } },
-      h('span', { class: 'hint' }, (i + 1) + '.'),
-      h('select', { onchange: (e) => { s.cycle[i] = e.target.value; changed(); } },
-        ...choices.map((o) => h('option', { value: o.id, selected: o.id === id }, o.label || o.id))),
-      h('button', { class: 'btn sm', type: 'button', 'aria-label': t('s.k.remove'), onclick: () => { s.cycle.splice(i, 1); changed(); renderEditor(); } }, '×')));
-    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.cycleKeys')), ...rows,
-      h('button', { class: 'btn sm', type: 'button', disabled: !choices.length || s.cycle.length >= 20, onclick: () => { s.cycle.push(choices[0].id); changed(); renderEditor(); } }, t('s.k.cycleAdd')),
-      h('span', { class: 'hint' }, t('s.k.cycleHint')),
-      ...(s.cycle.length < 2 ? [h('span', { class: 'hint' }, t('s.k.cycleFew'))] : [])));
-  } else {
-    fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.steps')),
-      area((s.steps || []).join('\n'), 'keys:ctrl+c\nwait:200\ntext:Hello\nshortcut:terminal', 6, (e) => upd('steps', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean), false)),
-      h('span', { class: 'hint' }, t('s.k.macroHint')), h('span', { class: 'hint' }, t('s.k.clipboardWarn'))));
-  }
-  if (osName === 'macos' && kind !== 'run' && kind !== 'cycle') fields.push(h('p', { class: 'hint' }, t('s.k.macosPermission')));
-  if (osName === 'linux' && kind !== 'run' && kind !== 'cycle') fields.push(h('p', { class: 'hint' }, t('s.k.linuxNeedsXdotool')));
-
-  const isMute = s.cmd === 'builtin:mute';
-  if (kind !== 'cycle') fields.push(h('label', { class: 'check', style: { marginTop: '4px' } },
-    h('input', { type: 'checkbox', checked: !!s.toggle || isMute, disabled: isMute, onchange: (e) => { s.toggle = e.target.checked; changed(); renderEditor(); } }),
-    isMute ? t('s.k.toggleLabelMute') : t('s.k.toggleLabel')));
-  if (s.toggle && !isMute) {
-    fields.push(text('stateKey', t('s.k.stateKey'), 'e.g. teams-muted',
-      tc('A value pushed to /api/push/<key> (true / on / 1 = on). Without it the phone shows the state after each tap.')));
-    if (kind === 'run') fields.push(text('offCmd', t('s.cd.offCmdPlaceholder'), t('s.cd.offCmdHint')), text('offArgs', t('s.k.offArgs'), ''));
-  }
-  // holding the key on the phone runs another key (a key that was never saved has no id to point at yet)
-  const others = cfg.shortcuts.filter((o) => o !== s && o.id);
-  fields.push(h('div', { class: 'field' }, h('label', {}, t('s.k.longPress')),
-    h('select', { onchange: (e) => { s.longPress = e.target.value || null; changed(); } },
-      h('option', { value: '' }, t('s.k.longPressNone')),
-      ...others.map((o) => h('option', { value: o.id, selected: o.id === s.longPress }, o.label || o.id))),
-    h('span', { class: 'hint' }, t('s.k.longPressHint'))));
-  return fields;
-}
-
-function renderDeckKeysOnly() {
-  const keys = $('deck').querySelectorAll('.key:not(.add)');
-  cfg.shortcuts.forEach((s, i) => {
-    const k = keys[i];
-    if (!k) return;
-    k.style.setProperty('--k', s.color || '#6b7280');
-    k.querySelector('.ki').replaceChildren(rich(s.icon || '•'));
-    k.querySelector('.kl').textContent = s.label || '(untitled)';
-  });
-}
-function moveKey(d) {
-  const j = selKey + d;
-  [cfg.shortcuts[selKey], cfg.shortcuts[j]] = [cfg.shortcuts[j], cfg.shortcuts[selKey]];
-  selKey = j; renderDeck(); changed();
-}
-function delKey() {
-  const s = cfg.shortcuts[selKey];
-  if (!confirm(`Delete "${s.label}"?`)) return;
-  cfg.shortcuts.splice(selKey, 1);
-  // a key that cycles through the deleted one no longer lists it (the select would otherwise show another key for it)
-  for (const o of cfg.shortcuts) if (Array.isArray(o.cycle)) o.cycle = o.cycle.filter((id) => id !== s.id);
-  selKey = Math.max(0, selKey - 1);
-  renderDeck(); changed();
-}
-async function testKey() {
-  const s = cfg.shortcuts[selKey];
-  const r = await fetch('/api/shortcuts/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) });
-  const j = await r.json().catch(() => ({}));
-  r.ok ? toast(`Ran "${s.label}"`) : toast(j.error || t('s.js.couldNotRun'), true);
 }
 
 // ---------------------------------------------------------------- general
@@ -3046,7 +2647,6 @@ function applyLanguageUi(langPref) {
   if ($('displayLangSel')) $('displayLangSel').value = I18n.getPref();
   I18n.applyDom();
   updateStageText();
-  $('chargeRangeAnd').textContent = tc('and');
   if ($('advancedVersionLabel')) $('advancedVersionLabel').textContent = tc('Version');
   document.querySelector('[data-bind="adbPath"]').placeholder = tc('auto-detected');
   fitLeads(); // translated intros can be shorter or longer than the old text
@@ -3064,13 +2664,10 @@ function bindLanguage() {
     // every section holds localized strings: rebuild them all, not only the pages editor
     renderAppearanceSettings();
     renderPages();
-    renderDeck();
     renderRules();
     renderCalendars();
     renderFeeds();
     renderCameras();
-    renderConsole();
-    renderCharge();
     if (typeof queuePreview === 'function') queuePreview();
     changed();
   };
@@ -3096,7 +2693,6 @@ function bindForm() {
       if (p === 'adbPath' && val === '') val = null;
       setPath(cfg, p, val);
       $('nbv').textContent = Math.round(cfg.night.brightness * 100) + '%';
-      if (p === 'charge.method') renderCharge();
       if (p === 'lan.enabled') renderLanStatus();
       if (p === 'photos.source' || p === 'photos.immichUrl' || p === 'photos.immichKey') renderPhotoSource();
       changed();
@@ -3212,11 +2808,10 @@ async function loadInfo() {
 // The form reads every section it binds and renders, so a config without one — an older export, or a
 // hand-trimmed paste in Apply JSON — gets the same defaults a fresh load does before anything renders.
 function fillDefaults() {
-  cfg.pages = fitPages(cfg.pages); cfg.shortcuts ??= []; cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
+  cfg.pages = fitPages(cfg.pages); cfg.rules ??= []; cfg.display ??= {}; cfg.night = { enabled: true, start: '00:30', end: '07:30', brightness: 0.02, ...cfg.night }; cfg.weather ??= {}; cfg.weather.unit ??= 'celsius'; cfg.weather.model ??= ''; cfg.photos ??= { source: 'folder', folder: '', subfolders: true, immichUrl: '', immichKey: '', immichAlbum: '', immichAlbumName: '' }; cfg.lan ??= { enabled: false, port: 8766 }; cfg.updates ??= { auto: false, repo: 'kinarovK/phonebox' }; cfg.claude ??= { phoneApprovals: true, timeoutSec: 90, onlyWhenAway: false, shareSessionTitles: false, shareConversation: false }; cfg.opencode ??= { phoneApprovals: false, timeoutSec: 90, onlyWhenAway: false, alwaysCountdownSec: 10, watchWsl: false, shareSessionTitles: false, sessions: false };
   cfg.codexBar ??= { providers: ['claude', 'codex', 'antigravity'], rotate: true, pageSize: 2, rotateInterval: 8 };
   for (const [k, v] of Object.entries({ language: 'auto', hour12: false, idleReturnSec: 90, switchCountdownSec: 3, touchGraceSec: 20, minDwellSec: 15, holdMaxMin: 30, keepAwake: true, openOnConnect: true,
     showSeconds: true, vibrate: true, finishToast: true, volumeKeys: true, artTint: true, nightWhenUnreachable: false, unreachableNightDelayMin: 5, proximityWake: true, orientation: 'landscape', theme: 'default', accent: '#2dd4bf' })) cfg.display[k] ??= v;
-  cfg.charge ??= { enabled: false, min: 50, max: 80, method: 'ha' };
 }
 
 async function load() {
@@ -3229,7 +2824,7 @@ async function load() {
   // in English that has display.language = "vi" would otherwise render every editor in English and never rebuild them
   if (window.PhoneBoxI18n) applyLanguageUi(cfg.display?.language || 'auto');
   else localizeCatalog();
-  renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderCharge(); bindForm();
+  renderPages(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderNetAdapters(); bindForm();
   // the editors fill in the sections and fields they own (feeds, cameras, an action's "enabled", ...), so the
   // baseline is taken after they ran: otherwise a freshly loaded page already counts as unsaved, and Revert can never
   // get back to a clean state
@@ -3268,7 +2863,7 @@ async function doSave() {
 }
 
 $('save').onclick = save;
-$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); };
+$('revert').onclick = () => { cfg = JSON.parse(saved); renderPages(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderNetAdapters(); renderPhones(); bindForm(); changed(); };
 // Over USB this also wakes the phone and brings the panel to the front (adb); over Wi-Fi the phone switches to the
 // page selected in the editor through the live stream.
 $('openPhone').onclick = async () => {
@@ -3369,7 +2964,7 @@ $('applyJson').onclick = () => {
     cfg = c;
     fillDefaults();
     $('jsonErr').textContent = '';
-    renderPages(); renderDeck(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderConsole(); renderNetAdapters(); renderPhones(); renderCharge(); bindForm(); changed(); toast(t('s.jsonLoaded'));
+    renderPages(); renderRules(); renderCalendars(); renderFeeds(); renderCameras(); renderNetAdapters(); renderPhones(); bindForm(); changed(); toast(t('s.jsonLoaded'));
   }
   catch (e) { $('jsonErr').textContent = e instanceof SyntaxError ? tc('Invalid settings JSON.') : e.message; }
 };

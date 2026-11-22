@@ -364,18 +364,11 @@ test('the Arabic template dialog inserts the saved page title literally', async 
   await expect(page.locator('#modalBody h3')).toHaveText(`استبدال عناصر صفحة «${title}»`);
 });
 
-test('the shortcut delete button is localized in Arabic without changing its English label', async ({ page }) => {
-  await page.goto('/settings/#shortcuts');
-  await page.locator('#deck .key:not(.add)').first().click();
-  const deleteButton = page.locator('#editor button.danger');
-  await expect(deleteButton).toHaveAccessibleName('Delete');
-  const shortcut = page.locator('#deck .key:not(.add) .kl').first();
-  const label = await shortcut.textContent();
-  await page.locator('#langSel').selectOption('ar');
-  await expect(deleteButton).toHaveAccessibleName('حذف');
-  await expect(shortcut).toHaveText(label);
-  await page.evaluate(() => { location.hash = '#webhooks'; });
+test('the pushed value delete button is localized in Arabic', async ({ page }) => {
+  await page.goto('/settings/#webhooks');
   const pushedDelete = page.locator('#whItems button').first();
+  await expect(pushedDelete).toHaveAccessibleName('Delete');
+  await page.locator('#langSel').selectOption('ar');
   await expect(pushedDelete).toHaveAccessibleName('حذف');
   await page.locator('#langSel').selectOption('en');
   await expect(pushedDelete).toHaveAccessibleName('Delete');

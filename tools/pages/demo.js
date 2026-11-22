@@ -13,13 +13,7 @@
   const wave = (period, lo, hi, phase = 0, noise = 0) =>
     lo + (hi - lo) * (0.5 + 0.5 * Math.sin((2 * Math.PI * (now() - START)) / 1000 / period + phase)) + rnd(-noise, noise);
 
-  const SHORTCUTS = [
-    ['terminal', 'Terminal', '⌨️', '#4b5563'], ['code', 'VS Code', '📝', '#2f80ed'], ['browser', 'Browser', '🌐', '#0ea5e9'],
-    ['files', 'Files', '📁', '#e5b84b'], ['music', 'Spotify', '🎧', '#1db954'], ['chat', 'Discord', '💬', '#6366f1'],
-    ['snip', 'Snip', '✂️', '#14b8a6'], ['taskmgr', 'Task Manager', '📊', '#22c55e'], ['mute', 'Mute', '🔇', '#f59e0b'],
-    ['screenoff', 'Screen Off', '🌙', '#8b5cf6'], ['lock', 'Lock', '🔒', '#ef4444'], ['settings', 'Settings', '⚙️', '#94a3b8'],
-  ].map(([id, label, icon, color]) => ({ id, label, icon, color, cmd: id === 'mute' ? 'builtin:mute' : 'demo', args: null, toggle: false }));
-  const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'deck', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
+  const PAGES = ['home', 'dashboard', 'ai', 'work', 'system', 'procs', 'status', 'ambient', 'world', 'daily', 'markets', 'feeds', 'focus', 'calm', 'clock', 'automation', 'planner', 'nightstand', 'weekend', 'focuswork',
     'codexbar', 'devops'];
 
   let catalog = null;
@@ -42,7 +36,7 @@
     c = store.get('pb-demo-config', null);
     if (c) return c;
     const byId = Object.fromEntries(templates.map((t) => [t.id, t]));
-    const rule = (r) => ({ enabled: true, match: null, value: null, page: null, text: null, level: null, key: null, pushValue: null, whileActive: true, shortcut: null,
+    const rule = (r) => ({ enabled: true, match: null, value: null, page: null, text: null, level: null, key: null, pushValue: null, whileActive: true,
       priority: 5, forSec: 0, cooldownMin: 0, days: null, during: null, countdownSec: null, op: null, arg: null, ...r });
     // every section the agent serves, with its defaults (Config.cs), so the settings page shows what a real one does
     c = {
@@ -67,13 +61,11 @@
           return { ...w, id: n === 1 ? w.type : `${w.type}-${n}`, options: { ...(w.options || {}), ...control } };
         }) };
       }),
-      shortcuts: SHORTCUTS,
       rules: [
         rule({ id: 'claude-needs-me', name: 'Claude needs me', when: 'session-waiting', then: 'goto', page: 'ai', priority: 8 }),
         rule({ id: 'review-requested', name: 'Review requested', when: 'review-requested', then: 'notify', text: '{detail}', whileActive: false, days: 'mon,tue,wed,thu,fri', during: '09:00-18:00' }),
         rule({ id: 'evenings', name: 'Evenings', when: 'time', match: '22:00-07:00', then: 'goto', page: 'calm', priority: 2 }),
       ],
-      charge: { enabled: true, min: 50, max: 80, method: 'ha', entity: 'switch.phone_charger', onShortcut: null, offShortcut: null },
       phones: [], calendars: [],
       homeAssistant: { url: null, token: null },
     };
@@ -82,10 +74,7 @@
     return c;
   }
   async function config() {
-    const c = await loadConfig();
-    muteKeys = (c.shortcuts || []).filter((x) => x.cmd === 'builtin:mute').map((x) => x.id);
-    cycleLists = Object.fromEntries((c.shortcuts || []).filter((x) => x.cmd === 'builtin:cycle').map((x) => [x.id, JSON.stringify(x.cycle || [])]));
-    return c;
+    return loadConfig();
   }
   const cfgVersion = () => store.get('pb-demo-version', 1);
   // every widget of the layout, Smart Stack children included (AgentConfig.Widgets)
@@ -95,19 +84,14 @@
   const shownWidgets = (c) => widgets({ ...c, pages: (c.pages || []).filter((p) => p.enabled !== false) });
   const feedsCanOpen = (c) => shownWidgets(c).some((w) => w.type === 'feeds' && w.options?.open === true);
 
-  // What the agent sends to a phone (AgentConfig.ToPublic): no commands, keys, tokens or what a rule matches on.
+  // What the agent sends to a phone (AgentConfig.ToPublic): no keys, tokens or what a rule matches on.
   function publicConfig(c) {
-    const options = (w) => w.type === 'command' ? Object.fromEntries(Object.entries(w.options || {}).filter(([k]) => k === 'title' || k === 'interval')) : w.options ?? null;
+    const options = (w) => w.options ?? null;
     return {
       weather: c.weather, codexBar: c.codexBar, night: c.night, display: c.display,
       pages: (c.pages || []).map((p) => ({ id: p.id, title: p.title, icon: p.icon, enabled: p.enabled !== false, idleSec: p.idleSec ?? null, appearance: p.appearance ?? null,
         widgets: (p.widgets || []).map((w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, appearance: w.appearance ?? null, options: options(w) })) })),
-      // iconRev / iconUpload: the agent sets them when a shortcut has a picture (and when the user uploaded it). The demo
-      // has no uploads and serves no /agent/api/shortcuts/icon, so a config that sets them also needs that image mocked
-      // (see button-cover.spec.js); without one the key keeps its emoji.
-      shortcuts: (c.shortcuts || []).map(({ id, label, icon, color, toggle, cmd, longPress, cycle, iconRev, iconUpload }) => ({ id, label, icon, color, toggle: !!toggle || cmd === 'builtin:mute', cycle: cmd === 'builtin:cycle' && (cycle || []).length > 0, hold: !!longPress && longPress !== id && (c.shortcuts || []).some((x) => x.id === longPress), iconRev: iconRev ?? null, iconUpload: iconUpload === true })),
       rules: (c.rules || []).map(({ id, name, enabled, when }) => ({ id, name, enabled: enabled !== false, when })),
-      charge: { enabled: !!c.charge?.enabled, min: c.charge?.min ?? 50, max: c.charge?.max ?? 80 },
     };
   }
 
@@ -131,7 +115,7 @@
   };
   let pushVersion = 1;
   let rulesPaused = 0;
-  // the phone reports its battery through /api/phone/battery; /api/charge serves the last report
+  // the phone reports its battery through /api/phone/battery
   let phoneBattery = { level: 72, plugged: true, temp: 29, at: now() - 20e3, source: 'usb', usb: 'configured' };
   let approvals = [];
   const SAMPLE_PROMPTS = [
@@ -182,16 +166,8 @@
       },
       audio: { ...audio },
       ping: { host: '1.1.1.1', ms: wave(13, 9, 16), avgMs: 12, lossPct: 0 },
-      toggles: { ...toggles, ...Object.fromEntries(muteKeys.map((id) => [id, audio.muted])) },
-      // a face counts only for the list it was made for (an edited list starts over)
-      cycles: Object.fromEntries(Object.entries(cycles).filter(([id, v]) => cycleLists[id] === v.list).map(([id, v]) => [id, v.target])),
     };
   }
-
-  const toggles = {};
-  let cycleLists = {}; // cycle key id -> its list now, as JSON
-  const cycles = {}, cyclePos = {}; // cycle keys: { target id, list } of the key that ran last, and its position in the list
-  let muteKeys = ['mute']; // ids of the shortcuts whose command is builtin:mute; their state is the computer's
 
   // made-up Home Assistant entities; switching flips them
   const ha = {
@@ -278,9 +254,6 @@
     ['claude', 'Claude', 7, 2.7, 1800], ['docker', 'Docker Desktop', 4, 2.1, 2600], ['spotify', 'Spotify', 5, 1.4, 420], ['discord', 'Discord', 6, 1.1, 610],
     ['explorer', 'Windows Explorer', 3, 0.9, 380], ['obs64', 'OBS Studio', 1, 0.8, 520], ['slack', 'Slack', 5, 0.6, 700], ['steam', 'Steam', 3, 0.4, 340],
     ['onedrive', 'Microsoft OneDrive', 1, 0.3, 120], ['python', 'Python', 2, 0.3, 160], ['figma', 'Figma', 3, 0.2, 640]];
-  const DEMO_APPS = ['Calculator', 'Calendar', 'Figma', 'Finder', 'Mail', 'Maps', 'Music', 'Notes', 'OBS', 'Photos', 'Safari', 'Slack',
-    'Spotify', 'System Settings', 'Terminal', 'Visual Studio Code', 'Xcode', 'Zoom']
-    .map((name, i) => ({ id: 'demo-app-' + i, name, hue: (i * 47) % 360 }));
   const procs = () => ({ total: 312, groupCount: 141, groups: PROCS.map(([name, title, count, cpu, memMb]) =>
     ({ name, title, count, cpu: Math.round(cpu * rnd(0.8, 1.2) * 10) / 10, memMb, locked: name === 'explorer', hasIcon: false })) });
   function procDetail(name) {
@@ -307,9 +280,6 @@
     [[`${p.id}/${w.id}`, w], ...(w.type === 'stack' ? (w.options?.widgets || []).map((x, i) => [x, i]).filter(([x]) => x.enabled !== false)
       .map(([x, i]) => [`${p.id}/${w.id}:${x.id || `card-${i}`}`, x]) : [])]))
     .find(([k, w]) => w.type === type && k === key)?.[1];
-  const consoleWidget = (c, key) => panelWidget(c, key, 'app-console');
-  const DEMO_CONSOLE = { id: 'photoshop', label: 'Photoshop', keys: ['Brush', 'Eraser', 'Undo', 'Redo', 'Zoom in', 'Zoom out', 'Fit', 'Save'],
-    dial: { left: true, right: true, press: true } };
   const json = (o, status = 200, headers = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
   const parse = (body) => { if (body == null || body === '') return null; try { return JSON.parse(body); } catch (_) { return String(body); } };
 
@@ -346,22 +316,6 @@
       if (q.has('pid')) { const g = PROCS.find((x) => procDetail(x[0]).instances.some((n) => n.pid === +q.get('pid'))); if (g && g[0] !== 'explorer' && g[2] > 1) { g[2]--; return json({ killed: 1, failed: 0, error: null }); } if (g && g[0] !== 'explorer') { PROCS.splice(PROCS.indexOf(g), 1); return json({ killed: 1, failed: 0, error: null }); } }
       else if (i >= 0 && PROCS[i][0] !== 'explorer') { const [g] = PROCS.splice(i, 1); return json({ killed: g[2], failed: 0, error: null }); }
       return json({ killed: 0, failed: 0, error: i >= 0 || q.has('pid') ? 'That process is protected' : 'No such process' }, 409);
-    }
-    if (path.startsWith('/api/run/') && method === 'POST') {
-      // on / off keys flip in the demo; the mute key mutes the made-up computer
-      const id = decodeURIComponent(path.slice(9)), shortcuts = (await config()).shortcuts;
-      let sc = shortcuts.find((s) => s.id === id);
-      // ?hold=true runs the key's long-press shortcut instead (the agent resolves it; the phone sends only the held key's id)
-      if (sc && q.get('hold') === 'true') sc = sc.longPress && sc.longPress !== sc.id ? shortcuts.find((s) => s.id === sc.longPress) : null;
-      if (!sc) return json({ title: 'An error occurred while processing your request.', status: 500, detail: 'unknown shortcut' }, 500);
-      if (sc.cmd === 'builtin:cycle') {
-        const list = JSON.stringify(sc.cycle || []), n = (sc.cycle || []).length;
-        if (cyclePos[sc.id]?.list !== list) cyclePos[sc.id] = { list, at: -1 }; // an edited list starts over
-        if (n) { const at = cyclePos[sc.id].at = (cyclePos[sc.id].at + 1) % n; cycles[sc.id] = { target: sc.cycle[at], list }; }
-      }
-      else if (sc.cmd === 'builtin:mute') audio.muted = !audio.muted;
-      else if (sc.toggle) toggles[sc.id] = !toggles[sc.id];
-      return json({});
     }
     if (path === '/api/quotas') return json(quotas());
     // made-up recent messages and steps of a Claude Code session (the real ones come from its chat file, and only when switched on)
@@ -407,12 +361,6 @@
       if (!feedsCanOpen(await config())) return json({ error: 'Opening articles is off: turn on "Open articles on the PC" in the News feeds widget\'s settings' }, 400);
       return DEMO_FEEDS().some((i) => i.id === q.get('id') && i.openable) ? json({ ok: true }) : json({ error: 'That headline is no longer in the list' }, 400);
     }
-    if (path === '/api/apps') { const c = await config(); return json({ supported: true, canOpen: widgets(c).some((w) => w.type === 'apps'), apps: DEMO_APPS }); }
-    if (path === '/api/apps/open' && method === 'POST') {
-      if (!widgets(await config()).some((w) => w.type === 'apps')) return json({ error: 'Add an All apps widget to a page to open apps from the phone' }, 400);
-      return DEMO_APPS.some((a) => a.id === q.get('id')) ? json({ ok: true }) : json({ error: 'Unknown app' }, 400);
-    }
-    // Dictation: the demo PC "types" the text if that widget allows it (Dictation.TypeAsync)
     // Camera: like CameraFeeds, a picture only for a camera widget on an enabled page with a camera chosen; the demo's
     // "camera" draws a moving sweep with the time instead of a stream
     if (path === '/api/camera') {
@@ -423,25 +371,6 @@
       const d = new Date(), x = (d.getTime() / 25) % 640;
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#1f2937"/><rect y="250" width="640" height="110" fill="#374151"/><rect x="${x.toFixed(0)}" y="0" width="6" height="360" fill="#22d3ee" opacity=".5"/><text x="16" y="34" fill="#fff" font-family="monospace" font-size="22">CAM 1  ${d.toTimeString().slice(0, 8)}</text></svg>`;
       return new Response(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' } });
-    }
-    if (path === '/api/dictate' && method === 'POST') {
-      if (panelWidget(await config(), q.get('widget'), 'dictate')?.options?.control !== true)
-        return json({ error: 'typing is off: turn on "Type the text on the computer" in the dictation widget\'s settings' }, 403);
-      const text = String(q.get('text') || '').replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').trim();
-      return text ? json({ ok: true }) : json({ error: 'nothing to type' }, 400);
-    }
-    // App console: the demo PC always has Photoshop in front; like AppConsole, only enabled pages count
-    if (path === '/api/console') {
-      const w = consoleWidget(await config(), q.get('widget'));
-      if (!w) return json({ error: "this app console widget isn't on an enabled page of this phone" }, 404);
-      return json({ supported: true, control: w.options?.control === true, profile: DEMO_CONSOLE });
-    }
-    if (path.startsWith('/api/console/') && method === 'POST') {
-      if (consoleWidget(await config(), q.get('widget'))?.options?.control !== true)
-        return json({ error: 'sending keys is off: turn on "Send keys to the computer" in the app console widget\'s settings' }, 403);
-      const [, , , profile, slot] = path.split('/');
-      const ok = profile === DEMO_CONSOLE.id && (/^dial-(left|right|press)$/.test(slot) || (/^k(0|[1-9]\d*)$/.test(slot) && +slot.slice(1) < DEMO_CONSOLE.keys.length));
-      return ok ? json({ ok: true }) : json({ error: 'nothing is set for this key' }, 404);
     }
     if (path === '/api/ha/entities') return json({ configured: true, error: null, entities: Object.keys(ha).sort().map((id) => ({ id, name: ha[id].name, switchable: /^(light|switch|lock|scene)\./.test(id) })) });
     if (path === '/api/ha/states') return json(haStates((q.get('ids') || '').split(',').filter(Boolean)));
@@ -459,7 +388,6 @@
     if (path === '/api/work') return json(work());
     if (path === '/api/procs') return json(procs());
     if (path === '/api/procs/detail') return json(procDetail(q.get('name')));
-    if (path.startsWith('/api/widget/')) return json({ output: String(3 + Math.floor(Math.random() * 3)), at: now() - 8000, ok: true, running: false, durationMs: 412 });
     if (path === '/api/approvals' && method === 'GET') return json({ items: approvals.filter((a) => a.expiresAt > now()) });
     if (path.startsWith('/api/approvals/') && method === 'POST') {
       const id = decodeURIComponent(path.slice(15));
@@ -505,7 +433,6 @@
       };
       return json({ ok: true });
     }
-    if (path === '/api/charge') return json({ phone: phoneBattery, power: null, switchedAt: null, error: null });
     if (path === '/api/notify' && method === 'POST') {
       const d = parse(body), payload = typeof d === 'object' && d && !Array.isArray(d) ? d : { text: d == null ? '' : String(d) };
       if (!('text' in payload) && !('title' in payload)) return json({ error: 'give a text or a title' }, 400);
@@ -524,7 +451,6 @@
         const c = parse(body);
         if (!c || typeof c !== 'object') return json({ error: 'the settings are not valid JSON' }, 400);
         (c.pages || []).forEach((p, i) => { p.id ||= `page-${i + 1}`; p.title ||= 'Page'; const seen = {}; (p.widgets || []).forEach((w) => { if (!w.id) { const n = (seen[w.type] = (seen[w.type] || 0) + 1); w.id = `${w.type}-${Date.now() % 100000}-${n}`; } }); });
-        (c.shortcuts || []).forEach((s, i) => { s.id ||= `shortcut-${i + 1}`; });
         store.set('pb-demo-config', c);
         store.set('pb-demo-version', cfgVersion() + 1);
         return json({ version: cfgVersion() });
@@ -557,25 +483,6 @@
     if (url.origin !== location.origin || i < 0) return realFetch(input, init);
     return handle((init.method || 'GET').toUpperCase(), url.pathname.slice(i), url.searchParams, init.body, new Headers(init.headers || {}));
   };
-
-  // Album art and radio logos are <img>, which fetch() does not see: swap their address for the demo cover.
-  // App icons become a coloured tile with the app's initial.
-  const appIcon = (id) => {
-    const a = DEMO_APPS.find((x) => x.id === id) || { name: '?', hue: 210 };
-    return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect x="6" y="6" width="84" height="84" rx="20" fill="hsl(${a.hue} 65% 52%)"/>`
-      + `<text x="48" y="62" font-family="system-ui,sans-serif" font-size="42" font-weight="700" text-anchor="middle" fill="#fff">${a.name.slice(0, 1)}</text></svg>`);
-  };
-  const swapDemoImg = (img) => {
-    if (img.tagName !== 'IMG') return;
-    const src = img.getAttribute('src') || '';
-    if (/\/api\/apps\/icon/.test(src)) img.src = appIcon(new URL(src, location.href).searchParams.get('id'));
-  };
-  new MutationObserver((list) => {
-    for (const m of list) {
-      if (m.type === 'attributes') swapDemoImg(m.target);
-      else for (const n of m.addedNodes) if (n.nodeType === 1) { swapDemoImg(n); n.querySelectorAll?.('img').forEach(swapDemoImg); }
-    }
-  }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] });
 
   // A pretend Android bridge for phone-only widgets.
   if (!window.Android && document.currentScript.dataset.panel !== undefined)

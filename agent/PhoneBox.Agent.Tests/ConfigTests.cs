@@ -180,68 +180,10 @@ public class ConfigTests
         var c = Load("""
         { "pages": [ { "title": "İzmir", "icon": "x", "widgets": [ { "type": "clock" } ] },
                      { "title": "İş Akışı", "icon": "x", "widgets": [ { "type": "clock" } ] } ],
-          "shortcuts": [ { "label": "İndir", "cmd": "notepad" } ],
           "rules": [ { "name": "İkindi", "when": "always", "then": "notify" } ] }
         """);
         Assert.Equal(["izmir", "is-akisi"], c.Pages.Select(p => p.Id));
-        Assert.Equal("indir", c.Shortcuts.Single().Id);
         Assert.Equal("ikindi", c.Rules.Single().Id);
-    }
-
-    [Fact]
-    public void ANewShortcutNeverReusesAJustDeletedOnesId()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"phonebox-config-{Guid.NewGuid():N}.json");
-        try
-        {
-            var store = new ConfigStore(path);
-            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "cmd.exe" } ] }"""));
-            Assert.Equal("terminal", store.Get().Shortcuts.Single().Id);
-
-            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "wt.exe" } ] }"""));
-            Assert.Equal("terminal-2", store.Get().Shortcuts.Single().Id);
-        }
-        finally { File.Delete(path); File.Delete(path + ".bak"); }
-    }
-
-    [Fact]
-    public void AStaleIdRejectedForANewShortcutDoesNotStealAKeptShortcutsId()
-    {
-        // A new shortcut's rejected (stale) candidate id must not occupy "used", or processing it before a kept
-        // shortcut that still owns that exact id would bump the kept one to an unrelated id instead.
-        var path = Path.Combine(Path.GetTempPath(), $"phonebox-config-{Guid.NewGuid():N}.json");
-        try
-        {
-            var store = new ConfigStore(path);
-            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "a.exe" }, { "label": "Terminal", "cmd": "b.exe" } ] }"""));
-            Assert.Equal(["terminal", "terminal-2"], store.Get().Shortcuts.Select(s => s.Id));
-
-            // "terminal" is deleted; a brand-new "Terminal" (no id, listed first) must not end up claiming
-            // "terminal-2" ahead of the shortcut that explicitly keeps it.
-            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "c.exe" }, { "id": "terminal-2", "label": "Terminal", "cmd": "b.exe" } ] }"""));
-            Assert.Equal(["terminal-3", "terminal-2"], store.Get().Shortcuts.Select(s => s.Id));
-        }
-        finally { File.Delete(path); File.Delete(path + ".bak"); }
-    }
-
-    [Fact]
-    public void ABlankIdShortcutListedFirstDoesNotStealAnExplicitIdListedAfterIt()
-    {
-        // Explicit ids are reserved in a first pass before any blank-id shortcut is assigned one, so list order
-        // cannot let a brand-new shortcut take an id another shortcut in the same save explicitly asked to keep.
-        var path = Path.Combine(Path.GetTempPath(), $"phonebox-config-{Guid.NewGuid():N}.json");
-        try
-        {
-            var store = new ConfigStore(path);
-            Assert.Null(store.Save("""{ "shortcuts": [ { "label": "Terminal", "cmd": "a.exe" } ] }"""));
-            Assert.Equal("terminal", store.Get().Shortcuts.Single().Id);
-
-            Assert.Null(store.Save("""
-                { "shortcuts": [ { "label": "Terminal", "cmd": "new.exe" }, { "id": "terminal-2", "label": "Other", "cmd": "x.exe" } ] }
-                """));
-            Assert.Equal(["terminal-3", "terminal-2"], store.Get().Shortcuts.Select(s => s.Id));
-        }
-        finally { File.Delete(path); File.Delete(path + ".bak"); }
     }
 
     [Fact]
@@ -287,12 +229,12 @@ public class ConfigTests
     [Fact]
     public void AtLeastOnePageStaysEnabled()
     {
-        var c = Load("""{ "pages": [ { "template": "clock", "enabled": false }, { "template": "music", "enabled": false } ] }""");
+        var c = Load("""{ "pages": [ { "template": "clock", "enabled": false }, { "template": "ai", "enabled": false } ] }""");
         Assert.True(c.Pages[0].Enabled);
     }
 
     [Fact]
-    public void ThePhoneNeverSeesCommands()
+    public void ThePhoneNeverSeesCommandsFromAnOldConfig()
     {
         var c = Load("""
         { "pages": [ { "id": "p", "title": "P", "widgets": [ { "type": "command", "x": 0, "y": 0, "w": 3, "h": 2, "options": { "command": "secret-script.ps1", "commandUnix": "secret-unix.sh", "future": "secret-x", "title": "T" } } ] } ],
@@ -301,22 +243,8 @@ public class ConfigTests
         var json = JsonSerializer.Serialize(c.ToPublic());
         Assert.DoesNotContain("secret", json);
         Assert.DoesNotContain("--token", json);
-        Assert.Contains("\"T\"", json);
-    }
-
-    [Fact]
-    public void ThePhoneLearnsWhichShortcutPicturesAreUploads()
-    {
-        // only an uploaded picture may fill a Big button; a program's own icon (also with an iconRev) may not
-        var c = Load("""{ "shortcuts": [ { "id": "up", "label": "Up", "cmd": "a.exe" }, { "id": "own", "label": "Own", "cmd": "b.exe" } ] }""");
-        var pub = JsonSerializer.SerializeToElement(c.ToPublic(null, s => (7, s.Id == "up")));
-        var byId = pub.GetProperty("shortcuts").EnumerateArray().ToDictionary(s => s.GetProperty("Id").GetString()!);
-        Assert.True(byId["up"].GetProperty("iconUpload").GetBoolean());
-        Assert.False(byId["own"].GetProperty("iconUpload").GetBoolean());
-        Assert.Equal(7, byId["own"].GetProperty("iconRev").GetInt64());
-        // without the lookup (tests, older callers) nothing counts as an upload
-        Assert.All(JsonSerializer.SerializeToElement(c.ToPublic()).GetProperty("shortcuts").EnumerateArray(),
-            s => Assert.False(s.GetProperty("iconUpload").GetBoolean()));
+        // command widgets and shortcuts are gone: the page keeps none of the command widget
+        Assert.Empty(c.Pages.Single().Widgets!);
     }
 
     [Fact]
@@ -334,9 +262,6 @@ public class LanTests
     [Theory]
     [InlineData("/api/state", true)]
     [InlineData("/api/stream", true)]
-    [InlineData("/api/run/terminal", true)]
-    [InlineData("/api/apps", true)]
-    [InlineData("/api/apps/open", true)]
     [InlineData("/api/feeds", true)]
     [InlineData("/api/feeds/open", true)]
     [InlineData("/api/photos", true)]
@@ -349,9 +274,6 @@ public class LanTests
     [InlineData("/api/pair/cancel", false)]
     [InlineData("/api/pair/status", false)]
     [InlineData("/api/pair/claim/x", false)]
-    [InlineData("/api/shortcuts/test", false)]
-    [InlineData("/api/shortcuts/icon", true)]
-    [InlineData("/api/settings/shortcut-icon", false)]
     [InlineData("/api/claude/hook", false)]
     [InlineData("/api/codex/hook", false)]
     [InlineData("/api/ha/test", false)]
@@ -367,7 +289,7 @@ public class LanTests
     [InlineData("/api/goto/2", true)]
     [InlineData("/api/refresh", true)]
     [InlineData("/api/state", false)]
-    [InlineData("/api/run/x", false)]
+    [InlineData("/api/volume", false)]
     public void TheWebhookKeyOpensOnlyWebhooks(string path, bool webhook) => Assert.Equal(webhook, Lan.IsWebhook(new PathString(path)));
 
     [Fact]

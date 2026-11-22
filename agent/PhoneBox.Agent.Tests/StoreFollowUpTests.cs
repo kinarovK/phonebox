@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PhoneBox.Agent;
 using Xunit;
 
-/// <summary>Pushed-data saving, icon format changes, page references, feed addresses and the Claude settings file.</summary>
+/// <summary>Pushed-data saving, page references, feed addresses and the Claude settings file.</summary>
 public sealed class StoreFollowUpTests : IDisposable
 {
     private readonly string _dir = Directory.CreateTempSubdirectory("phonebox-store-followup-").FullName;
@@ -79,31 +79,6 @@ public sealed class StoreFollowUpTests : IDisposable
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         while (!File.Exists(path) && !timeout.IsCancellationRequested) await Task.Delay(50);
         Assert.True(File.Exists(path), "the save was not retried");
-    }
-
-    // ---- shortcut icon uploads ----
-
-    private static readonly byte[] Png = Convert.FromHexString(
-        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082");
-    private static readonly byte[] Webp = [(byte)'R', (byte)'I', (byte)'F', (byte)'F', 4, 0, 0, 0, (byte)'W', (byte)'E', (byte)'B', (byte)'P'];
-
-    // Windows: an open handle can block deleting the old PNG while the new WEBP is moved in. Reads prefer the PNG, so
-    // the change must be undone instead of reporting the WEBP's revision while the PNG is served.
-    [Fact]
-    public void AFormatChangeThatCannotRetireTheOldFileKeepsTheOldIcon()
-    {
-        if (!OperatingSystem.IsWindows()) return; // elsewhere an open file can be deleted
-        var icons = new ShortcutIconUploads(Path.Combine(_dir, "icons"));
-        Assert.Null(icons.Save("sc", "image/png", Png));
-        var revision = icons.Revision("sc");
-        using (new FileStream(Path.Combine(_dir, "icons", "sc.png"), FileMode.Open, FileAccess.Read, FileShare.Read))
-            Assert.NotNull(icons.Save("sc", "image/webp", Webp));
-        Assert.Equal("image/png", icons.Read("sc")?.ContentType);
-        Assert.Equal(revision, icons.Revision("sc"));
-        Assert.False(File.Exists(Path.Combine(_dir, "icons", "sc.webp")));
-
-        Assert.Null(icons.Save("sc", "image/webp", Webp)); // nothing holds it open now
-        Assert.Equal("image/webp", icons.Read("sc")?.ContentType);
     }
 
     // ---- page references ----

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -82,7 +81,7 @@ public sealed class AuditRegressionTests : IDisposable
         var push = Push();
         var engine = new RuleEngine(cfg, push, new SessionMonitor(NullLogger<SessionMonitor>.Instance),
             new SystemMonitor(NullLogger<SystemMonitor>.Instance), new CalendarMonitor(cfg, NullLogger<CalendarMonitor>.Instance), new QuotaMonitor(NullLogger<QuotaMonitor>.Instance), new GitHubMonitor(NullLogger<GitHubMonitor>.Instance),
-            new BatteryMonitor(NullLogger<BatteryMonitor>.Instance), new PingMonitor(), new AudioControl(), NullLogger<RuleEngine>.Instance);
+            new BatteryMonitor(NullLogger<BatteryMonitor>.Instance), new PingMonitor(), NullLogger<RuleEngine>.Instance);
         return (engine, push, Write);
     }
 
@@ -151,8 +150,6 @@ public sealed class AuditRegressionTests : IDisposable
         push.Set("tv", PushStore.ParseValue(body), null);
         engine.Evaluate();
         Assert.Equal(on, engine.Active().Contains("meeting"));
-        // the same key read by a toggle shortcut agrees
-        Assert.Equal(on, Shortcuts.State(new Shortcut { Id = "s", StateKey = "tv" }, push, null));
     }
 
     [Theory]
@@ -168,46 +165,5 @@ public sealed class AuditRegressionTests : IDisposable
         push.Set("tv", JsonDocument.Parse(json).RootElement, null);
         engine.Evaluate();
         Assert.Equal(on, engine.Active().Contains("meeting"));
-    }
-
-    // ---------------------------------------------------------------- F8: command widgets and background processes
-
-    [Fact]
-    public void ABackgroundProcessLeftByTheCommandDoesNotBlockTheWidget()
-    {
-        var path = Path.Combine(_dir, "config.json");
-        var pidPath = Path.Combine(_dir, "background.pid");
-        var workerPath = Path.Combine(_dir, "background.ps1");
-        File.WriteAllText(workerPath, $"[IO.File]::WriteAllText('{pidPath.Replace("'", "''")}', [string]$PID); Start-Sleep -Seconds 30");
-        var command = $"cmd /c start /b powershell.exe -NoProfile -NonInteractive -File \"{workerPath}\"";
-        var commandUnix = $"/bin/sleep 30 & printf '%s' $! > '{pidPath.Replace("'", "'\\''")}'; echo hi";
-        File.WriteAllText(path, JsonSerializer.Serialize(new { pages = new[] { new { id = "p", title = "P", widgets = new[] {
-            new { id = "bg", type = "command", x = 0, y = 0, w = 6, h = 3, options = new { command, commandUnix, interval = 60 } }
-        } } } }));
-        var runner = new CommandRunner(new ConfigStore(path), NullLogger<CommandRunner>.Instance);
-        var sw = Stopwatch.StartNew();
-        runner.Get("p", "bg");
-        CommandResult? r = null;
-        while (sw.Elapsed < TimeSpan.FromSeconds(15))
-        {
-            r = runner.Get("p", "bg");
-            if (r is { At: > 0, Running: false }) break;
-            Thread.Sleep(100);
-        }
-        try
-        {
-            Assert.True(r is { At: > 0, Running: false }, $"no result after {sw.Elapsed.TotalSeconds:0.0} s (the background process holds the output pipe)");
-            Assert.True(sw.Elapsed < TimeSpan.FromSeconds(12), $"took {sw.Elapsed.TotalSeconds:0.0} s");
-        }
-        finally
-        {
-            if (File.Exists(pidPath) && int.TryParse(File.ReadAllText(pidPath).Trim(), out var ownedPid))
-                try
-                {
-                    using var child = Process.GetProcessById(ownedPid);
-                    if (!child.HasExited) { child.Kill(entireProcessTree: true); child.WaitForExit(5000); }
-                }
-                catch (ArgumentException) { /* the fixture already exited */ }
-        }
     }
 }

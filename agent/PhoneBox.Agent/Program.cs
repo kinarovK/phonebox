@@ -64,15 +64,10 @@ builder.Services.AddSingleton(configStore);
 builder.Services.AddSingleton(endpoint);
 builder.Services.AddSingleton(usb);
 builder.Services.AddSingleton<AudioControl>();
-builder.Services.AddSingleton<AppCatalog>();
-builder.Services.AddSingleton(_ => new ShortcutIconUploads(Path.Combine(configDir, "icons")));
 builder.Services.AddSingleton<PairingCodes>();
 builder.Services.AddSingleton<PushStore>();
-builder.Services.AddSingleton<CommandRunner>();
 builder.Services.AddSingleton<ApprovalStore>();
 builder.Services.AddSingleton<HomeAssistant>();
-builder.Services.AddSingleton<AppConsole>();
-builder.Services.AddSingleton<Dictation>();
 AddMonitor<SystemMonitor>(builder.Services);
 AddMonitor<QuotaMonitor>(builder.Services);
 AddMonitor<ProcessMonitor>(builder.Services);
@@ -90,7 +85,6 @@ AddMonitor<CalendarMonitor>(builder.Services);
 AddMonitor<DockerMonitor>(builder.Services);
 AddMonitor<BatteryMonitor>(builder.Services);
 AddMonitor<RuleEngine>(builder.Services);
-AddMonitor<ChargeGuard>(builder.Services);
 builder.Services.AddHostedService<Tray>();
 
 var app = builder.Build();
@@ -195,8 +189,6 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-app.Map("/api/trackpad", TrackpadHandler.HandleEndpoint);
-
 // ---------------------------------------------------------------- Wi-Fi pairing (local / USB only)
 // The phone calls this through the USB tunnel and stores everything it needs to connect over Wi-Fi.
 app.MapGet("/api/pair", (ConfigStore cfg) =>
@@ -211,12 +203,8 @@ app.MapGet("/api/pair", (ConfigStore cfg) =>
         token = lan.Token,
         fingerprint = Lan.Fingerprint(lanCert),
         hosts = Lan.Addresses(),
-        macs = WakeOnLan.LocalMacs(),
     });
 });
-
-// The MAC addresses of this computer's LAN adapters: the phone keeps them to wake this PC while the agent is not running.
-app.MapGet("/api/wake/macs", () => Results.Json(new { macs = WakeOnLan.LocalMacs() }));
 
 // Pairing without USB (see PairingCodes). Start and cancel are local only (settings page); the phone claims over Wi-Fi.
 app.MapPost("/api/pair/start", (ConfigStore cfg, PairingCodes codes) =>
@@ -306,7 +294,7 @@ app.MapGet("/api/settings", (HttpRequest req, ConfigStore cfg, HttpResponse res)
     return Results.Text(json, "application/json; charset=utf-8");
 });
 
-app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame photos, CameraFeeds cameras, ShortcutIconUploads icons, ILogger<Program> log, CancellationToken ct) =>
+app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame photos, CameraFeeds cameras, ILogger<Program> log, CancellationToken ct) =>
 {
     if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
     using var r = new StreamReader(req.Body);
@@ -321,13 +309,11 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame 
     catch (JsonException) { }
     string? err;
     long savedVersion;
-    lock (IconCommit) err = cfg.Save(body, expected, out savedVersion);
+    err = cfg.Save(body, expected, out savedVersion);
     if (err == ConfigStore.Conflict) return Results.Json(new { error = err }, statusCode: StatusCodes.Status409Conflict);
     if (err is not null) return Results.BadRequest(new { error = err });
     photos.SettingsSaved();
     cameras.SettingsSaved();
-    icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id)); // drop uploads for shortcuts that got deleted
-    ShortcutIcons.ClearHasIconCache();
     log.LogInformation("settings saved");
     return Results.Ok(new { version = savedVersion.ToString(CultureInfo.InvariantCulture) });
 });
@@ -337,10 +323,7 @@ app.MapPut("/api/settings", async (HttpRequest req, ConfigStore cfg, PhotoFrame 
 app.MapPost("/api/widget/{pageId}/{widgetId}/note", (string pageId, string widgetId, string? text, string? version, ConfigStore cfg) =>
 {
     long? expected = long.TryParse(version, out var v) ? v : null;
-    // the same lock as the settings save and the icon commits, so an icon upload can't report a version that
-    // already holds a Note edit it never checked
-    NoteEdit.Result r;
-    lock (IconCommit) r = NoteEdit.Apply(cfg, pageId, widgetId, text, expected);
+    var r = NoteEdit.Apply(cfg, pageId, widgetId, text, expected);
     return r.Status switch
     {
         200 => Results.Ok(new { version = r.Version }),
@@ -348,16 +331,6 @@ app.MapPost("/api/widget/{pageId}/{widgetId}/note", (string pageId, string widge
         409 => Results.Json(new { error = r.Error }, statusCode: StatusCodes.Status409Conflict),
         _ => Results.BadRequest(new { error = r.Error }),
     };
-});
-
-app.MapPost("/api/shortcuts/test", async (HttpRequest req, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
-{
-    if (req.ContentType?.StartsWith("application/json") != true) return Results.StatusCode(415);
-    var sc = await req.ReadFromJsonAsync<PhoneBox.Agent.Shortcut>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    if (sc is null || string.IsNullOrWhiteSpace(sc.Cmd)) return Results.BadRequest(new { error = "command is empty" });
-    // the same pushed values and audio state as a phone run, so a macro's nested toggles pick the same command
-    var err = Shortcuts.Execute(sc, log, cfg.Get(), push: push, audio: audio);
-    return err is null ? Results.Ok() : Results.BadRequest(new { error = err });
 });
 
 app.MapGet("/api/info", (AdbReverse adb, ConfigStore cfg) => Results.Json(new
@@ -440,8 +413,6 @@ object State(IServiceProvider sp, long? ev)
         ping = sp.GetRequiredService<PingMonitor>().Snapshot(),
         rules = sp.GetRequiredService<RuleEngine>().Active(),
         rulesPaused = sp.GetRequiredService<RuleEngine>().PausedUntil(),
-        toggles = Shortcuts.States(sp.GetRequiredService<ConfigStore>().Get(), push, sp.GetRequiredService<AudioControl>()),
-        cycles = Shortcuts.CycleStates(sp.GetRequiredService<ConfigStore>().Get()),
     };
 }
 
@@ -509,27 +480,6 @@ app.MapPost("/api/immich/albums", async (ImmichAlbumsRequest body, PhotoFrame ph
     return albums is null ? Results.Json(new { error }) : Results.Json(new { albums });
 });
 
-// Dictation (widget): text the phone recognized, typed into the app in front (only if that widget allows it).
-// The text is in the query: the phone's WebView sees no request bodies, so its transport (USB and Wi-Fi) sends POSTs
-// without one, like every other panel request. Kestrel's request line (16 KB) bounds it; request URLs aren't logged.
-app.MapPost("/api/dictate", async (string? widget, string? text, HttpRequest req, Dictation dictation, CancellationToken ct) =>
-{
-    var (status, error) = await dictation.TypeAsync(req.Headers["X-PhoneBox-Device"].ToString(), widget, text, ct);
-    return error is null ? Results.Ok(new { ok = true }) : Results.Json(new { error }, statusCode: status);
-});
-
-// App console (widget): the focused app's profile (labels only) and its keys, by profile id and slot.
-app.MapGet("/api/console", (string? widget, HttpRequest req, AppConsole console) =>
-{
-    var (status, body) = console.State(req.Headers["X-PhoneBox-Device"].ToString(), widget);
-    return Results.Json(body, statusCode: status);
-});
-app.MapPost("/api/console/{profile}/{slot}", async (string profile, string slot, string? widget, int? times, HttpRequest req, AppConsole console, CancellationToken ct) =>
-{
-    var (status, error) = await console.Act(req.Headers["X-PhoneBox-Device"].ToString(), widget, profile, slot, times ?? 1, ct);
-    return error is null ? Results.Ok(new { ok = true }) : Results.Json(new { error }, statusCode: status);
-});
-
 // Battery levels of wireless devices (headphones, mice, keyboards…), for the Device batteries widget.
 app.MapGet("/api/batteries", (BatteryMonitor b) => Results.Json(new { devices = b.Snapshot() }));
 
@@ -542,15 +492,8 @@ app.MapPost("/api/rules/test", (RuleConfig rule, RuleEngine rules) =>
     return Results.Ok(new { ok = true });
 });
 
-// The phone reports its battery (charge guard); the settings show the guard's state and can switch the power to test it.
+// The phone reports its battery; USB setup reads its view of the USB link (UsbDoctor).
 app.MapPost("/api/phone/battery", (int level, bool plugged, double? temp, string? source, string? usb) => { ChargeGuard.Report(level, plugged, temp, source, usb); return Results.Ok(); });
-app.MapGet("/api/charge", (ChargeGuard guard) => Results.Json(guard.Status()));
-app.MapPost("/api/charge/test", async (string action, ChargeGuard guard, ConfigStore cfg) =>
-{
-    if (action is not ("on" or "off")) return Results.BadRequest(new { error = "unknown action" });
-    return await guard.Switch(cfg.Get().Charge, action) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true });
-});
-
 // Pause all rules for a while (the phone's overview, the settings); minutes=0 resumes.
 app.MapPost("/api/rules/pause", (int? minutes, RuleEngine rules) =>
 {
@@ -671,13 +614,8 @@ app.MapGet("/api/approvals", (ApprovalStore a) => Results.Json(new { items = a.S
 app.MapPost("/api/approvals/{id}", (string id, string decision, string? value, ApprovalStore a) =>
     a.Decide(id, decision, value) ? Results.Ok() : Results.NotFound());
 
-// Output of a command widget (the command itself stays here).
-app.MapGet("/api/widget/{page}/{widget}", (string page, string widget, bool? force, CommandRunner runner) =>
-    runner.Get(page, widget, force == true) is { } r ? Results.Json(r) : Results.NotFound());
-
-app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req, ShortcutIconUploads icons) =>
-    Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString(),
-        s => icons.Revision(s.Id) is { } up ? (up, true) : (ShortcutIcons.Revision(s), false)) }));
+app.MapGet("/api/config", (ConfigStore cfg, HttpRequest req) =>
+    Results.Json(new { version = cfg.Version.ToString(), config = cfg.Get().ToPublic(req.Headers["X-PhoneBox-Device"].ToString()) }));
 
 // Phones that have talked to this agent, with their settings (Settings › Phones).
 app.MapGet("/api/phones", (ConfigStore cfg) =>
@@ -729,22 +667,6 @@ app.MapGet("/api/procs/icon", (string name, ProcessMonitor procs) =>
 
 app.MapGet("/api/procs/detail", (string name, ProcessMonitor procs) => Results.Json(procs.Detail(name)));
 
-// All apps widget: the installed applications, their icons, and opening one by id (never by path).
-app.MapGet("/api/apps", (AppCatalog apps) => Results.Json(new
-{
-    supported = AppCatalog.Supported,
-    canOpen = AppCatalog.Supported && apps.OpenAllowed(),
-    apps = apps.List().Select(a => new { id = a.Id, name = a.Name }),
-}));
-app.MapGet("/api/apps/icon", async (string id, AppCatalog apps, HttpResponse res, CancellationToken ct) =>
-{
-    if (await apps.IconAsync(id, ct) is not { } png) return Results.NotFound();
-    res.Headers.CacheControl = "private, max-age=86400"; // icons do not change; the phone may keep them
-    return Results.File(png, "image/png");
-});
-app.MapPost("/api/apps/open", (string id, AppCatalog apps) =>
-    apps.Open(id) is { } error ? Results.BadRequest(new { error }) : Results.Ok(new { ok = true }));
-
 // ?name=X ends every instance of X; ?pid=N ends one process together with its children.
 app.MapPost("/api/procs/kill", (string? name, int? pid, ProcessMonitor procs, ConfigStore cfg) =>
 {
@@ -752,41 +674,6 @@ app.MapPost("/api/procs/kill", (string? name, int? pid, ProcessMonitor procs, Co
         return Results.Json(new KillResult(0, 0, "Terminating processes is disabled in the settings"), statusCode: 403);
     var r = pid is { } id ? procs.KillPid(id) : procs.Kill(name ?? "");
     return r.Killed > 0 ? Results.Json(r) : Results.Json(r, statusCode: 409);
-});
-
-app.MapPost("/api/run/{id}", (string id, bool? hold, ConfigStore cfg, PushStore push, AudioControl audio, ILogger<Program> log) =>
-    RunShortcutForPhone(cfg.Get(), id, log, push, audio, hold == true));
-
-// Real icon for a shortcut: an image the user uploaded (settings page) takes priority; otherwise its program's own
-// icon, when its command is an actual file on disk. 404 when neither exists (shell addresses, protocol handlers,
-// URLs, builtin: commands, and App Execution Alias stubs with no icon of their own), so the phone shows the emoji.
-// upload=true: the upload only (see ShortcutIcons.Picture).
-app.MapGet("/api/shortcuts/icon", (string id, bool? upload, ConfigStore cfg, ShortcutIconUploads icons, HttpResponse res) =>
-{
-    if (cfg.Get().Shortcuts.FirstOrDefault(s => s.Id == id) is not { } sc) return Results.NotFound();
-    if (ShortcutIcons.Picture(sc, icons, upload == true) is not { } found) return Results.NotFound();
-    res.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
-    res.Headers["X-Content-Type-Options"] = "nosniff";
-    return Results.File(found.Bytes, found.ContentType);
-});
-
-// Uploads a custom icon for a shortcut (PNG, WEBP or SVG, 512 KB max); replaces any previous upload for it.
-// Under /api/settings, not /api/shortcuts: local-only like the rest of the settings API, since over Wi-Fi the
-// phone only ever needs to read an icon (GET /api/shortcuts/icon, above), never write one.
-app.MapPost("/api/settings/shortcut-icon", (string id, HttpRequest req, ConfigStore cfg, ShortcutIconUploads icons) =>
-    UploadShortcutIconAsync(id, req.Headers["X-Config-Version"], req.Body, req.ContentType, cfg, icons));
-
-// Removes a shortcut's uploaded icon; it falls back to its auto-detected program icon, or the emoji.
-app.MapDelete("/api/settings/shortcut-icon", (string id, HttpRequest req, ConfigStore cfg, ShortcutIconUploads icons) =>
-{
-    lock (IconCommit)
-    {
-        if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound();
-        if (cfg.VersionConflict(req.Headers["X-Config-Version"])) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-        icons.Remove(id);
-        cfg.Touch();
-        return Results.Ok(new { version = cfg.VersionText });
-    }
 });
 
 app.Lifetime.ApplicationStarted.Register(() =>
@@ -877,38 +764,6 @@ public partial class Program
         return false;
     }
 
-    internal static async Task<IResult> UploadShortcutIconAsync(
-        string id, string? configVersion, Stream body, string? contentType, ConfigStore cfg, ShortcutIconUploads icons)
-    {
-        if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
-        if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-        var bytes = await ShortcutIconUploads.ReadBounded(body);
-        // The body is read outside the lock; the checks, the write and the version bump are one step, so of two
-        // uploads that started from the same version the second gets 409 instead of replacing the first one's icon.
-        lock (IconCommit)
-        {
-            if (cfg.VersionConflict(configVersion)) return Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict);
-            if (!cfg.Get().Shortcuts.Any(s => s.Id == id)) return Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
-            var err = icons.Save(id, contentType, bytes);
-            if (err is not null) return Results.BadRequest(new { error = err });
-            if (!cfg.Get().Shortcuts.Any(s => s.Id == id))
-            {
-                icons.Cleanup(() => cfg.Get().Shortcuts.Select(s => s.Id));
-                return cfg.VersionConflict(configVersion)
-                    ? Results.Json(new { error = ConfigStore.Conflict }, statusCode: StatusCodes.Status409Conflict)
-                    : Results.NotFound(new { error = "Unknown shortcut (save it once first)" });
-            }
-            cfg.Touch();
-            return Results.Ok(new { version = cfg.VersionText });
-        }
-    }
-
-    /// <summary>
-    /// Serializes the writes that move <see cref="ConfigStore.Version"/> for shortcut icons (upload, removal) with the
-    /// settings save. Taken before the icon store's own lock, never inside it (its cleanup reads the settings).
-    /// </summary>
-    internal static readonly Lock IconCommit = new();
-
     /// <summary>
     /// POST /api/pair/claim. Wi-Fi is checked again once the body has arrived, with the settings that answer the claim:
     /// a claim still waiting for its body when Wi-Fi is turned off is refused and does not use up the code.
@@ -930,24 +785,7 @@ public partial class Program
             token = lan.Token,
             fingerprint = Lan.Fingerprint(lanCert),
             hosts = Lan.Addresses(),
-            macs = WakeOnLan.LocalMacs(),
         });
     }
-
-    /// <summary>
-    /// POST /api/run/{id}. Why a shortcut failed stays in the agent log: an exception text can carry the configured
-    /// command, its arguments, a key sequence or a working folder (Process.Start names the program and the folder).
-    /// </summary>
-    internal static IResult RunShortcutForPhone(AgentConfig cfg, string id, ILogger log, PushStore push, AudioControl audio, bool hold = false) =>
-        Shortcuts.Run(cfg, id, log, push, audio, hold) is { } error ? Results.Problem(HintOrGeneric(error)) : Results.Ok();
-
-    /// <summary>
-    /// What the phone may see of a failed shortcut: an error can carry configured command text, so only the agent's own
-    /// fixed hint (it tells the user what to do) goes through as it is; anything else becomes a generic message.
-    /// </summary>
-    internal static string HintOrGeneric(string error) =>
-        error.Contains(KeySender.AccessibilityHint, StringComparison.Ordinal)
-            ? KeySender.AccessibilityHint
-            : "The shortcut failed. The agent log on the computer has the details.";
 }
 

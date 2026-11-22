@@ -41,9 +41,7 @@ public class UsbLinkTests
     [Theory]
     [InlineData("GET", "/api/state")]
     [InlineData("GET", "/api/stream")]
-    [InlineData("POST", "/api/run/sc1")]
     [InlineData("POST", "/api/approvals/a1")]
-    [InlineData("POST", "/api/trackpad")]
     [InlineData("POST", "/api/phone/battery")]
     [InlineData("GET", "/api/pair")]   // the phone keeps its Wi-Fi pairing data current over USB
     [InlineData("GET", "/api/proxy")]  // the panel's feed proxy
@@ -55,7 +53,6 @@ public class UsbLinkTests
     [Theory]
     [InlineData("GET", "/api/settings")]
     [InlineData("PUT", "/api/settings")]
-    [InlineData("POST", "/api/shortcuts/test")]
     [InlineData("POST", "/api/pair/start")]
     [InlineData("GET", "/api/pair/status")]
     [InlineData("POST", "/api/pair")]

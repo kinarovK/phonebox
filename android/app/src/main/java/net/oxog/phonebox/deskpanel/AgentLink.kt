@@ -2,7 +2,6 @@ package net.oxog.phonebox.deskpanel
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.webkit.WebViewCompat
 import org.json.JSONArray
@@ -45,18 +44,12 @@ class AgentLink(private val context: Context) {
 
     private val prefs = context.getSharedPreferences("pairing", Context.MODE_PRIVATE)
 
-    /**
-     * A computer this phone is paired with; the certificate fingerprint is its id. [macs] are the MAC addresses of its
-     * LAN adapters ("AA:BB:CC:DD:EE:FF"), kept so the phone can wake it while its agent is not running; a computer
-     * stored by an older version has none.
-     */
-    internal class Pc(val id: String, val name: String, val hosts: List<String>, val port: Int, val token: String, val macs: List<String> = emptyList()) {
+    /** A computer this phone is paired with; the certificate fingerprint is its id. */
+    internal class Pc(val id: String, val name: String, val hosts: List<String>, val port: Int, val token: String) {
         fun json(): JSONObject = JSONObject().put("id", id).put("name", name).put("hosts", JSONArray(hosts)).put("port", port).put("token", token)
-            .put("macs", JSONArray(macs))
         companion object {
             fun from(j: JSONObject) = Pc(j.getString("id"), j.optString("name"),
-                j.getJSONArray("hosts").let { a -> (0 until a.length()).map { a.getString(it) } }, j.getInt("port"), j.getString("token"),
-                j.optJSONArray("macs")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList())
+                j.getJSONArray("hosts").let { a -> (0 until a.length()).map { a.getString(it) } }, j.getInt("port"), j.getString("token"))
         }
     }
 
@@ -92,7 +85,6 @@ class AgentLink(private val context: Context) {
     }
 
     internal fun activePc(): Pc? = pcs.firstOrNull { it.id == activeId } ?: pcs.firstOrNull()
-    internal fun getPinnedFactory(pin: String): SSLSocketFactory = pinnedFactory(pin)
 
     /** The paired computers for the panel: [{"id", "name", "active"}]. */
     fun pcsJson(): String {
@@ -106,14 +98,12 @@ class AgentLink(private val context: Context) {
         savePcs(pcs, id)
         factory = null
         preferredHost = 0
-        trackpadSocket.close()
         return true
     }
 
     fun forget(id: String) = synchronized(pcsLock) {
         val rest = pcs.filter { it.id != id }
         savePcs(rest, if (activeId == id) rest.firstOrNull()?.id else activeId)
-        trackpadSocket.close()
     }
     private val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
     // Identifies this phone to the agent (several phones can show different pages): a short hash of the app-scoped
@@ -151,73 +141,10 @@ class AgentLink(private val context: Context) {
         }
         wifi(method, pathAndQuery, 4000, body, contentType)?.let {
             route = Route.WIFI
-            maybeRefreshMacs()
             return it
         }
         route = Route.NONE
         return Reply(503, "application/json", ByteArrayInputStream("""{"error":"offline"}""".toByteArray()))
-    }
-
-    val trackpadSocket = TrackpadSocket(this)
-
-    private class TrackpadEvent(val type: String, var dx: Float, var dy: Float, var delta: Float)
-    private var inFlight = false
-    private val pendingEvents = java.util.ArrayDeque<TrackpadEvent>()
-    private val httpTrackpadLock = Any()
-
-    fun sendTrackpad(type: String, dx: Float, dy: Float, delta: Float) {
-        if (route == Route.USB || !trackpadSocket.send(type, dx, dy, delta)) {
-            coalesceHttpTrackpad(type, dx, dy, delta)
-        }
-    }
-
-    private fun coalesceHttpTrackpad(type: String, dx: Float, dy: Float, delta: Float) {
-        synchronized(httpTrackpadLock) {
-            if (inFlight) {
-                val last = pendingEvents.peekLast()
-                if (last != null && last.type == type && (type == "move" || type == "scroll")) {
-                    last.dx += dx
-                    last.dy += dy
-                    last.delta += delta
-                } else {
-                    pendingEvents.addLast(TrackpadEvent(type, dx, dy, delta))
-                }
-                return
-            }
-            inFlight = true
-        }
-        dispatchHttpTrackpad(type, dx, dy, delta)
-    }
-
-    private fun dispatchHttpTrackpad(type: String, dx: Float, dy: Float, delta: Float) {
-        background.execute {
-            try {
-                val json = """{"type":"$type","dx":$dx,"dy":$dy,"delta":$delta}""".toByteArray(Charsets.UTF_8)
-                val reply = request("POST", "/api/trackpad", body = json, contentType = "application/json")
-                try { reply.body.close() } catch (_: Exception) {}
-            } finally {
-                var nextType = ""
-                var nextDx = 0f
-                var nextDy = 0f
-                var nextDelta = 0f
-                var hasNext = false
-                synchronized(httpTrackpadLock) {
-                    val next = pendingEvents.pollFirst()
-                    if (next != null) {
-                        nextType = next.type
-                        nextDx = next.dx
-                        nextDy = next.dy
-                        nextDelta = next.delta
-                        hasNext = true
-                    } else {
-                        inFlight = false
-                    }
-                }
-                if (hasNext) {
-                    dispatchHttpTrackpad(nextType, nextDx, nextDy, nextDelta)
-                }
-            }
-        }
     }
 
     private fun usb(method: String, pathAndQuery: String, readTimeout: Int = 4000): Reply? =
@@ -330,108 +257,6 @@ class AgentLink(private val context: Context) {
         return Reply(code, c.contentType, body)
     }
 
-    private val macRefreshThrottle = RefreshThrottle(10 * 60_000)
-
-    /**
-     * Over Wi-Fi only (no USB refresh of the pairing), asks the agent for its MACs at most every 10 minutes for each
-     * computer, so a replaced network card does not leave the Wake button sending to the old address, and one
-     * computer's refresh does not hold another's back. The answer replaces the list.
-     */
-    private fun maybeRefreshMacs() {
-        // the computer is fixed here, on the calling thread: the worker must not look the active one up again, or a
-        // switch in between would send the request to (and save the answer for) another computer
-        val pc = activePc() ?: return
-        if (!macRefreshThrottle.allow(pc.id, System.currentTimeMillis())) return
-        try {
-            background.execute {
-                try { refreshMacs(pc) } catch (_: Exception) {}
-            }
-        } catch (_: java.util.concurrent.RejectedExecutionException) {
-        }
-    }
-
-    /** Asks [pc] (not whichever computer is active now) for its MACs and replaces the stored list of that same computer. */
-    private fun refreshMacs(pc: Pc) {
-        val r = wifi("GET", "/api/wake/macs", 4000, null, null, pc) ?: return
-        if (r.code != 200) { r.body.close(); return }
-        val macs = r.body.use { WakePacket.macsFrom(JSONObject(it.bufferedReader().readText()).optJSONArray("macs")) } ?: return
-        synchronized(pcsLock) {
-            val current = pcs.firstOrNull { it.id == pc.id }
-            if (!closed && current != null && current.macs != macs)
-                savePcs(pcs.map { if (it.id == pc.id) Pc(it.id, it.name, it.hosts, it.port, it.token, macs) else it }, activeId)
-        }
-    }
-
-    /**
-     * Where a packet can leave from, read from the network interfaces themselves: the interface name, the address and
-     * the subnet's broadcast address are not something Android's ConnectivityManager gives. The Android network that
-     * runs on the interface is looked up separately by [networkOwning]. Private addresses only.
-     */
-    private fun lanLinks(): List<LanLink> = try {
-        (java.net.NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList())
-            .filter { it.isUp && !it.isLoopback && (it.name.startsWith("wlan") || it.name.startsWith("eth")) }
-            .flatMap { ni ->
-                ni.interfaceAddresses.mapNotNull { ia ->
-                    (ia.address as? java.net.Inet4Address)?.takeIf { it.isSiteLocalAddress }?.let { LanLink(it, ia.broadcast, ni.name, ia.networkPrefixLength.toInt()) }
-                }
-            }
-    } catch (_: Exception) { emptyList() }
-
-    /**
-     * The Android network that runs on [link]'s interface and holds its address (for a Wi-Fi link, the Wi-Fi network).
-     * Needs ACCESS_NETWORK_STATE; null when none matches or Android refuses the lookup.
-     */
-    @Suppress("DEPRECATION") // allNetworks: still the only way to list every network on API 21-30
-    private fun networkOwning(link: LanLink): android.net.Network? = try {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        WakePacket.networkOwning(link, cm.allNetworks.map { n ->
-            val properties = cm.getLinkProperties(n)
-            NetCandidate(n, properties?.interfaceName, properties?.linkAddresses?.map { it.address } ?: emptyList())
-        })
-    } catch (_: Exception) { null }
-
-    /**
-     * Where a packet for [pc] may leave from: a link on a network the computer is on (its subnet holds one of the
-     * computer's stored addresses, so never a café's or a hotel's network) whose Android network can be named, because
-     * the socket is bound to that network and nothing is sent without it. Below API 22 a DatagramSocket cannot be bound
-     * to a network, so there is no link there at all.
-     */
-    private fun wakeTargets(pc: Pc): List<Pair<LanLink, android.net.Network>> {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) return emptyList()
-        return WakePacket.linksOnOwnNetwork(pc.hosts, lanLinks()).mapNotNull { link -> networkOwning(link)?.let { link to it } }
-    }
-
-    /** True when the active computer's MACs are known and the phone is on that computer's own network, where a packet can be sent. */
-    fun canWake(): Boolean = activePc()?.let { it.macs.isNotEmpty() && wakeTargets(it).isNotEmpty() } == true
-
-    /**
-     * Sends the magic packet for the stored computer [id] (3 times, 100 ms apart) to its MACs, on the phone's links to
-     * that computer's own network, to the subnet's broadcast address and to 255.255.255.255. The page only ever passes
-     * an id. Returns false when nothing can be sent (unknown id, no MAC stored, not on the computer's network); true
-     * once it is queued.
-     */
-    fun wake(id: String): Boolean {
-        val pc = pcs.firstOrNull { it.id == id } ?: return false
-        val macs = pc.macs.mapNotNull { WakePacket.parseMac(it) }
-        val targets = wakeTargets(pc)
-        if (macs.isEmpty() || targets.isEmpty()) return false
-        val networks = targets.toMap() // looked up once per burst, not for every packet
-        return try {
-            background.execute {
-                WakePacket.burst(macs, targets.map { it.first }, send = { link, target, packet ->
-                    val network = networks.getValue(link)
-                    java.net.DatagramSocket().use {
-                        // inside use: a bind that fails (Wi-Fi gone since the lookup) must still close the socket
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) network.bindSocket(it)
-                        it.broadcast = true
-                        it.send(java.net.DatagramPacket(packet, packet.size, target, WakePacket.PORT))
-                    }
-                })
-            }
-            true
-        } catch (_: java.util.concurrent.RejectedExecutionException) { false }
-    }
-
     /** While on USB, refresh the Wi-Fi pairing data about once a minute. */
     private fun maybePair() {
         val now = System.currentTimeMillis()
@@ -469,12 +294,9 @@ class AgentLink(private val context: Context) {
             // add or refresh this computer and make it the active one
             val hosts = j.getJSONArray("hosts")
             val fingerprint = j.getString("fingerprint")
-            val reportedMacs = WakePacket.macsFrom(j.optJSONArray("macs"))
             synchronized(pcsLock) {
                 if (!closed) {
-                    // an older agent sends no list: keep the MACs already stored instead of forgetting them
-                    val pc = Pc(fingerprint, name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"),
-                        reportedMacs ?: pcs.firstOrNull { it.id == fingerprint }?.macs ?: emptyList())
+                    val pc = Pc(fingerprint, name, (0 until hosts.length()).map { hosts.getString(it) }, j.getInt("port"), j.getString("token"))
                     savePcs(pcs.filter { it.id != pc.id && !(name.isNotEmpty() && it.name == name) } + pc, pc.id)
                 }
             }
@@ -495,7 +317,6 @@ class AgentLink(private val context: Context) {
 
     fun close() {
         synchronized(pcsLock) { closed = true }
-        trackpadSocket.close()
         background.shutdownNow()
     }
 
@@ -610,12 +431,9 @@ class AgentLink(private val context: Context) {
                     ?.filter { PairLink.isLocalAddress(it) }?.takeIf { it.isNotEmpty() } ?: link.hosts
                 // the name the user confirmed; only an entry for this very certificate is replaced, never one that
                 // merely has the same name
-                val reportedMacs = WakePacket.macsFrom(j.optJSONArray("macs"))
                 synchronized(pcsLock) {
-                    // an empty report (an adapter briefly not eligible) must not wipe the MACs already stored for it
                     val id = link.fingerprint.lowercase()
-                    val pc = Pc(id, link.pc, hosts, j.optInt("port", link.port), j.getString("token"),
-                        reportedMacs ?: pcs.firstOrNull { it.id == id }?.macs ?: emptyList())
+                    val pc = Pc(id, link.pc, hosts, j.optInt("port", link.port), j.getString("token"))
                     savePcs(pcs.filter { it.id != pc.id } + pc, pc.id)
                     factory = null
                     preferredHost = 0
@@ -646,171 +464,5 @@ class AgentLink(private val context: Context) {
         private const val USB_BASE = "https://127.0.0.1:8765"
         /** The agent sends "state" every second, so a silent connection for this long is dead. */
         private const val STREAM_READ_TIMEOUT = 8000
-    }
-}
-
-class TrackpadSocket(private val link: AgentLink) {
-    @Volatile private var socket: java.net.Socket? = null
-    @Volatile private var out: java.io.OutputStream? = null
-    @Volatile private var connecting = false
-    private val lock = Any()
-    private val random = java.util.Random()
-
-    fun send(type: String, dx: Float, dy: Float, delta: Float): Boolean {
-        synchronized(lock) {
-            val s = socket
-            val o = out
-            if (s != null && o != null && !s.isClosed) {
-                try {
-                    val json = """{"type":"$type","dx":$dx,"dy":$dy,"delta":$delta}"""
-                    val payload = json.toByteArray(Charsets.UTF_8)
-                    if (payload.size > 125) return false
-                    val mask = ByteArray(4).also { random.nextBytes(it) }
-                    val frame = ByteArray(6 + payload.size)
-                    frame[0] = 0x81.toByte()
-                    frame[1] = (0x80 or payload.size).toByte()
-                    frame[2] = mask[0]
-                    frame[3] = mask[1]
-                    frame[4] = mask[2]
-                    frame[5] = mask[3]
-                    for (i in payload.indices) {
-                        frame[6 + i] = (payload[i].toInt() xor mask[i % 4].toInt()).toByte()
-                    }
-                    o.write(frame)
-                    o.flush()
-                    return true
-                } catch (_: Exception) {
-                    close()
-                }
-            }
-        }
-        ensureConnected()
-        return false
-    }
-
-    @Volatile private var lastAttempt = 0L
-
-    fun ensureConnected() {
-        if (connecting || link.route == AgentLink.Route.USB) return
-        val now = System.currentTimeMillis()
-        if (now - lastAttempt < 3000L) return
-        val pc = link.activePc() ?: return
-        connecting = true
-        lastAttempt = now
-        Thread({
-            try {
-                connect(pc)
-            } finally {
-                connecting = false
-            }
-        }, "trackpad-ws").start()
-    }
-
-    private fun b64(b: ByteArray): String {
-        val t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        val sb = java.lang.StringBuilder()
-        var i = 0
-        while (i < b.size) {
-            val b0 = b[i++].toInt() and 0xFF
-            if (i < b.size) {
-                val b1 = b[i++].toInt() and 0xFF
-                if (i < b.size) {
-                    val b2 = b[i++].toInt() and 0xFF
-                    sb.append(t[b0 ushr 2])
-                    sb.append(t[((b0 and 3) shl 4) or (b1 ushr 4)])
-                    sb.append(t[((b1 and 0xF) shl 2) or (b2 ushr 6)])
-                    sb.append(t[b2 and 0x3F])
-                } else {
-                    sb.append(t[b0 ushr 2])
-                    sb.append(t[((b0 and 3) shl 4) or (b1 ushr 4)])
-                    sb.append(t[(b1 and 0xF) shl 2])
-                    sb.append('=')
-                }
-            } else {
-                sb.append(t[b0 ushr 2])
-                sb.append(t[(b0 and 3) shl 4])
-                sb.append("==")
-            }
-        }
-        return sb.toString()
-    }
-
-    private fun connect(pc: AgentLink.Pc) {
-        val hosts = pc.hosts
-        val port = pc.port
-        val token = pc.token
-        val pin = pc.id
-        val f = link.getPinnedFactory(pin)
-
-        for (host in hosts) {
-            var raw: java.net.Socket? = null
-            try {
-                raw = f.createSocket()
-                raw.tcpNoDelay = true
-                raw.connect(java.net.InetSocketAddress(host, port), 2000)
-                val s = raw as javax.net.ssl.SSLSocket
-                s.soTimeout = 3000
-                s.startHandshake()
-
-                val nonce = ByteArray(16).also { random.nextBytes(it) }
-                val secKey = b64(nonce)
-                val sha = java.security.MessageDigest.getInstance("SHA-1").digest((secKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").toByteArray(Charsets.US_ASCII))
-                val expectedAccept = b64(sha)
-
-                val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(s.outputStream, Charsets.US_ASCII))
-                writer.write("GET /api/trackpad HTTP/1.1\r\n")
-                writer.write("Host: $host:$port\r\n")
-                writer.write("Upgrade: websocket\r\n")
-                writer.write("Connection: Upgrade\r\n")
-                writer.write("Sec-WebSocket-Key: $secKey\r\n")
-                writer.write("Sec-WebSocket-Version: 13\r\n")
-                writer.write("Authorization: Bearer $token\r\n\r\n")
-                writer.flush()
-
-                val reader = java.io.BufferedReader(java.io.InputStreamReader(s.inputStream, Charsets.US_ASCII))
-                val status = reader.readLine() ?: throw java.io.IOException("No status")
-                if (!status.contains("101")) throw java.io.IOException("Upgrade failed: $status")
-
-                var hasAccept = false
-                while (true) {
-                    val line = reader.readLine() ?: break
-                    if (line.isEmpty()) break
-                    if (line.startsWith("Sec-WebSocket-Accept:", ignoreCase = true) && line.substringAfter(':').trim() == expectedAccept) {
-                        hasAccept = true
-                    }
-                }
-                if (!hasAccept) throw java.io.IOException("Sec-WebSocket-Accept mismatch")
-                s.soTimeout = 0
-
-                synchronized(lock) {
-                    if (link.activePc()?.id != pin) {
-                        try { s.close() } catch (_: Exception) {}
-                        return
-                    }
-                    socket = s
-                    out = s.outputStream
-                }
-                Thread({
-                    try {
-                        val input = s.inputStream
-                        val buf = ByteArray(64)
-                        while (input.read(buf) != -1) { /* ignore incoming websocket frames */ }
-                    } catch (_: Exception) {}
-                    close(s)
-                }, "trackpad-ws-in").start()
-                return
-            } catch (_: Exception) {
-                try { raw?.close() } catch (_: Exception) {}
-            }
-        }
-    }
-
-    fun close(target: java.net.Socket? = null) {
-        val s = socket
-        if (target == null || s === target) {
-            socket = null
-            out = null
-            try { s?.close() } catch (_: Exception) {}
-        }
     }
 }

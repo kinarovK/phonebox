@@ -78,7 +78,7 @@ test('a chart whose metrics are all unknown falls back to cpu instead of failing
     const cfg = JSON.parse(localStorage.getItem('pb-demo-config') || 'null') || {};
     const pages = [{ id: 'p1', title: 'One', icon: '📊', enabled: true,
       widgets: [{ id: 'c1', type: 'chart', x: 0, y: 0, w: 4, h: 3, options: { metrics: ['nosuchmetric'] } }] }];
-    localStorage.setItem('pb-demo-config', JSON.stringify({ ...cfg, pages, shortcuts: cfg.shortcuts || [] }));
+    localStorage.setItem('pb-demo-config', JSON.stringify({ ...cfg, pages }));
   });
   await page.reload();
   const card = page.locator('.w-chart');
@@ -409,7 +409,7 @@ test('the settings page loads and its sections open', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto('/settings/#pages');
   await expect(page.locator('#pageTabs .ptab')).not.toHaveCount(0);
-  for (const section of ['Shortcuts', 'Rules', 'Webhooks', 'General', 'Advanced', 'Pages']) {
+  for (const section of ['Rules', 'Webhooks', 'General', 'Advanced', 'Pages']) {
     await page.locator('#nav a', { hasText: section }).click();
     await expect(page.locator('section.on h2')).toHaveText(section);
   }

@@ -93,9 +93,8 @@ button { font: inherit; color: inherit; background: none; border: 0; }
 [dir="rtl"] #pager > .page { direction: rtl; }
 [dir="rtl"] .grid, [dir="rtl"] .ov-map { direction: ltr; }
 [dir="rtl"] .grid > .w { direction: rtl; }
-[dir="rtl"] input[type="range"] { direction: ltr; }
-/* Charts and playback controls use physical x coordinates; command output keeps its terminal order. */
-[dir="rtl"] :where(canvas, .track, .cmd-o) { direction: ltr; unicode-bidi: isolate; }
+/* Charts use physical x coordinates. */
+[dir="rtl"] :where(canvas, .track) { direction: ltr; unicode-bidi: isolate; }
 .w { position: relative; min-width: 0; min-height: 0; overflow: hidden; container-type: size; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: clamp(10px, 7cqmin, 20px); }
 
@@ -516,45 +515,6 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .pi .num b { font-size: 13px; color: var(--text); }
 .pi .ps-btn { padding: 7px 12px; }
 
-/* ---------- shortcuts & big button ---------- */
-.w-shortcuts { background: none; border: 0; }
-.deck-grid { height: 100%; display: grid; gap: 8px; }
-.key {
-  position: relative; min-width: 0; min-height: 0; width: 100%; height: 100%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  border-radius: 16px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--k) 22%, transparent), rgba(255, 255, 255, .03));
-  border: 1px solid color-mix(in srgb, var(--k) 35%, transparent);
-  transition: transform .1s, filter .2s; overflow: hidden;
-}
-.key:active { transform: scale(.94); filter: brightness(1.3); }
-.key .k-icon { font-size: clamp(16px, 7cqmin, 30px); line-height: 1; }
-.key .k-icon.k-icon-img img { display: block; width: 24px; height: 24px; width: clamp(16px, 7cqmin, 30px); height: clamp(16px, 7cqmin, 30px); object-fit: contain; border-radius: 6px; }
-.key .k-label { font-size: clamp(10px, 3.6cqmin, 14px); font-weight: 500; color: #e5e9ef; max-width: 92%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.w-button .key .k-icon { font-size: min(40cqh, 30cqw); }
-.w-button .key .k-icon.k-icon-img img { width: 40px; height: 40px; width: min(40cqh, 30cqw); height: min(40cqh, 30cqw); }
-.w-button .key .k-label { font-size: clamp(10px, 15cqh, 18px); }
-/* Big button with "fill with the picture": the picture covers the key, the label sits on a shade at the bottom. */
-/* padding in % follows the width, so a wide, short key would lose its label: the inset follows the height (cqh) */
-.key.k-cover { justify-content: flex-end; padding-bottom: 4px; padding-bottom: 7cqh; }
-.key.k-cover .k-icon { display: none; }
-.key.k-cover .k-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.key.k-cover .k-shade { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: linear-gradient(to top, rgba(0, 0, 0, .7), rgba(0, 0, 0, 0) 55%); pointer-events: none; }
-.key.k-cover .k-label { position: relative; text-shadow: 0 1px 3px rgba(0, 0, 0, .8); color: #fff; }
-.key.k-cover::before, .key.k-cover::after { z-index: 1; }
-/* a dark ring keeps the toggle dot visible on a light picture */
-.key.k-cover.toggle::before { box-shadow: 0 0 0 2px rgba(0, 0, 0, .55); }
-.key.k-cover.toggle.on::before { box-shadow: 0 0 0 2px rgba(0, 0, 0, .55), 0 0 9px #4ade80; }
-/* Big button without its label: the icon is centred alone, and a filled key needs no shade for the text. */
-.key.k-nolabel .k-label, .key.k-nolabel .k-shade { display: none; }
-.key::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow .2s; }
-.key.ok::after { box-shadow: inset 0 0 0 2px var(--ok); }
-.key.err::after { box-shadow: inset 0 0 0 2px var(--err); }
-.key.busy { opacity: .6; }
-.key.toggle::before { content: ""; position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .16); transition: background .2s, box-shadow .2s; }
-.key.toggle.on::before { background: #4ade80; box-shadow: 0 0 9px #4ade80; }
-.key.toggle.on { filter: brightness(1.18) saturate(1.2); }
-
 /* ---------- world clocks ---------- */
 .w-worldclock { padding: 6px 4px; }
 .wc-row { height: 100%; display: flex; }
@@ -608,15 +568,6 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .note-t { white-space: pre-wrap; font-size: clamp(11px, calc(var(--nf) * 1cqmin), 44px); line-height: 1.3; color: color-mix(in srgb, var(--n) 25%, #fff); overflow: hidden; height: 100%; }
 .w-label { display: flex; align-items: center; padding: 0 4px; }
 .lbl-t { font-size: min(55cqh, 12cqw); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* ---------- command ---------- */
-.w-command { padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; --c: #38bdf8; }
-.w-command.bad { --c: #f87171; }
-.cmd-o { flex: 1; min-height: 0; overflow: hidden; white-space: pre; font: 11.5px/1.35 "Roboto Mono", monospace; color: #d5dce5; }
-.cmd-o.big { display: flex; align-items: center; white-space: nowrap; font: 300 min(42cqh, 14cqw)/1 Roboto, sans-serif; letter-spacing: -0.02em; color: var(--text); }
-.w-command.bad .cmd-o { color: #fca5a5; }
-.cmd-f { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@container (max-height: 70px) { .w-command .cmd-f { display: none; } }
 
 /* ---------- pushed value, notifications ---------- */
 .w-push { padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; }
@@ -725,8 +676,6 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .bt-bar i { display: block; height: 100%; width: calc(var(--v) * 100%); background: var(--c); border-radius: 4px; }
 .bt-pct { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
 .bt-row.low .bt-pct { color: #fca5a5; }
-.dc-note { display: flex; flex-direction: column; font-size: 12px; padding: 4px 8px; border-left: 3px solid #5865f2; background: rgba(255, 255, 255, .04); border-radius: 6px; }
-.dc-note span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-ha { padding: 9px 10px; display: flex; flex-direction: column; gap: 6px; }
 .w-ha .w-title { color: #41bdf5; }
 .ha-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); grid-auto-rows: minmax(64px, 1fr); gap: 6px; overflow: hidden; }
@@ -741,24 +690,7 @@ html.beat-3 .sess.busy .st, html.beat-4 .sess.shell .st, html.beat-2 .sess.waiti
 .ha-state { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ha-tile.on .ha-state { color: #fde68a; }
 .ha-err { grid-column: 1 / -1; font-size: 12px; color: #f59e0b; }
-.w-apps { padding: 9px 12px; display: flex; flex-direction: column; gap: 6px; }
-.w-apps .w-title { color: #a78bfa; }
 .ap-count { color: var(--muted); font-weight: 600; }
-.ap-search { width: 100%; box-sizing: border-box; padding: 7px 11px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .08);
-  background: rgba(255, 255, 255, .05); color: inherit; font: inherit; font-size: 14px; outline: none; }
-.ap-search:focus { border-color: rgba(167, 139, 250, .5); }
-.ap-grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
-  grid-auto-rows: 88px; gap: 6px; scrollbar-width: none; align-content: start; }
-.ap-grid::-webkit-scrollbar { display: none; }
-.ap-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 6px 4px; min-width: 0;
-  border-radius: 12px; border: 1px solid transparent; background: rgba(255, 255, 255, .04); color: inherit; font: inherit; cursor: pointer; }
-.ap-tile:active { transform: scale(.96); background: rgba(255, 255, 255, .09); }
-.ap-tile.busy { opacity: .55; }
-.ap-tile.armed { border-color: rgba(167, 139, 250, .7); background: rgba(167, 139, 250, .16); }
-.ap-tile.armed .ap-name { color: #ddd6fe; font-weight: 600; white-space: normal; text-align: center; }
-.ap-ico { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
-.ap-letter { display: grid; place-items: center; border-radius: 11px; background: rgba(167, 139, 250, .2); font-size: 20px; font-weight: 700; }
-.ap-name { max-width: 100%; font-size: 11px; line-height: 1.2; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-docker { padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; }
 .w-docker .w-title { color: #38bdf8; }
 .dk-count { color: var(--muted); font-weight: 600; }
@@ -965,7 +897,6 @@ body.waking::after { opacity: 0; pointer-events: auto; transition: opacity .2s e
 .cc-ring { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .cc-ring circle { fill: none; stroke-width: 8; }
 .cc-bg { stroke: rgba(255, 255, 255, .07); }
-.cc-band { stroke: rgba(255, 255, 255, .16); stroke-width: 13 !important; transition: opacity .3s; }
 .cc-fg { stroke: var(--cc, rgb(var(--ambient))); stroke-linecap: round; transition: stroke-dasharray .6s; }
 .cc-pct { position: relative; font-size: clamp(11px, 11cqmin, 38px); font-weight: 700; font-variant-numeric: tabular-nums; }
 .cc-sub { font-size: 12px; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1148,29 +1079,6 @@ body.waking::after { opacity: 0; pointer-events: auto; transition: opacity .2s e
 .gd-chips { margin: 8px 0 0; justify-content: flex-start; max-height: 48px; }
 @container (max-height: 190px) { .w-gpu .gd-chips { display: none; } }
 @container (max-height: 120px) { .w-gpu .gd-rows .meter:nth-child(n+2) { display: none; } }
-/* app console: the focused app's keys, and a dial when the profile has one */
-.w.ac { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); position: relative; }
-.w.ac.ac-has-dial { grid-template-columns: minmax(0, 1fr) auto; }
-.ac-title { grid-column: 1 / -1; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ac-keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: minmax(44px, 1fr); grid-gap: 8px; min-height: 0; overflow: hidden; }
-.ac-key { border: 1px solid rgba(255, 255, 255, .08); border-radius: 12px; background: rgba(255, 255, 255, .06); color: var(--text); font: inherit; font-size: 15px; padding: 4px 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ac-key:active { background: rgba(255, 255, 255, .16); }
-.ac-key:disabled { opacity: .45; }
-.ac-dial { align-self: center; margin-left: 12px; width: 132px; height: 132px; border-radius: 50%; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .08); display: flex; align-items: center; justify-content: center; touch-action: none; }
-.ac-dial[hidden] { display: none; }
-.ac-knob { width: 64%; height: 64%; border-radius: 50%; background: rgba(255, 255, 255, .1); position: relative; }
-.ac-knob::after { content: ""; position: absolute; top: 8%; left: 50%; width: 4px; height: 22%; margin-left: -2px; border-radius: 2px; background: var(--accent, #60a5fa); }
-.ac-note { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; }
-.ac-note[hidden] { display: none; }
-/* dictation: a big microphone button, what was heard, and a status line */
-.w.dc { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px; }
-.dc-mic { width: 84px; height: 84px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .07); color: var(--text); display: flex; align-items: center; justify-content: center; flex: none; }
-.dc-mic .ico { width: 38px; height: 38px; }
-.dc-mic.on { background: var(--err, #ef4444); border-color: transparent; color: #fff; }
-html.beat-3 .dc-mic.on { opacity: .7; }
-.dc-text { margin-top: 10px; font-size: 16px; max-width: 100%; max-height: 4.2em; overflow-y: auto; touch-action: pan-y; word-break: break-word; }
-.dc-text:empty { display: none; }
-.dc-note { margin-top: 6px; font-size: 13px; color: var(--muted); }
 /* Settings › Display › controls at the top (#181): the page dots and the Allow / Deny buttons move up, for a panel that
    stands below the screen, where the bottom edge is hard to reach */
 body.controls-top #dots { bottom: auto; top: 0; }

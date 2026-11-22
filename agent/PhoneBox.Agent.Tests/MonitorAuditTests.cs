@@ -60,45 +60,6 @@ public sealed class MonitorAuditTests : IDisposable
         Assert.Equal(["home", "work"], monitor.Snapshot().Events.Select(e => e.Title).Order());
     }
 
-    // ------------------------------------------------------------------ 2. charge guard
-    [Fact]
-    public async Task ChargeGuardKeepsTryingToRestoreThePowerAfterAFailedSwitchOn()
-    {
-        using var server = TestPorts.Listen();
-        var plugReachable = true;
-        var calls = new List<string>();
-        var loop = Task.Run(async () =>
-        {
-            while (server.IsListening)
-            {
-                HttpListenerContext ctx;
-                try { ctx = await server.GetContextAsync(); } catch { return; }
-                lock (calls) calls.Add(ctx.Request.Url!.AbsolutePath);
-                if (!plugReachable) ctx.Response.StatusCode = 503;
-                ctx.Response.Close();
-            }
-        });
-        var cfg = Config(new
-        {
-            homeAssistant = new { url = server.Prefixes.Single().TrimEnd('/'), token = "secret" },
-            charge = new { enabled = true, min = 50, max = 80, method = "ha", entity = "switch.phone_plug" },
-        });
-        var guard = new ChargeGuard(cfg, new HomeAssistant(cfg, NullLogger<HomeAssistant>.Instance),
-            new PushStore(NullLogger<PushStore>.Instance, Path.Combine(_dir, "data.json")), new AudioControl(), NullLogger<ChargeGuard>.Instance);
-        var charge = cfg.Get().Charge;
-
-        Assert.Null(await guard.Switch(charge, "off"));        // 80 % reached: the plug is switched off
-        plugReachable = false;                                  // Home Assistant restarts / the network drops
-        Assert.NotNull(await guard.Switch(charge, "on"));      // the phone went silent: "on" is attempted and fails
-        server.Close(); // not Stop(): Stop() then Dispose() re-binds the port on macOS and can hit "Address already in use"
-
-        var status = JsonSerializer.SerializeToElement(guard.Status());
-        var power = status.GetProperty("power").GetString();
-        var switchedAt = status.GetProperty("switchedAt").GetInt64();
-        // the plug is still off, so the guard has to keep asking for "on" (phone silent: r == null)
-        Assert.Equal("on", ChargeGuard.Decide(charge, null, switchedAt + 30_000, power, switchedAt));
-    }
-
     // ------------------------------------------------------------------ 3. CodexBar texts under a comma-decimal culture
     [Fact]
     public void CodexBarTextsDoNotDependOnTheWindowsLocale()

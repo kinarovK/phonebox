@@ -67,9 +67,8 @@ class MainActivity : Activity(), SensorEventListener {
             setLocale(Locale.forLanguageTag(tag))
         })
     }
-    // Set first in onDestroy: dictation and stream callbacks already queued on the UI thread then skip the destroyed WebView.
+    // Set first in onDestroy: stream callbacks already queued on the UI thread then skip the destroyed WebView.
     private var destroyed = false
-    private val dictation by lazy { Dictation(this) { script -> if (!destroyed) web.evaluateJavascript(script, null) } }
     private lateinit var link: AgentLink
     private lateinit var stream: AgentStream
     @Volatile private var resumed = false
@@ -272,15 +271,8 @@ class MainActivity : Activity(), SensorEventListener {
         sensors?.getDefaultSensor(Sensor.TYPE_PROXIMITY)?.let { sensors?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == Dictation.PERMISSION_REQUEST)
-            dictation.onPermission(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-    }
-
     override fun onPause() {
         resumed = false
-        dictation.cancel(0) // the microphone is never left open behind another app or a dark screen
         sensors?.unregisterListener(this)
         stream.stop()
         // WebView.onPause() leaves JavaScript running: tell the panel to stop polling and refreshing while nobody sees it
@@ -294,10 +286,8 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onDestroy() {
         destroyed = true
         resumed = false
-        dictation.cancel(0)
         sensors?.unregisterListener(this)
         stream.stop()
-        link.trackpadSocket.close()
         link.close()
         if (hasWeb) {
             (web.parent as? ViewGroup)?.removeView(web) // a WebView must be detached before destroy()
@@ -362,19 +352,6 @@ class MainActivity : Activity(), SensorEventListener {
 
     inner class Bridge {
         private fun ok(key: String) = key == bridgeKey
-
-        private val validTrackpadTypes = setOf("move", "click", "rightClick", "mousedown", "mouseup", "scroll", "hscroll") +
-            // multi-finger gestures: three or four fingers swiping, four or five spreading or pinching (the agent follows the Mac's settings)
-            listOf("swipe3up", "swipe3down", "swipe3left", "swipe3right", "swipe4up", "swipe4down", "swipe4left", "swipe4right", "spread", "pinch")
-
-        @JavascriptInterface
-        fun trackpad(key: String, type: String, dx: Float, dy: Float, delta: Float) {
-            if (!ok(key) || type !in validTrackpadTypes) return
-            val cleanDx = if (dx.isFinite()) dx else 0f
-            val cleanDy = if (dy.isFinite()) dy else 0f
-            val cleanDelta = if (delta.isFinite()) delta else 0f
-            link.sendTrackpad(type, cleanDx, cleanDy, cleanDelta)
-        }
 
         // The WebView receives the saved agent preference. Remember it for pairing dialogs before the next connection.
         @JavascriptInterface
@@ -507,17 +484,6 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun forgetPc(key: String, id: String) { if (ok(key)) link.forget(id) }
 
-        /** True when the Wake button can work: the active computer's MACs are known and the phone is on a local network. */
-        @JavascriptInterface
-        fun canWake(key: String): Boolean = ok(key) && link.canWake()
-
-        /**
-         * Sends a Wake-on-LAN packet to the paired computer [id]. Takes a computer's id and never a MAC address, so a
-         * page cannot aim the packet at an arbitrary machine. False when nothing could be sent.
-         */
-        @JavascriptInterface
-        fun wakePc(key: String, id: String): Boolean = ok(key) && link.wake(id)
-
         /** "landscape" (default), "portrait" or "auto" (follow the phone). */
         @JavascriptInterface
         fun setOrientation(key: String, mode: String) {
@@ -545,30 +511,13 @@ class MainActivity : Activity(), SensorEventListener {
         @JavascriptInterface
         fun version(key: String): String = if (ok(key)) packageManager.getPackageInfo(packageName, 0).versionName ?: "" else ""
 
-        /** Dictation widget: true when the phone has a speech recognizer. */
-        @JavascriptInterface
-        fun canListen(key: String): Boolean = ok(key) && dictation.available()
-
-        /**
-         * Dictation widget: listens once ([lang] a BCP 47 tag or "") and returns the session's id; results arrive
-         * through window.onAndroidSpeech(kind, text, id).
-         */
-        @JavascriptInterface
-        fun listen(key: String, lang: String, offline: Boolean): Int =
-            if (!ok(key)) 0 else dictation.start(lang.take(20).filter { it.isLetterOrDigit() || it == '-' }, offline)
-
-        @JavascriptInterface
-        fun stopListening(key: String, id: Int) { if (ok(key) && id > 0) dictation.stop(id) }
-
-        @JavascriptInterface
-        fun cancelListening(key: String, id: Int) { if (ok(key) && id > 0) dictation.cancel(id) }
     }
 
     companion object {
         private const val ASSET_HOST = "appassets.androidplatform.net"
         private val NO_STORE = mapOf("Cache-Control" to "no-store")
         private const val PANEL_HEADER = "X-PhoneBox-Panel"
-        private val READ_ONLY_IMAGES = setOf("/agent/api/procs/icon", "/agent/api/apps/icon", "/agent/api/shortcuts/icon")
+        private val READ_ONLY_IMAGES = setOf("/agent/api/procs/icon")
         private fun FORBIDDEN() = WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", NO_STORE, java.io.ByteArrayInputStream(ByteArray(0)))
     }
 }
